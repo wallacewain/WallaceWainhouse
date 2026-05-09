@@ -11,23 +11,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-
   <header>
     <nav>
       <a href="/" class="logo">WW</a>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/tools/" class="active">Tools</a></li>
-      </ul>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
-
   <main>
     <section class="hero">
       <h1>Tools</h1>
       <p>Free tools that run in your browser. Nothing is sent to any server.</p>
     </section>
-
     <section class="section">
       <div class="tools-grid">
 
@@ -35,31 +29,90 @@
           <div class="tool-icon">&#9638;</div>
           <h3>QR Code Generator</h3>
           <p>Generate a QR code from any text or URL and download it as a PNG.</p>
-          <div class="tags">
-            <span class="tag">JS</span>
-            <span class="tag tag-warning">Untested</span>
-          </div>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
 
         <a class="tool-card" href="/tools/heic-to-jpg/">
           <div class="tool-icon">&#128444;</div>
           <h3>HEIC to JPG</h3>
           <p>Convert HEIC photos to JPG. Supports multiple files and adjustable quality.</p>
-          <div class="tags">
-            <span class="tag">JS</span>
-            <span class="tag">WASM</span>
-            <span class="tag tag-warning">Untested</span>
-          </div>
+          <div class="tags"><span class="tag">JS</span><span class="tag">WASM</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/password-generator/">
+          <div class="tool-icon">&#128273;</div>
+          <h3>Password Generator</h3>
+          <p>Generate a random password with configurable length and character sets.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/file-hash/">
+          <div class="tool-icon">#</div>
+          <h3>File Hash Checker</h3>
+          <p>Generate SHA-256 (and others) checksums for any file to verify downloads.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/image-compressor/">
+          <div class="tool-icon">&#128247;</div>
+          <h3>Image Compressor</h3>
+          <p>Compress JPEG, PNG, or WebP images locally. See before/after file sizes.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/base64/">
+          <div class="tool-icon">64</div>
+          <h3>Base64 Encoder / Decoder</h3>
+          <p>Encode text or files to Base64, or decode Base64 back to text.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/jwt-decoder/">
+          <div class="tool-icon">&#128274;</div>
+          <h3>JWT Decoder</h3>
+          <p>Decode a JSON Web Token to inspect its header and payload. Does not verify the signature.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/word-counter/">
+          <div class="tool-icon">&#128221;</div>
+          <h3>Word Counter</h3>
+          <p>Count words, characters, sentences, paragraphs, and estimated reading time.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/json-formatter/">
+          <div class="tool-icon">{}</div>
+          <h3>JSON Formatter</h3>
+          <p>Format or minify JSON. Highlights errors for invalid input.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/text-diff/">
+          <div class="tool-icon">&#8644;</div>
+          <h3>Text Diff</h3>
+          <p>Compare two blocks of text and see what changed, line by line.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/colour-converter/">
+          <div class="tool-icon">&#9632;</div>
+          <h3>Colour Converter</h3>
+          <p>Convert between hex, RGB, and HSL colour formats with a live preview.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+
+        <a class="tool-card" href="/tools/regex-tester/">
+          <div class="tool-icon">.*</div>
+          <h3>Regex Tester</h3>
+          <p>Test regular expressions against a string with match highlighting.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
 
       </div>
     </section>
   </main>
-
-  <footer>
-    <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
-  </footer>
-
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
   <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
 </body>
 </html>

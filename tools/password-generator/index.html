@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Password generator — free, runs in your browser.">
+  <title>Password Generator &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-wrap { max-width: 500px; display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
+    .pwd-row { display: flex; gap: 0.5rem; align-items: center; }
+    .pwd-row input { flex: 1; font-family: var(--mono); font-size: 1.05rem; letter-spacing: 0.04em; }
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; user-select: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Password Generator</h1>
+      <p>Generates a random password in your browser. Nothing is sent anywhere.</p>
+    </section>
+    <div class="tool-wrap">
+      <div class="field">
+        <label>Password</label>
+        <div class="pwd-row">
+          <input type="text" id="output" readonly placeholder="Click Generate">
+          <button class="copy-btn" id="copy-btn">Copy</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Length &mdash; <span id="length-val">16</span> characters</label>
+        <input type="range" id="length" min="8" max="64" value="16">
+      </div>
+      <div class="field">
+        <label>Include</label>
+        <div class="checks">
+          <label class="check-row"><input type="checkbox" id="upper" checked> Uppercase (A&ndash;Z)</label>
+          <label class="check-row"><input type="checkbox" id="lower" checked> Lowercase (a&ndash;z)</label>
+          <label class="check-row"><input type="checkbox" id="nums" checked> Numbers (0&ndash;9)</label>
+          <label class="check-row"><input type="checkbox" id="syms" checked> Symbols (!@#&hellip;)</label>
+        </div>
+      </div>
+      <div><button class="btn" id="gen-btn">Generate</button></div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    const output = document.getElementById('output');
+    const lengthEl = document.getElementById('length');
+    const lengthVal = document.getElementById('length-val');
+    const copyBtn = document.getElementById('copy-btn');
+    const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+    const NUMS  = '0123456789';
+    const SYMS  = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+    const rand = n => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+    function generate() {
+      const sets = [
+        [document.getElementById('upper'), UPPER],
+        [document.getElementById('lower'), LOWER],
+        [document.getElementById('nums'),  NUMS],
+        [document.getElementById('syms'),  SYMS],
+      ].filter(([el]) => el.checked);
+      if (!sets.length) { output.value = ''; return; }
+      const pool = sets.map(([,s]) => s).join('');
+      const len  = parseInt(lengthEl.value);
+      const result = sets.map(([,s]) => s[rand(s.length)]);
+      while (result.length < len) result.push(pool[rand(pool.length)]);
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = rand(i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      output.value = result.join('');
+    }
+    lengthEl.addEventListener('input', () => { lengthVal.textContent = lengthEl.value; generate(); });
+    ['upper','lower','nums','syms'].forEach(id => document.getElementById(id).addEventListener('change', generate));
+    document.getElementById('gen-btn').addEventListener('click', generate);
+    copyBtn.addEventListener('click', () => {
+      if (!output.value) return;
+      navigator.clipboard.writeText(output.value);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+    });
+    generate();
+  </script>
+</body>
+</html>
