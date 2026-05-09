@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="QR Code Generator — free, runs in your browser.">
+  <title>QR Code Generator &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 3rem;
+      align-items: start;
+      padding: 2rem 0 4rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .field label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .row { display: flex; gap: 1rem; }
+    .row .field { flex: 1; }
+
+    textarea, select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.95rem;
+      padding: 0.6rem 0.85rem;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.5;
+    }
+
+    textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .qr-output {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #qr {
+      border-radius: var(--radius);
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .qr-placeholder {
+      width: 256px;
+      height: 256px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 720px) {
+      .tool-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/tools/" class="active">Tools</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>QR Code Generator</h1>
+      <p>Generates a QR code from any text or URL. Runs in your browser &mdash; nothing is sent anywhere.</p>
+    </section>
+
+    <div class="tool-layout">
+      <div class="controls">
+        <div class="field">
+          <label for="qr-input">Text or URL</label>
+          <textarea id="qr-input" placeholder="https://example.com"></textarea>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="qr-size">Output size</label>
+            <select id="qr-size">
+              <option value="128">128 px</option>
+              <option value="256" selected>256 px</option>
+              <option value="512">512 px</option>
+              <option value="1024">1024 px</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="qr-level">Error correction</label>
+            <select id="qr-level">
+              <option value="L">L &mdash; 7%</option>
+              <option value="M" selected>M &mdash; 15%</option>
+              <option value="Q">Q &mdash; 25%</option>
+              <option value="H">H &mdash; 30%</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="download-btn" disabled>Download PNG</button>
+      </div>
+
+      <div class="qr-output">
+        <canvas id="qr" style="display:none"></canvas>
+        <div class="qr-placeholder" id="qr-placeholder">Enter text to generate</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    const input       = document.getElementById('qr-input');
+    const sizeSelect  = document.getElementById('qr-size');
+    const levelSelect = document.getElementById('qr-level');
+    const canvas      = document.getElementById('qr');
+    const placeholder = document.getElementById('qr-placeholder');
+    const downloadBtn = document.getElementById('download-btn');
+
+    let qr = null;
+    let timer = null;
+
+    function generate() {
+      const value = input.value.trim();
+      if (!value) {
+        canvas.style.display = 'none';
+        placeholder.style.display = 'flex';
+        downloadBtn.disabled = true;
+        return;
+      }
+
+      const size  = parseInt(sizeSelect.value);
+      const level = levelSelect.value;
+
+      if (!qr) {
+        qr = new QRious({ element: canvas, value, size, level });
+      } else {
+        qr.set({ value, size, level });
+      }
+
+      const displaySize = Math.min(size, 256);
+      canvas.style.width  = displaySize + 'px';
+      canvas.style.height = displaySize + 'px';
+      canvas.style.display = 'block';
+      placeholder.style.display = 'none';
+      downloadBtn.disabled = false;
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(generate, 200);
+    });
+    sizeSelect.addEventListener('change', generate);
+    levelSelect.addEventListener('change', generate);
+
+    downloadBtn.addEventListener('click', () => {
+      if (!input.value.trim()) return;
+      const a = document.createElement('a');
+      a.download = 'qrcode.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>
