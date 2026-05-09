@@ -3,98 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="File hash checker — generate SHA checksums in your browser.">
+  <meta name="description" content="Generate SHA-256, SHA-512 and other checksums to verify file integrity. Runs entirely in your browser — files are never uploaded.">
   <title>File Hash Checker &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/file-hash/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/file-hash/">
+  <meta property="og:title" content="File Hash Checker &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Generate SHA-256, SHA-512 checksums to verify file integrity. Files never leave your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="File Hash Checker &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Generate SHA-256, SHA-512 checksums to verify file integrity. Files never leave your browser.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .tool-wrap { max-width: 640px; display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
-    .hash-val { font-family: var(--mono); font-size: 0.85rem; word-break: break-all; color: #4ade80; }
-    .verify-row { display: flex; gap: 0.5rem; align-items: center; }
-    .verify-row input { flex: 1; }
-    .match-ok  { color: #4ade80; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
-    .match-fail { color: #f87171; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+    .tool-wrap{max-width:640px;display:flex;flex-direction:column;gap:1.25rem;padding:2rem 0 4rem}
+    .hash-val{font-family:var(--mono);font-size:.85rem;word-break:break-all;color:#4ade80}
+    .verify-row{display:flex;gap:.5rem;align-items:center}.verify-row input{flex:1}
+    .match-ok{color:#4ade80;font-size:.875rem;font-weight:600;white-space:nowrap}
+    .match-fail{color:#f87171;font-size:.875rem;font-weight:600;white-space:nowrap}
   </style>
 </head>
 <body>
-  <header>
-    <nav>
-      <a href="/" class="logo">WW</a>
-      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
-    </nav>
-  </header>
+  <header><nav><a href="/" class="logo">WW</a><ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul></nav></header>
   <main>
-    <section class="hero" style="padding-bottom:1.5rem">
-      <h1>File Hash Checker</h1>
-      <p>Generate a checksum for any file to verify it hasn&rsquo;t been tampered with. Runs entirely in your browser &mdash; files are not uploaded.</p>
-    </section>
+    <section class="hero" style="padding-bottom:1.5rem"><h1>File Hash Checker</h1><p>Generate a checksum for any file to verify it hasn&rsquo;t been tampered with. Files are not uploaded.</p></section>
     <div class="tool-wrap">
-      <div class="drop-zone" id="drop-zone">
-        <input type="file" id="file-input">
-        <strong>Drop any file here</strong>
-        <p>or click to select</p>
-      </div>
-      <div class="field">
-        <label for="algo">Algorithm</label>
-        <select id="algo">
-          <option value="SHA-1">SHA-1</option>
-          <option value="SHA-256" selected>SHA-256</option>
-          <option value="SHA-384">SHA-384</option>
-          <option value="SHA-512">SHA-512</option>
-        </select>
-      </div>
-      <div class="field" id="result-field" style="display:none">
-        <label>Hash <span id="file-name" style="font-weight:400;color:var(--muted)"></span></label>
-        <div class="output-box"><span class="hash-val" id="hash-output"></span></div>
-      </div>
-      <div class="field" id="verify-field" style="display:none">
-        <label>Verify &mdash; paste expected hash to compare</label>
-        <div class="verify-row">
-          <input type="text" id="expected" placeholder="Paste expected hash here">
-          <span id="match-result"></span>
-        </div>
-      </div>
+      <div class="drop-zone" id="drop-zone"><input type="file" id="file-input"><strong>Drop any file here</strong><p>or click to select</p></div>
+      <div class="field"><label for="algo">Algorithm</label><select id="algo"><option value="SHA-1">SHA-1</option><option value="SHA-256" selected>SHA-256</option><option value="SHA-384">SHA-384</option><option value="SHA-512">SHA-512</option></select></div>
+      <div class="field" id="result-field" style="display:none"><label>Hash <span id="file-name" style="font-weight:400;color:var(--muted)"></span></label><div class="output-box"><span class="hash-val" id="hash-output"></span></div></div>
+      <div class="field" id="verify-field" style="display:none"><label>Verify &mdash; paste expected hash to compare</label><div class="verify-row"><input type="text" id="expected" placeholder="Paste expected hash here"><span id="match-result"></span></div></div>
     </div>
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
   <script>
-    document.getElementById('yr').textContent = new Date().getFullYear();
-    const dropZone    = document.getElementById('drop-zone');
-    const fileInput   = document.getElementById('file-input');
-    const algoEl      = document.getElementById('algo');
-    const hashOutput  = document.getElementById('hash-output');
-    const fileNameEl  = document.getElementById('file-name');
-    const resultField = document.getElementById('result-field');
-    const verifyField = document.getElementById('verify-field');
-    const expected    = document.getElementById('expected');
-    const matchResult = document.getElementById('match-result');
-    let currentFile = null;
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) process(e.dataTransfer.files[0]); });
-    fileInput.addEventListener('change', () => { if (fileInput.files[0]) process(fileInput.files[0]); });
-    algoEl.addEventListener('change', () => { if (currentFile) process(currentFile); });
-    async function process(file) {
-      currentFile = file;
-      fileNameEl.textContent = '— ' + file.name;
-      hashOutput.textContent = 'Computing…';
-      resultField.style.display = '';
-      verifyField.style.display = '';
-      expected.value = ''; matchResult.textContent = '';
-      const buf = await file.arrayBuffer();
-      const hashBuf = await crypto.subtle.digest(algoEl.value, buf);
-      const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-      hashOutput.textContent = hex;
-    }
-    expected.addEventListener('input', () => {
-      const exp = expected.value.trim().toLowerCase();
-      const got = hashOutput.textContent.toLowerCase();
-      if (!exp) { matchResult.textContent = ''; return; }
-      matchResult.textContent = exp === got ? '✓ Match' : '✗ No match';
-      matchResult.className = exp === got ? 'match-ok' : 'match-fail';
-    });
+    document.getElementById('yr').textContent=new Date().getFullYear();
+    const dropZone=document.getElementById('drop-zone'),fileInput=document.getElementById('file-input'),algoEl=document.getElementById('algo'),hashOutput=document.getElementById('hash-output'),fileNameEl=document.getElementById('file-name'),resultField=document.getElementById('result-field'),verifyField=document.getElementById('verify-field'),expected=document.getElementById('expected'),matchResult=document.getElementById('match-result');
+    let currentFile=null;
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])process(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',()=>{if(fileInput.files[0])process(fileInput.files[0]);});
+    algoEl.addEventListener('change',()=>{if(currentFile)process(currentFile);});
+    async function process(file){currentFile=file;fileNameEl.textContent='— '+file.name;hashOutput.textContent='Computing…';resultField.style.display='';verifyField.style.display='';expected.value='';matchResult.textContent='';const buf=await file.arrayBuffer();const hashBuf=await crypto.subtle.digest(algoEl.value,buf);hashOutput.textContent=Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+    expected.addEventListener('input',()=>{const exp=expected.value.trim().toLowerCase(),got=hashOutput.textContent.toLowerCase();if(!exp){matchResult.textContent='';return;}matchResult.textContent=exp===got?'✓ Match':'✗ No match';matchResult.className=exp===got?'match-ok':'match-fail';});
   </script>
 </body>
 </html>

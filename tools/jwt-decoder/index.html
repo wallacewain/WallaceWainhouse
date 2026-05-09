@@ -3,85 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="JWT decoder — inspect JSON Web Tokens in your browser.">
+  <meta name="description" content="Decode JSON Web Tokens to inspect their header and payload. Your tokens never leave your browser — nothing is sent to any server.">
   <title>JWT Decoder &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/jwt-decoder/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/jwt-decoder/">
+  <meta property="og:title" content="JWT Decoder &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Decode JSON Web Tokens locally. Your tokens never leave your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="JWT Decoder &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Decode JSON Web Tokens locally. Your tokens never leave your browser.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .tool-wrap { max-width: 720px; display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
-    .section-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
-    .exp-ok   { color: #4ade80; font-size: 0.85rem; }
-    .exp-fail { color: #f87171; font-size: 0.85rem; }
-    textarea { font-family: var(--mono); font-size: 0.85rem; }
-    #jwt-input { min-height: 80px; word-break: break-all; }
+    .tool-wrap{max-width:720px;display:flex;flex-direction:column;gap:1.25rem;padding:2rem 0 4rem}
+    .section-label{font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+    .exp-ok{color:#4ade80;font-size:.85rem}.exp-fail{color:#f87171;font-size:.85rem}
+    textarea{font-family:var(--mono);font-size:.85rem}#jwt-input{min-height:80px;word-break:break-all}
   </style>
 </head>
 <body>
-  <header>
-    <nav>
-      <a href="/" class="logo">WW</a>
-      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
-    </nav>
-  </header>
+  <header><nav><a href="/" class="logo">WW</a><ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul></nav></header>
   <main>
-    <section class="hero" style="padding-bottom:1.5rem">
-      <h1>JWT Decoder</h1>
-      <p>Decode a JSON Web Token to inspect its contents. Runs in your browser &mdash; paste your token, it goes nowhere.</p>
-    </section>
+    <section class="hero" style="padding-bottom:1.5rem"><h1>JWT Decoder</h1><p>Decode a JSON Web Token to inspect its contents. Paste your token &mdash; it goes nowhere.</p></section>
     <div class="tool-wrap">
       <div class="notice">This tool decodes the token but does not verify the signature. Do not treat decoded claims as trusted without server-side verification.</div>
       <div class="field"><label for="jwt-input">Token</label><textarea id="jwt-input" placeholder="Paste JWT here"></textarea></div>
       <div id="output" style="display:none">
-        <div style="margin-bottom:1rem">
-          <div class="section-label">Header</div>
-          <div class="output-box" id="header-out"></div>
-        </div>
-        <div style="margin-bottom:1rem">
-          <div class="section-label">Payload</div>
-          <div class="output-box" id="payload-out"></div>
-          <div id="exp-info" style="margin-top:0.5rem"></div>
-        </div>
-        <div>
-          <div class="section-label">Signature</div>
-          <div class="output-box" id="sig-out" style="color:var(--muted)"></div>
-        </div>
+        <div style="margin-bottom:1rem"><div class="section-label">Header</div><div class="output-box" id="header-out"></div></div>
+        <div style="margin-bottom:1rem"><div class="section-label">Payload</div><div class="output-box" id="payload-out"></div><div id="exp-info" style="margin-top:.5rem"></div></div>
+        <div><div class="section-label">Signature</div><div class="output-box" id="sig-out" style="color:var(--muted)"></div></div>
       </div>
-      <div id="error" style="color:#f87171;font-size:0.875rem"></div>
+      <div id="error" style="color:#f87171;font-size:.875rem"></div>
     </div>
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
   <script>
-    document.getElementById('yr').textContent = new Date().getFullYear();
-    function b64url(str) {
-      str = str.replace(/-/g,'+').replace(/_/g,'/');
-      while (str.length % 4) str += '=';
-      return atob(str);
-    }
-    document.getElementById('jwt-input').addEventListener('input', function() {
-      const val = this.value.trim();
-      const out = document.getElementById('output');
-      const err = document.getElementById('error');
-      out.style.display = 'none'; err.textContent = '';
-      if (!val) return;
-      const parts = val.split('.');
-      if (parts.length !== 3) { err.textContent = 'Invalid JWT — expected 3 dot-separated parts.'; return; }
-      try {
-        const header  = JSON.parse(b64url(parts[0]));
-        const payload = JSON.parse(b64url(parts[1]));
-        document.getElementById('header-out').textContent  = JSON.stringify(header,  null, 2);
-        document.getElementById('payload-out').textContent = JSON.stringify(payload, null, 2);
-        document.getElementById('sig-out').textContent     = parts[2];
-        const expInfo = document.getElementById('exp-info');
-        if (payload.exp) {
-          const exp = new Date(payload.exp * 1000);
-          const expired = Date.now() > payload.exp * 1000;
-          expInfo.innerHTML = `<span class="${expired ? 'exp-fail' : 'exp-ok'}">${expired ? '✗ Expired' : '✓ Valid'} — exp: ${exp.toUTCString()}</span>`;
-        } else { expInfo.textContent = ''; }
-        out.style.display = '';
-      } catch(e) { err.textContent = 'Could not decode: ' + e.message; }
-    });
+    document.getElementById('yr').textContent=new Date().getFullYear();
+    function b64url(str){str=str.replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';return atob(str);}
+    document.getElementById('jwt-input').addEventListener('input',function(){const val=this.value.trim(),out=document.getElementById('output'),err=document.getElementById('error');out.style.display='none';err.textContent='';if(!val)return;const parts=val.split('.');if(parts.length!==3){err.textContent='Invalid JWT — expected 3 dot-separated parts.';return;}try{const header=JSON.parse(b64url(parts[0])),payload=JSON.parse(b64url(parts[1]));document.getElementById('header-out').textContent=JSON.stringify(header,null,2);document.getElementById('payload-out').textContent=JSON.stringify(payload,null,2);document.getElementById('sig-out').textContent=parts[2];const expInfo=document.getElementById('exp-info');if(payload.exp){const exp=new Date(payload.exp*1000),expired=Date.now()>payload.exp*1000;expInfo.innerHTML=`<span class="${expired?'exp-fail':'exp-ok'}">${expired?'✗ Expired':'✓ Valid'} — exp: ${exp.toUTCString()}</span>`;}else expInfo.textContent='';out.style.display='';}catch(e){err.textContent='Could not decode: '+e.message;}});
   </script>
 </body>
 </html>

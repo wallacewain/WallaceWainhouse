@@ -3,178 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="HEIC to JPG converter &mdash; free, runs in your browser.">
+  <meta name="description" content="Convert HEIC photos to JPG for free. Works entirely in your browser — your photos are never uploaded. Supports multiple files and adjustable quality.">
   <title>HEIC to JPG &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/heic-to-jpg/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/heic-to-jpg/">
+  <meta property="og:title" content="HEIC to JPG &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Convert HEIC photos to JPG for free. Files never leave your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HEIC to JPG &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Convert HEIC photos to JPG for free. Files never leave your browser.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 3rem 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-      position: relative;
-      margin-bottom: 1.5rem;
-    }
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--accent);
-      background: rgba(99,102,241,0.05);
-    }
-    .drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
-    .drop-zone strong {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-size: 1rem;
-    }
-    .drop-zone p { color: var(--muted); font-size: 0.9rem; pointer-events: none; }
-    .options {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1.5rem;
-    }
+    .options { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
     .options label { font-size: 0.85rem; font-weight: 500; color: var(--muted); }
-    input[type="range"] { accent-color: var(--accent); width: 160px; }
     .quality-val { font-size: 0.85rem; font-weight: 600; min-width: 2.5rem; }
     .file-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    .file-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.9rem 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .file-name { flex: 1; font-size: 0.9rem; word-break: break-all; }
-    .file-status { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-    .file-status.done { color: #4ade80; }
-    .file-status.error { color: #f87171; }
-    .file-status.converting { color: var(--accent-hover); }
   </style>
 </head>
 <body>
-
-  <header>
-    <nav>
-      <a href="/" class="logo">WW</a>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/tools/" class="active">Tools</a></li>
-      </ul>
-    </nav>
-  </header>
-
+  <header><nav><a href="/" class="logo">WW</a><ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul></nav></header>
   <main>
     <section class="hero" style="padding-bottom:1.5rem">
       <h1>HEIC to JPG</h1>
       <p>Convert HEIC photos to JPG. Runs in your browser &mdash; files are not uploaded anywhere.</p>
     </section>
-
-    <div class="drop-zone" id="drop-zone">
+    <div class="drop-zone" id="drop-zone" style="margin-bottom:1.5rem">
       <input type="file" id="file-input" accept=".heic,.heif,image/heic,image/heif" multiple>
       <strong>Drop HEIC files here</strong>
       <p>or click to select</p>
     </div>
-
     <div class="options">
       <label for="quality">Quality</label>
       <input type="range" id="quality" min="10" max="100" value="90" step="5">
       <span class="quality-val" id="quality-val">90%</span>
       <button class="btn" id="convert-btn" disabled>Convert</button>
     </div>
-
     <div class="file-list" id="file-list"></div>
   </main>
-
-  <footer>
-    <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
-  </footer>
-
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script>
-    document.getElementById('yr').textContent = new Date().getFullYear();
-
-    const dropZone      = document.getElementById('drop-zone');
-    const fileInput     = document.getElementById('file-input');
-    const qualitySlider = document.getElementById('quality');
-    const qualityVal    = document.getElementById('quality-val');
-    const convertBtn    = document.getElementById('convert-btn');
-    const fileList      = document.getElementById('file-list');
-
-    let files = [];
-
-    qualitySlider.addEventListener('input', () => {
-      qualityVal.textContent = qualitySlider.value + '%';
-    });
-
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
-      handleFiles(Array.from(e.dataTransfer.files));
-    });
-    fileInput.addEventListener('change', () => handleFiles(Array.from(fileInput.files)));
-
-    function handleFiles(incoming) {
-      const heic = incoming.filter(f =>
-        /\.(heic|heif)$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif'
-      );
-      if (!heic.length) return;
-      files = heic;
-      fileList.innerHTML = '';
-      files.forEach((f, i) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `<span class="file-name">${f.name}</span><span class="file-status" id="status-${i}">Ready</span>`;
-        fileList.appendChild(item);
-      });
-      convertBtn.disabled = false;
-    }
-
-    convertBtn.addEventListener('click', async () => {
-      convertBtn.disabled = true;
-      const quality = parseInt(qualitySlider.value) / 100;
-
-      for (let i = 0; i < files.length; i++) {
-        const status = document.getElementById(`status-${i}`);
-        status.textContent = 'Converting…';
-        status.className = 'file-status converting';
-        try {
-          const result = await heic2any({ blob: files[i], toType: 'image/jpeg', quality });
-          const blob = Array.isArray(result) ? result[0] : result;
-          const url  = URL.createObjectURL(blob);
-          const name = files[i].name.replace(/\.(heic|heif)$/i, '') + '.jpg';
-          const a    = document.createElement('a');
-          a.href     = url;
-          a.download = name;
-          a.className = 'tool-link';
-          a.textContent = 'Download';
-          a.addEventListener('click', () => setTimeout(() => URL.revokeObjectURL(url), 10000));
-          status.textContent = '';
-          status.className = 'file-status done';
-          status.appendChild(a);
-        } catch (err) {
-          status.textContent = 'Failed';
-          status.className = 'file-status error';
-        }
-      }
-
-      convertBtn.disabled = false;
-    });
+    document.getElementById('yr').textContent=new Date().getFullYear();
+    const dropZone=document.getElementById('drop-zone'),fileInput=document.getElementById('file-input'),qualitySlider=document.getElementById('quality'),qualityVal=document.getElementById('quality-val'),convertBtn=document.getElementById('convert-btn'),fileList=document.getElementById('file-list');
+    let files=[];
+    qualitySlider.addEventListener('input',()=>qualityVal.textContent=qualitySlider.value+'%');
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');handleFiles(Array.from(e.dataTransfer.files));});
+    fileInput.addEventListener('change',()=>handleFiles(Array.from(fileInput.files)));
+    function handleFiles(incoming){const heic=incoming.filter(f=>/\.(heic|heif)$/i.test(f.name)||f.type==='image/heic'||f.type==='image/heif');if(!heic.length)return;files=heic;fileList.innerHTML='';files.forEach((f,i)=>{const item=document.createElement('div');item.className='file-item';item.innerHTML=`<span class="file-name">${f.name}</span><span class="file-status" id="status-${i}">Ready</span>`;fileList.appendChild(item);});convertBtn.disabled=false;}
+    convertBtn.addEventListener('click',async()=>{convertBtn.disabled=true;const quality=parseInt(qualitySlider.value)/100;for(let i=0;i<files.length;i++){const status=document.getElementById(`status-${i}`);status.textContent='Converting…';status.className='file-status converting';try{const result=await heic2any({blob:files[i],toType:'image/jpeg',quality});const blob=Array.isArray(result)?result[0]:result;const url=URL.createObjectURL(blob);const name=files[i].name.replace(/\.(heic|heif)$/i,'')+'.jpg';const a=document.createElement('a');a.href=url;a.download=name;a.className='tool-link';a.textContent='Download';a.addEventListener('click',()=>setTimeout(()=>URL.revokeObjectURL(url),10000));status.textContent='';status.className='file-status done';status.appendChild(a);}catch(err){status.textContent='Failed';status.className='file-status error';}}convertBtn.disabled=false;});
   </script>
 </body>
 </html>
