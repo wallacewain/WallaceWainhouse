@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Wallace Wainhouse — personal website and collection of browser-native tools.">
+  <title>Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul>
+        <li><a href="/" class="active">Home</a></li>
+        <li><a href="/tools/">Tools</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Wallace<br><span>Wainhouse</span></h1>
+      <p>A personal corner of the web. Explore the tools below — everything runs directly in your browser, no data leaves your device.</p>
+      <div>
+        <a href="/tools/" class="btn">Browse Tools &rarr;</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-label">About</p>
+      <h2>Browser-native, private by default</h2>
+      <p>Every tool on this site runs entirely client-side using JavaScript, WebAssembly, and WebGL. No servers, no tracking, no sign-ups — just fast, capable software in the browser.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
+  </footer>
+
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
