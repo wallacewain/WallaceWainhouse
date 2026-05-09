@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Add a watermark to an image — runs entirely in your browser.">
+  <title>Watermark Tool &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .wm-layout { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; padding: 2rem 0 4rem; align-items: start; }
+    .controls { display: flex; flex-direction: column; gap: 1.25rem; }
+    .tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .tab-btn { flex: 1; padding: 0.5rem 1rem; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.875rem; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+    .tab-panel { display: none; flex-direction: column; gap: 0.75rem; }
+    .tab-panel.active { display: flex; }
+    .pos-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; }
+    .pos-btn { width: 36px; height: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.15s, border-color 0.15s; display: flex; align-items: center; justify-content: center; }
+    .pos-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .preview-outer { position: sticky; top: 80px; }
+    #preview { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
+    .preview-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5rem 2rem; text-align: center; color: var(--muted); font-size: 0.875rem; }
+    .wm-thumb-wrap { display: none; flex-direction: column; gap: 0.4rem; }
+    .wm-thumb-label { font-size: 0.78rem; color: var(--muted); }
+    #wm-thumb { border-radius: 4px; border: 1px solid var(--border); max-width: 100%; display: block; }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; cursor: pointer; }
+    input[type="color"] { height: 38px; padding: 2px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); cursor: pointer; width: 100%; }
+    .drop-zone-sm { padding: 1.25rem 1rem; }
+    @media (max-width: 800px) { .wm-layout { grid-template-columns: 1fr; } .preview-outer { position: static; } }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Watermark Tool</h1>
+      <p>Add an image or text watermark to a photo. Everything runs in your browser &mdash; files are not uploaded anywhere.</p>
+    </section>
+    <div class="wm-layout">
+      <div class="controls">
+
+        <div class="field">
+          <label>Base image</label>
+          <div class="drop-zone" id="base-drop">
+            <input type="file" id="base-input" accept="image/*">
+            <strong>Drop image here</strong>
+            <p>or click to select</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Watermark</label>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="image">Image</button>
+            <button class="tab-btn" data-tab="text">Text</button>
+          </div>
+        </div>
+
+        <div class="tab-panel active" id="tab-image">
+          <div class="drop-zone drop-zone-sm" id="wm-drop">
+            <input type="file" id="wm-input" accept="image/*">
+            <strong>Drop watermark image</strong>
+            <p>or click to select</p>
+          </div>
+          <div class="wm-thumb-wrap" id="wm-thumb-wrap">
+            <div class="wm-thumb-label">Watermark preview (on checkerboard)</div>
+            <canvas id="wm-thumb"></canvas>
+          </div>
+          <div id="alpha-opts" style="display:none;flex-direction:column;gap:0.75rem">
+            <div class="field">
+              <label>Make transparent</label>
+              <select id="transp-col">
+                <option value="black">Black pixels</option>
+                <option value="white">White pixels</option>
+                <option value="none">None (use as-is)</option>
+              </select>
+            </div>
+            <label class="check-row"><input type="checkbox" id="invert-wm"> Invert colours</label>
+          </div>
+          <div class="field">
+            <label>Scale &mdash; <span id="scale-val">30</span>% of image width</label>
+            <input type="range" id="scale" min="5" max="100" value="30">
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-text">
+          <div class="field"><label>Text</label><input type="text" id="wm-text" value="© Your Name" placeholder="Watermark text"></div>
+          <div class="row">
+            <div class="field">
+              <label>Font</label>
+              <select id="wm-font">
+                <option value="sans-serif">Sans-serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="cursive">Cursive</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Size &mdash; <span id="txt-size-val">5</span>%</label>
+              <input type="range" id="txt-size" min="1" max="20" value="5" step="1">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Colour</label><input type="color" id="wm-color" value="#ffffff"></div>
+            <div class="field">
+              <label>Outline</label>
+              <select id="wm-stroke">
+                <option value="none">None</option>
+                <option value="black" selected>Black</option>
+                <option value="white">White</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Position</label>
+          <div class="pos-grid" id="pos-grid"></div>
+        </div>
+
+        <div class="field">
+          <label>Opacity &mdash; <span id="opacity-val">70</span>%</label>
+          <input type="range" id="opacity" min="5" max="100" value="70">
+        </div>
+
+        <button class="btn" id="dl-btn" disabled>Download PNG</button>
+      </div>
+
+      <div class="preview-outer">
+        <canvas id="preview"></canvas>
+        <div class="preview-placeholder" id="preview-ph">Upload a base image to get started</div>
+      </div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    let baseImg = null, wmImg = null, wmHasAlpha = false, currentPos = 'br';
+
+    function setupDrop(zoneId, inputId, cb) {
+      const zone = document.getElementById(zoneId);
+      const inp  = document.getElementById(inputId);
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) cb(e.dataTransfer.files[0]); });
+      inp.addEventListener('change', () => { if (inp.files[0]) cb(inp.files[0]); });
+    }
+
+    function loadImg(file) {
+      return new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = URL.createObjectURL(file); });
+    }
+
+    setupDrop('base-drop', 'base-input', async file => {
+      baseImg = await loadImg(file);
+      document.getElementById('preview-ph').style.display = 'none';
+      document.getElementById('preview').style.display = 'block';
+      document.getElementById('dl-btn').disabled = false;
+      render();
+    });
+
+    setupDrop('wm-drop', 'wm-input', async file => {
+      wmImg = await loadImg(file);
+      const c = document.createElement('canvas');
+      const sz = 300;
+      c.width = Math.min(wmImg.naturalWidth, sz);
+      c.height = Math.round(wmImg.naturalHeight * c.width / wmImg.naturalWidth);
+      const cx = c.getContext('2d');
+      cx.drawImage(wmImg, 0, 0, c.width, c.height);
+      const px = cx.getImageData(0, 0, c.width, c.height).data;
+      wmHasAlpha = false;
+      for (let i = 3; i < px.length; i += 4) { if (px[i] < 255) { wmHasAlpha = true; break; } }
+      const alphaOpts = document.getElementById('alpha-opts');
+      alphaOpts.style.display = wmHasAlpha ? 'none' : 'flex';
+      document.getElementById('wm-thumb-wrap').style.display = 'flex';
+      drawWmThumb();
+      render();
+    });
+
+    function getProcessedWm() {
+      const c = document.createElement('canvas');
+      c.width = wmImg.naturalWidth; c.height = wmImg.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(wmImg, 0, 0);
+      if (wmHasAlpha) return c;
+      const id = ctx.getImageData(0, 0, c.width, c.height);
+      const d = id.data;
+      const inv = document.getElementById('invert-wm').checked;
+      const tc  = document.getElementById('transp-col').value;
+      for (let i = 0; i < d.length; i += 4) {
+        let r = d[i], g = d[i+1], b = d[i+2];
+        if (inv) { r = 255-r; g = 255-g; b = 255-b; d[i]=r; d[i+1]=g; d[i+2]=b; }
+        const lum = Math.round((r + g + b) / 3);
+        if (tc === 'black') d[i+3] = lum;
+        else if (tc === 'white') d[i+3] = 255 - lum;
+      }
+      ctx.putImageData(id, 0, 0);
+      return c;
+    }
+
+    function drawCheckers(ctx, w, h, sz) {
+      for (let y = 0; y < h; y += sz)
+        for (let x = 0; x < w; x += sz) {
+          ctx.fillStyle = ((Math.floor(x/sz)+Math.floor(y/sz))%2===0) ? '#aaaaaa' : '#eeeeee';
+          ctx.fillRect(x, y, sz, sz);
+        }
+    }
+
+    function drawWmThumb() {
+      if (!wmImg) return;
+      const canvas = document.getElementById('wm-thumb');
+      const ctx = canvas.getContext('2d');
+      const max = 200;
+      const scale = Math.min(1, max / Math.max(wmImg.naturalWidth, wmImg.naturalHeight));
+      canvas.width  = Math.round(wmImg.naturalWidth  * scale);
+      canvas.height = Math.round(wmImg.naturalHeight * scale);
+      drawCheckers(ctx, canvas.width, canvas.height, 10);
+      ctx.drawImage(getProcessedWm(), 0, 0, canvas.width, canvas.height);
+    }
+
+    function getPosPx(cW, cH, wmW, wmH) {
+      const pad = Math.round(Math.min(cW, cH) * 0.025) + 8;
+      const p = currentPos;
+      const x = p[1]==='l' ? pad : p[1]==='c' ? (cW-wmW)/2 : cW-wmW-pad;
+      const y = p[0]==='t' ? pad : p[0]==='m' ? (cH-wmH)/2 : cH-wmH-pad;
+      return [x, y];
+    }
+
+    function applyWatermark(ctx, cW, cH, ratio) {
+      ctx.globalAlpha = parseInt(document.getElementById('opacity').value) / 100;
+      const tab = document.querySelector('.tab-btn.active').dataset.tab;
+      if (tab === 'image') {
+        if (!wmImg) { ctx.globalAlpha = 1; return; }
+        const wmW = Math.round(cW * parseInt(document.getElementById('scale').value) / 100);
+        const wmH = Math.round(wmImg.naturalHeight / wmImg.naturalWidth * wmW);
+        const [x, y] = getPosPx(cW, cH, wmW, wmH);
+        ctx.drawImage(getProcessedWm(), x, y, wmW, wmH);
+      } else {
+        const pct  = parseInt(document.getElementById('txt-size').value) / 100;
+        const size = Math.round(cW * pct);
+        const text = document.getElementById('wm-text').value || 'Watermark';
+        const font = document.getElementById('wm-font').value;
+        ctx.font = `bold ${size}px ${font}`;
+        ctx.textBaseline = 'alphabetic';
+        const mW = ctx.measureText(text).width;
+        const [x, y] = getPosPx(cW, cH, mW, size * 1.2);
+        const stroke = document.getElementById('wm-stroke').value;
+        if (stroke !== 'none') {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = Math.max(1, size / 20);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(text, x, y + size);
+        }
+        ctx.fillStyle = document.getElementById('wm-color').value;
+        ctx.fillText(text, x, y + size);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function render() {
+      if (!baseImg) return;
+      const canvas = document.getElementById('preview');
+      const ctx = canvas.getContext('2d');
+      const maxW = canvas.parentElement.clientWidth - 4;
+      const ratio = Math.min(1, maxW / baseImg.naturalWidth);
+      canvas.width  = Math.round(baseImg.naturalWidth  * ratio);
+      canvas.height = Math.round(baseImg.naturalHeight * ratio);
+      ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+      applyWatermark(ctx, canvas.width, canvas.height, ratio);
+    }
+
+    // Position grid
+    const POSITIONS = ['tl','tc','tr','ml','mc','mr','bl','bc','br'];
+    const POS_ICONS = {'tl':'↖','tc':'↑','tr':'↗','ml':'←','mc':'·','mr':'→','bl':'↙','bc':'↓','br':'↘'};
+    const grid = document.getElementById('pos-grid');
+    POSITIONS.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'pos-btn' + (p === 'br' ? ' active' : '');
+      btn.textContent = POS_ICONS[p];
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentPos = p;
+        render();
+      });
+      grid.appendChild(btn);
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        render();
+      });
+    });
+
+    // Live update listeners
+    document.getElementById('opacity').addEventListener('input', function() { document.getElementById('opacity-val').textContent = this.value; render(); });
+    document.getElementById('scale').addEventListener('input', function() { document.getElementById('scale-val').textContent = this.value; render(); });
+    document.getElementById('txt-size').addEventListener('input', function() { document.getElementById('txt-size-val').textContent = this.value; render(); });
+    ['wm-text','wm-font','wm-color','wm-stroke'].forEach(id => document.getElementById(id).addEventListener('input', render));
+    document.getElementById('transp-col').addEventListener('change', () => { drawWmThumb(); render(); });
+    document.getElementById('invert-wm').addEventListener('change', () => { drawWmThumb(); render(); });
+
+    // Download
+    document.getElementById('dl-btn').addEventListener('click', () => {
+      if (!baseImg) return;
+      const c = document.createElement('canvas');
+      c.width = baseImg.naturalWidth; c.height = baseImg.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(baseImg, 0, 0);
+      applyWatermark(ctx, c.width, c.height, 1);
+      const a = document.createElement('a');
+      a.download = 'watermarked.png';
+      a.href = c.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>
