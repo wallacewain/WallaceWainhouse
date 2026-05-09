@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browser-native tools by Wallace Wainhouse. Runs locally — no data sent to any server.">
+  <title>Tools &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/tools/" class="active">Tools</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" style="padding-bottom:2rem">
+      <h1>Tools</h1>
+      <p>All tools run entirely in your browser. Nothing is uploaded or stored — processing happens on your device.</p>
+    </section>
+
+    <section class="section" style="border-top:none; padding-top:0">
+      <div class="tools-grid" id="tools-grid">
+
+        <!-- Add tool cards here. Example structure:
+        <a class="tool-card" href="/tools/example/">
+          <div class="tool-icon">&#9881;</div>
+          <h3>Example Tool</h3>
+          <p>Short description of what this tool does.</p>
+          <div class="tags">
+            <span class="tag">WASM</span>
+            <span class="tag">WebGL</span>
+          </div>
+        </a>
+        -->
+
+        <div class="empty-state">
+          <strong>Tools coming soon</strong>
+          <p>Check back later &mdash; new tools are on the way.</p>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="yr"></span> Wallace Wainhouse &mdash; All tools run locally on your device.</p>
+  </footer>
+
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
