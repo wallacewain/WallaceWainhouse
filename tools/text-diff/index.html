@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Text diff — compare two blocks of text in your browser.">
+  <title>Text Diff &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-wrap { display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
+    textarea { font-family: var(--mono); font-size: 0.875rem; min-height: 180px; }
+    .diff-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 0; overflow-x: auto; min-height: 60px; }
+    .diff-empty { padding: 1rem 0.75rem; color: var(--muted); font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Text Diff</h1>
+      <p>Compare two blocks of text and see what changed. Runs in your browser.</p>
+    </section>
+    <div class="tool-wrap">
+      <div class="two-col">
+        <div class="field"><label for="text-a">Original</label><textarea id="text-a" placeholder="Original text"></textarea></div>
+        <div class="field"><label for="text-b">Modified</label><textarea id="text-b" placeholder="Modified text"></textarea></div>
+      </div>
+      <div><button class="btn" id="diff-btn">Compare</button></div>
+      <div>
+        <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">
+          <span style="color:#4ade80">&plus; Added</span> &nbsp;
+          <span style="color:#f87171">&minus; Removed</span>
+        </div>
+        <div class="diff-box" id="diff-out"><div class="diff-empty">Result will appear here</div></div>
+      </div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    document.getElementById('diff-btn').addEventListener('click', () => {
+      const a = document.getElementById('text-a').value;
+      const b = document.getElementById('text-b').value;
+      const changes = Diff.diffLines(a, b);
+      const out = document.getElementById('diff-out');
+      if (!a && !b) { out.innerHTML = '<div class="diff-empty">Enter text in both panels</div>'; return; }
+      let html = '';
+      changes.forEach(part => {
+        const cls = part.added ? 'diff-added' : part.removed ? 'diff-removed' : 'diff-unchanged';
+        const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
+        part.value.replace(/\n$/, '').split('\n').forEach(line => {
+          html += `<span class="diff-line ${cls}">${prefix}${escHtml(line)}</span>`;
+        });
+      });
+      out.innerHTML = html || '<div class="diff-empty">No differences found</div>';
+    });
+    function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+</body>
+</html>
