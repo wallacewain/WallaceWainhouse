@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Word counter — count words, characters, and more.">
+  <title>Word Counter &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-wrap { display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
+    #text-input { min-height: 260px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Word Counter</h1>
+      <p>Paste or type text below. Counts update live. Nothing leaves your browser.</p>
+    </section>
+    <div class="tool-wrap">
+      <div class="field"><label for="text-input">Text</label><textarea id="text-input" placeholder="Paste or type your text here"></textarea></div>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-value" id="s-words">0</div><div class="stat-label">Words</div></div>
+        <div class="stat-item"><div class="stat-value" id="s-chars">0</div><div class="stat-label">Characters</div></div>
+        <div class="stat-item"><div class="stat-value" id="s-chars-ns">0</div><div class="stat-label">Chars (no spaces)</div></div>
+        <div class="stat-item"><div class="stat-value" id="s-sent">0</div><div class="stat-label">Sentences</div></div>
+        <div class="stat-item"><div class="stat-value" id="s-para">0</div><div class="stat-label">Paragraphs</div></div>
+        <div class="stat-item"><div class="stat-value" id="s-read">0 min</div><div class="stat-label">Reading time</div></div>
+      </div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    document.getElementById('text-input').addEventListener('input', function() {
+      const t = this.value;
+      const words = t.trim() ? t.trim().split(/\s+/).length : 0;
+      document.getElementById('s-words').textContent   = words;
+      document.getElementById('s-chars').textContent   = t.length;
+      document.getElementById('s-chars-ns').textContent = t.replace(/\s/g,'').length;
+      document.getElementById('s-sent').textContent    = t.trim() ? t.split(/[.!?]+/).filter(s => s.trim()).length : 0;
+      document.getElementById('s-para').textContent    = t.trim() ? t.split(/\n\s*\n/).filter(p => p.trim()).length : 0;
+      const mins = Math.ceil(words / 200);
+      document.getElementById('s-read').textContent    = mins + ' min';
+    });
+  </script>
+</body>
+</html>

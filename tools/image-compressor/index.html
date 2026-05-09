@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Image compressor — compress images locally in your browser.">
+  <title>Image Compressor &mdash; Wallace Wainhouse</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-wrap { max-width: 580px; display: flex; flex-direction: column; gap: 1.25rem; padding: 2rem 0 4rem; }
+    .size-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem; }
+    .size-row strong { color: var(--text); }
+    .saving { color: #4ade80; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Image Compressor</h1>
+      <p>Compress images in your browser. Files are not uploaded anywhere.</p>
+    </section>
+    <div class="tool-wrap">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
+        <strong>Drop an image here</strong>
+        <p>JPEG, PNG, or WebP &mdash; or click to select</p>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="fmt">Output format</label>
+          <select id="fmt">
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Quality &mdash; <span id="q-val">80</span>%</label>
+          <input type="range" id="quality" min="10" max="100" value="80" step="5">
+        </div>
+      </div>
+      <div id="result" style="display:none">
+        <div class="size-row">
+          <span>Original: <strong id="orig-size"></strong></span>
+          <span>Compressed: <strong id="new-size"></strong> <span class="saving" id="saving"></span></span>
+        </div>
+        <div style="margin-top:1rem">
+          <button class="btn" id="dl-btn">Download</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const qualityEl = document.getElementById('quality');
+    const qVal = document.getElementById('q-val');
+    const fmtEl = document.getElementById('fmt');
+    const result = document.getElementById('result');
+    const origSize = document.getElementById('orig-size');
+    const newSize = document.getElementById('new-size');
+    const savingEl = document.getElementById('saving');
+    const dlBtn = document.getElementById('dl-btn');
+    let currentFile = null, currentBlob = null;
+    const fmt = n => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : (n/1048576).toFixed(2) + ' MB';
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) load(fileInput.files[0]); });
+    qualityEl.addEventListener('input', () => { qVal.textContent = qualityEl.value; if (currentFile) compress(); });
+    fmtEl.addEventListener('change', () => { if (currentFile) compress(); });
+    function load(file) { currentFile = file; origSize.textContent = fmt(file.size); compress(); }
+    function compress() {
+      const url = URL.createObjectURL(currentFile);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => {
+          currentBlob = blob;
+          newSize.textContent = fmt(blob.size);
+          const pct = Math.round((1 - blob.size / currentFile.size) * 100);
+          savingEl.textContent = pct > 0 ? '(' + pct + '% smaller)' : '';
+          result.style.display = '';
+        }, fmtEl.value, parseInt(qualityEl.value) / 100);
+      };
+      img.src = url;
+    }
+    dlBtn.addEventListener('click', () => {
+      if (!currentBlob) return;
+      const ext = fmtEl.value === 'image/webp' ? '.webp' : '.jpg';
+      const base = currentFile.name.replace(/\.[^.]+$/, '');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(currentBlob);
+      a.download = base + '-compressed' + ext;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    });
+  </script>
+</body>
+</html>
