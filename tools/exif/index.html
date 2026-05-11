@@ -146,21 +146,25 @@
 
       const bad = v => v == null || isNaN(v);
       let lat = exif?.latitude, lon = exif?.longitude;
+      console.log('[EXIF GPS] step1 lat/lon:', lat, lon, 'GPSLatitude:', exif?.GPSLatitude, 'ref:', exif?.GPSLatitudeRef);
       if (bad(lat) || bad(lon)) {
-        try { const g = await exifr.gps(file); if (g) { lat = g.latitude; lon = g.longitude; } } catch (e) {}
+        try { const g = await exifr.gps(file); console.log('[EXIF GPS] gps():', g); if (g) { lat = g.latitude; lon = g.longitude; } } catch (e) { console.log('[EXIF GPS] gps() err:', e); }
       }
       if ((bad(lat) || bad(lon)) && exif?.GPSLatitude) {
         lat = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
         lon = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
+        console.log('[EXIF GPS] step3 dms result:', lat, lon);
       }
       if (bad(lat) || bad(lon)) {
         try {
           const raw = await exifr.parse(file, { gps: true, tiff: false, exif: false, iptc: false, translateValues: false, reviveValues: false });
+          console.log('[EXIF GPS] raw:', JSON.stringify(raw));
           if (raw?.GPSLatitude && raw?.GPSLongitude) {
             lat = dmsToDecimal(raw.GPSLatitude, raw.GPSLatitudeRef);
             lon = dmsToDecimal(raw.GPSLongitude, raw.GPSLongitudeRef);
+            console.log('[EXIF GPS] step4 result:', lat, lon);
           }
-        } catch(e) {}
+        } catch(e) { console.log('[EXIF GPS] raw err:', e); }
       }
       if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
