@@ -170,6 +170,20 @@
           }
         } catch(e) { dlog('raw err:', String(e)); }
       }
+      if (bad(lat) || bad(lon)) {
+        try {
+          const xmp = await exifr.parse(file, { xmp: true, tiff: false, exif: false, gps: false, iptc: false });
+          dlog('xmp:', xmp);
+          if (xmp) {
+            const xl = xmp.latitude ?? xmp.GPSLatitude ?? xmp['exif:GPSLatitude'];
+            const xo = xmp.longitude ?? xmp.GPSLongitude ?? xmp['exif:GPSLongitude'];
+            dlog('xmp lat/lon fields:', xl, xo);
+            if (xl != null) lat = parseXmpCoord(xl);
+            if (xo != null) lon = parseXmpCoord(xo, true);
+            dlog('xmp result:', lat, lon);
+          }
+        } catch(e) { dlog('xmp err:', String(e)); }
+      }
       if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
       const camParts = [];
@@ -203,6 +217,19 @@
       const d = toNum(dms[0]) + toNum(dms[1]) / 60 + toNum(dms[2]) / 3600;
       const refStr = typeof ref === 'string' ? ref : (ref ? String.fromCharCode(Array.isArray(ref) ? ref[0] : ref) : '');
       return (refStr === 'S' || refStr === 'W') ? -d : d;
+    }
+
+    function parseXmpCoord(val, isLon) {
+      if (typeof val === 'number' && !isNaN(val)) return val;
+      const s = String(val);
+      const m = s.match(/^(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?)([NSEW]?)$/);
+      if (m) {
+        const d = Math.abs(Number(m[1])) + Number(m[2]) / 60;
+        const neg = Number(m[1]) < 0 || m[3] === 'S' || m[3] === 'W';
+        return neg ? -d : d;
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? null : n;
     }
 
     const SECTIONS = [
