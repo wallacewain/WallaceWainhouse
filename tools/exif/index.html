@@ -161,28 +161,10 @@
       }
       if (bad(lat) || bad(lon)) {
         try {
-          const raw = await exifr.parse(file, { gps: true, tiff: false, exif: false, iptc: false, translateValues: false, reviveValues: false });
-          dlog('raw:', raw);
-          if (raw?.GPSLatitude && raw?.GPSLongitude) {
-            lat = dmsToDecimal(raw.GPSLatitude, raw.GPSLatitudeRef);
-            lon = dmsToDecimal(raw.GPSLongitude, raw.GPSLongitudeRef);
-            dlog('step4 result:', lat, lon);
-          }
-        } catch(e) { dlog('raw err:', String(e)); }
-      }
-      if (bad(lat) || bad(lon)) {
-        try {
-          const xmp = await exifr.parse(file, { xmp: true, tiff: false, exif: false, gps: false, iptc: false });
-          dlog('xmp:', xmp);
-          if (xmp) {
-            const xl = xmp.latitude ?? xmp.GPSLatitude ?? xmp['exif:GPSLatitude'];
-            const xo = xmp.longitude ?? xmp.GPSLongitude ?? xmp['exif:GPSLongitude'];
-            dlog('xmp lat/lon fields:', xl, xo);
-            if (xl != null) lat = parseXmpCoord(xl);
-            if (xo != null) lon = parseXmpCoord(xo, true);
-            dlog('xmp result:', lat, lon);
-          }
-        } catch(e) { dlog('xmp err:', String(e)); }
+          const g = await parseGpsBinary(file);
+          dlog('binary:', g);
+          if (g) { lat = g.lat; lon = g.lon; }
+        } catch(e) { dlog('binary err:', String(e)); }
       }
       if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
@@ -217,6 +199,78 @@
       const d = toNum(dms[0]) + toNum(dms[1]) / 60 + toNum(dms[2]) / 3600;
       const refStr = typeof ref === 'string' ? ref : (ref ? String.fromCharCode(Array.isArray(ref) ? ref[0] : ref) : '');
       return (refStr === 'S' || refStr === 'W') ? -d : d;
+    }
+
+    async function parseGpsBinary(file) {
+      const buf = await file.arrayBuffer();
+      const view = new DataView(buf);
+      if (view.getUint16(0) !== 0xFFD8) return null;
+      let pos = 2;
+      while (pos < buf.byteLength - 4) {
+        if (view.getUint8(pos) !== 0xFF) break;
+        const marker = view.getUint16(pos);
+        if (marker === 0xFFD9 || marker === 0xFFDA) break;
+        const segLen = view.getUint16(pos + 2);
+        if (marker === 0xFFE1 && segLen >= 8 &&
+            view.getUint32(pos + 4) === 0x45786966 &&
+            view.getUint16(pos + 8) === 0x0000) {
+          const r = readGpsIfd(view, pos + 10, buf.byteLength);
+          if (r) return r;
+        }
+        pos += 2 + segLen;
+      }
+      return null;
+    }
+
+    function readGpsIfd(view, ts, fileLen) {
+      const bom = view.getUint16(ts);
+      if (bom !== 0x4949 && bom !== 0x4D4D) return null;
+      const le = bom === 0x4949;
+      const r16 = o => view.getUint16(ts + o, le);
+      const r32 = o => view.getUint32(ts + o, le);
+      if (r16(2) !== 42) return null;
+      const ifd0 = r32(4);
+      const n0 = r16(ifd0);
+      let gpsOff = 0;
+      for (let i = 0; i < n0 && i < 200; i++) {
+        const e = ifd0 + 2 + i * 12;
+        if (ts + e + 12 > fileLen) break;
+        if (r16(e) === 0x8825) { gpsOff = r32(e + 8); break; }
+      }
+      if (!gpsOff || ts + gpsOff + 2 > fileLen) return null;
+      const nGps = r16(gpsOff);
+      if (nGps > 50) return null;
+      let latRef = 'N', lonRef = 'E', latDms = null, lonDms = null;
+      for (let i = 0; i < nGps; i++) {
+        const e = gpsOff + 2 + i * 12;
+        if (ts + e + 12 > fileLen) break;
+        const tag = r16(e), type = r16(e + 2), cnt = r32(e + 4), voff = r32(e + 8);
+        if (tag === 0x0001) latRef = String.fromCharCode(view.getUint8(ts + e + 8));
+        else if (tag === 0x0003) lonRef = String.fromCharCode(view.getUint8(ts + e + 8));
+        else if ((tag === 0x0002 || tag === 0x0004) && cnt === 3) {
+          if (ts + voff + 24 > fileLen) continue;
+          const vals = [];
+          for (let j = 0; j < 3; j++) {
+            const o = voff + j * 8;
+            if (type === 5 || type === 10) {
+              const num = r32(o), den = r32(o + 4);
+              vals.push(den ? num / den : NaN);
+            } else if (type === 12) {
+              vals.push(view.getFloat64(ts + o, le));
+            }
+          }
+          if (vals.length === 3 && vals.every(v => !isNaN(v))) {
+            if (tag === 0x0002) latDms = vals;
+            else lonDms = vals;
+          }
+        }
+      }
+      if (!latDms || !lonDms) return null;
+      let lat = latDms[0] + latDms[1] / 60 + latDms[2] / 3600;
+      let lon = lonDms[0] + lonDms[1] / 60 + lonDms[2] / 3600;
+      if (latRef === 'S') lat = -lat;
+      if (lonRef === 'W') lon = -lon;
+      return isNaN(lat) || isNaN(lon) ? null : { lat, lon };
     }
 
     function parseXmpCoord(val, isLon) {
