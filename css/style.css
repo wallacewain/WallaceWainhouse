@@ -39,7 +39,7 @@ nav {
   padding: 0 1.5rem; height: 60px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; color: var(--text); }
+.logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; color: var(--text); display: inline-flex; align-items: center; }
 .logo:hover { color: var(--accent-hover); }
 nav ul { list-style: none; display: flex; gap: 2rem; }
 nav ul a { color: var(--muted); font-size: 0.9rem; font-weight: 500; transition: color 0.15s; }
