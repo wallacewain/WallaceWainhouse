@@ -144,14 +144,25 @@
         });
       } catch (e) {}
 
+      const bad = v => v == null || isNaN(v);
       let lat = exif?.latitude, lon = exif?.longitude;
-      if (lat == null || lon == null) {
+      if (bad(lat) || bad(lon)) {
         try { const g = await exifr.gps(file); if (g) { lat = g.latitude; lon = g.longitude; } } catch (e) {}
       }
-      if ((lat == null || lon == null) && exif?.GPSLatitude) {
+      if ((bad(lat) || bad(lon)) && exif?.GPSLatitude) {
         lat = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
         lon = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
       }
+      if (bad(lat) || bad(lon)) {
+        try {
+          const raw = await exifr.parse(file, { gps: true, tiff: false, exif: false, iptc: false, translateValues: false, reviveValues: false });
+          if (raw?.GPSLatitude && raw?.GPSLongitude) {
+            lat = dmsToDecimal(raw.GPSLatitude, raw.GPSLatitudeRef);
+            lon = dmsToDecimal(raw.GPSLongitude, raw.GPSLongitudeRef);
+          }
+        } catch(e) {}
+      }
+      if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
       const camParts = [];
       if (exif) {
@@ -176,7 +187,8 @@
 
     function dmsToDecimal(dms, ref) {
       if (!Array.isArray(dms) || dms.length < 3) return null;
-      const d = dms[0] + dms[1] / 60 + dms[2] / 3600;
+      const toNum = v => (v !== null && typeof v === 'object' && 'numerator' in v) ? v.numerator / v.denominator : Number(v);
+      const d = toNum(dms[0]) + toNum(dms[1]) / 60 + toNum(dms[2]) / 3600;
       return (ref === 'S' || ref === 'W') ? -d : d;
     }
 
