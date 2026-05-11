@@ -185,11 +185,13 @@
     function dmsToDecimal(dms, ref) {
       if (!Array.isArray(dms) || dms.length < 3) return null;
       const toNum = v => {
-        if (Array.isArray(v) && v.length === 2) return v[0] / v[1];
-        if (v !== null && typeof v === 'object' && 'numerator' in v) return v.numerator / v.denominator;
+        if (Array.isArray(v) && v.length === 2) return v[1] ? v[0] / v[1] : null;
+        if (v !== null && typeof v === 'object' && 'numerator' in v) return v.denominator ? v.numerator / v.denominator : null;
         return Number(v);
       };
-      const d = toNum(dms[0]) + toNum(dms[1]) / 60 + toNum(dms[2]) / 3600;
+      const parts = [toNum(dms[0]), toNum(dms[1]), toNum(dms[2])];
+      if (parts.some(v => v === null || isNaN(v))) return null;
+      const d = parts[0] + parts[1] / 60 + parts[2] / 3600;
       const refStr = typeof ref === 'string' ? ref : (ref ? String.fromCharCode(Array.isArray(ref) ? ref[0] : ref) : '');
       return (refStr === 'S' || refStr === 'W') ? -d : d;
     }
