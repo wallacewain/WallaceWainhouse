@@ -83,7 +83,6 @@
           </div>
         </div>
         <div class="exif-grid" id="exif-grid"></div>
-        <pre id="gps-debug" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;font-size:0.75rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre>
         <div class="edit-section">
           <div class="edit-head">Edit metadata</div>
           <div class="edit-fields">
@@ -145,26 +144,20 @@
         });
       } catch (e) {}
 
-      const dbg = document.getElementById('gps-debug');
-      const dlog = (...args) => { dbg.style.display='block'; dbg.textContent += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') + '\n'; };
-
       const bad = v => v == null || isNaN(v);
       let lat = exif?.latitude, lon = exif?.longitude;
-      dlog('step1 lat:', lat, 'lon:', lon, '\nGPSLatitude:', exif?.GPSLatitude, '\nGPSLatitudeRef:', exif?.GPSLatitudeRef);
       if (bad(lat) || bad(lon)) {
-        try { const g = await exifr.gps(file); dlog('gps():', g); if (g) { lat = g.latitude; lon = g.longitude; } } catch (e) { dlog('gps() err:', String(e)); }
+        try { const g = await exifr.gps(file); if (g) { lat = g.latitude; lon = g.longitude; } } catch (e) {}
       }
       if ((bad(lat) || bad(lon)) && exif?.GPSLatitude) {
         lat = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
         lon = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
-        dlog('step3 result:', lat, lon);
       }
       if (bad(lat) || bad(lon)) {
         try {
           const g = await parseGpsBinary(file);
-          dlog('binary:', g);
           if (g) { lat = g.lat; lon = g.lon; }
-        } catch(e) { dlog('binary err:', String(e)); }
+        } catch(e) {}
       }
       if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
@@ -271,19 +264,6 @@
       if (latRef === 'S') lat = -lat;
       if (lonRef === 'W') lon = -lon;
       return isNaN(lat) || isNaN(lon) ? null : { lat, lon };
-    }
-
-    function parseXmpCoord(val, isLon) {
-      if (typeof val === 'number' && !isNaN(val)) return val;
-      const s = String(val);
-      const m = s.match(/^(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?)([NSEW]?)$/);
-      if (m) {
-        const d = Math.abs(Number(m[1])) + Number(m[2]) / 60;
-        const neg = Number(m[1]) < 0 || m[3] === 'S' || m[3] === 'W';
-        return neg ? -d : d;
-      }
-      const n = parseFloat(s);
-      return isNaN(n) ? null : n;
     }
 
     const SECTIONS = [
