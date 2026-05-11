@@ -159,6 +159,12 @@
           if (g) { lat = g.lat; lon = g.lon; }
         } catch(e) {}
       }
+      if (bad(lat) || bad(lon)) {
+        try {
+          const g = await parseGpsXmp(file);
+          if (g) { lat = g.lat; lon = g.lon; }
+        } catch(e) {}
+      }
       if (bad(lat) || bad(lon)) { lat = null; lon = null; }
 
       const camParts = [];
@@ -211,6 +217,62 @@
             view.getUint16(pos + 8) === 0x0000) {
           const r = readGpsIfd(view, pos + 10, buf.byteLength);
           if (r) return r;
+        }
+        pos += 2 + segLen;
+      }
+      return null;
+    }
+
+    async function parseGpsXmp(file) {
+      const buf = await file.arrayBuffer();
+      const view = new DataView(buf);
+      if (view.getUint16(0) !== 0xFFD8) return null;
+      const dec = new TextDecoder('utf-8', { fatal: false });
+      let pos = 2;
+      while (pos < buf.byteLength - 4) {
+        if (view.getUint8(pos) !== 0xFF) break;
+        const marker = view.getUint16(pos);
+        if (marker === 0xFFD9 || marker === 0xFFDA) break;
+        const segLen = view.getUint16(pos + 2);
+        if (marker === 0xFFE1 && segLen > 32) {
+          const hdr = dec.decode(new Uint8Array(buf, pos + 4, 29));
+          if (hdr.startsWith('http://ns.adobe.com/xap/1.0/')) {
+            const xmp = dec.decode(new Uint8Array(buf, pos + 4, segLen - 2));
+
+            // drone-dji / DJI decimal format: GpsLatitude="+34.3406718"
+            const djiLat = xmp.match(/[Gg]ps[Ll]atitude="([+-]?\d+\.?\d*)"/);
+            const djiLon = xmp.match(/[Gg]ps[Ll]ongitude="([+-]?\d+\.?\d*)"/);
+            if (djiLat && djiLon) {
+              const lat = parseFloat(djiLat[1]), lon = parseFloat(djiLon[1]);
+              if (!isNaN(lat) && !isNaN(lon)) return { lat, lon };
+            }
+
+            // Standard XMP exif:GPSLatitude="34,20.44N" (deg, decimal-minutes, ref)
+            const xLat = xmp.match(/GPSLatitude="([\d.]+),([\d.]+)([NS])"/);
+            const xLon = xmp.match(/GPSLongitude="([\d.]+),([\d.]+)([EW])"/);
+            if (xLat && xLon) {
+              const dms2dec = (d, m, ref) => {
+                const v = parseFloat(d) + parseFloat(m) / 60;
+                return (ref === 'S' || ref === 'W') ? -v : v;
+              };
+              const lat = dms2dec(xLat[1], xLat[2], xLat[3]);
+              const lon = dms2dec(xLon[1], xLon[2], xLon[3]);
+              if (!isNaN(lat) && !isNaN(lon)) return { lat, lon };
+            }
+
+            // XMP element content: <exif:GPSLatitude>34,20.44N</exif:GPSLatitude>
+            const eLat = xmp.match(/GPSLatitude>([\d.]+),([\d.]+)([NS])</);
+            const eLon = xmp.match(/GPSLongitude>([\d.]+),([\d.]+)([EW])</);
+            if (eLat && eLon) {
+              const dms2dec = (d, m, ref) => {
+                const v = parseFloat(d) + parseFloat(m) / 60;
+                return (ref === 'S' || ref === 'W') ? -v : v;
+              };
+              const lat = dms2dec(eLat[1], eLat[2], eLat[3]);
+              const lon = dms2dec(eLon[1], eLon[2], eLon[3]);
+              if (!isNaN(lat) && !isNaN(lon)) return { lat, lon };
+            }
+          }
         }
         pos += 2 + segLen;
       }
