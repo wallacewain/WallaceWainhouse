@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Free EXIF viewer and metadata stripper. See what data is hidden in your photos — GPS location, camera model, timestamps — then remove it before sharing. Runs entirely in your browser, nothing uploaded.">
+  <title>EXIF Viewer &amp; Stripper &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/exif/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/exif/">
+  <meta property="og:title" content="EXIF Viewer &amp; Stripper &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Free EXIF viewer and metadata stripper. See what data is hidden in your photos — GPS location, camera model, timestamps — then remove it before sharing. Runs entirely in your browser, nothing uploaded.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="EXIF Viewer &amp; Stripper &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Free EXIF viewer and metadata stripper. See what data is hidden in your photos — GPS location, camera model, timestamps — then remove it before sharing. Runs entirely in your browser, nothing uploaded.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .tool-wrap { display: flex; flex-direction: column; gap: 1.5rem; padding: 2rem 0 4rem; }
+    .dz-thumb { max-width: 100%; max-height: 72px; border-radius: 4px; display: none; margin: 0 auto 0.4rem; pointer-events: none; object-fit: contain; }
+    #results { display: none; flex-direction: column; gap: 1.5rem; }
+    #results.visible { display: flex; }
+    .exif-summary { display: flex; gap: 1.25rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .summary-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--bg); }
+    .summary-info { min-width: 0; }
+    .summary-filename { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .summary-camera { font-size: 0.875rem; margin-top: 0.2rem; }
+    .summary-dims { font-size: 0.825rem; color: var(--muted); margin-top: 0.15rem; }
+    .exif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .exif-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .exif-card-title { padding: 0.55rem 1rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
+    .exif-rows { display: table; width: 100%; border-collapse: collapse; }
+    .exif-row { display: table-row; }
+    .exif-row:not(:last-child) .exif-k,
+    .exif-row:not(:last-child) .exif-v { border-bottom: 1px solid var(--border); }
+    .exif-k { display: table-cell; padding: 0.45rem 0.5rem 0.45rem 1rem; font-size: 0.82rem; color: var(--muted); white-space: nowrap; vertical-align: top; width: 1%; }
+    .exif-v { display: table-cell; padding: 0.45rem 1rem 0.45rem 0.5rem; font-size: 0.82rem; word-break: break-word; vertical-align: top; }
+    .gps-card { border-color: rgba(251,191,36,0.35); }
+    .gps-card .exif-card-title { border-bottom-color: rgba(251,191,36,0.2); }
+    .gps-badge { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); border-radius: 3px; font-size: 0.65rem; padding: 0.1rem 0.35rem; font-weight: 700; }
+    .maps-link { display: block; padding: 0.5rem 1rem 0.75rem; font-size: 0.82rem; }
+    .maps-link:hover { color: var(--accent-hover); }
+    .no-exif-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; font-size: 0.875rem; color: var(--muted); }
+    .strip-area { display: flex; flex-direction: column; gap: 0.4rem; }
+    .strip-note { font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>EXIF Viewer &amp; Stripper</h1>
+      <p>See what metadata is hidden inside your photos &mdash; GPS location, camera model, timestamps and more &mdash; then strip it all before sharing. Nothing leaves your browser.</p>
+    </section>
+    <div class="tool-wrap">
+      <div class="drop-zone" id="drop">
+        <input type="file" id="file-input" accept="image/*">
+        <img class="dz-thumb" id="dz-thumb" alt="">
+        <strong id="dz-strong">Drop an image here</strong>
+        <p id="dz-hint">or click to select &mdash; JPEG, TIFF, HEIC, WebP supported</p>
+      </div>
+      <div id="results">
+        <div class="exif-summary">
+          <img class="summary-thumb" id="summary-thumb" alt="">
+          <div class="summary-info">
+            <div class="summary-filename" id="summary-filename"></div>
+            <div class="summary-camera" id="summary-camera"></div>
+            <div class="summary-dims" id="summary-dims"></div>
+          </div>
+        </div>
+        <div class="exif-grid" id="exif-grid"></div>
+        <div class="strip-area">
+          <button class="btn" id="strip-btn">Download stripped copy (no metadata)</button>
+          <p class="strip-note">Redraws the image to a clean file &mdash; removes all EXIF, GPS, XMP, IPTC and other embedded metadata.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/full.umd.cjs"></script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    let currentFile = null, currentUrl = null;
+
+    const zone = document.getElementById('drop');
+    const inp  = document.getElementById('file-input');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) go(e.dataTransfer.files[0]); });
+    inp.addEventListener('change', () => { if (inp.files[0]) go(inp.files[0]); });
+
+    async function go(file) {
+      currentFile = file;
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(file);
+
+      const dzThumb = document.getElementById('dz-thumb');
+      dzThumb.src = currentUrl; dzThumb.style.display = 'block';
+      document.getElementById('dz-strong').textContent = file.name;
+      document.getElementById('dz-hint').textContent = 'Click or drop to change';
+
+      const img = new Image();
+      img.src = currentUrl;
+      await new Promise(r => { img.onload = r; });
+
+      document.getElementById('summary-thumb').src = currentUrl;
+      document.getElementById('summary-filename').textContent = file.name;
+      document.getElementById('summary-dims').textContent =
+        `${img.naturalWidth} × ${img.naturalHeight}px · ${fmtSize(file.size)}`;
+
+      let exif = null;
+      try {
+        exif = await exifr.parse(file, {
+          tiff: true, exif: true, gps: true, iptc: true,
+          xmp: false, icc: false,
+          translateValues: true, reviveValues: true, sanitize: true
+        });
+      } catch (e) {}
+
+      const camParts = [];
+      if (exif) {
+        const make = exif.Make || '', model = exif.Model || '';
+        if (model) camParts.push(model.startsWith(make) ? model : (make ? `${make} ${model}` : model).trim());
+        if (exif.DateTimeOriginal) camParts.push(fmtDate(exif.DateTimeOriginal));
+      }
+      document.getElementById('summary-camera').textContent = camParts.join(' · ');
+
+      buildGrid(exif);
+      document.getElementById('results').classList.add('visible');
+    }
+
+    const SECTIONS = [
+      { title: 'Camera', fields: [
+        ['Make',          'Make'],
+        ['Model',         'Model'],
+        ['Lens',          'LensModel'],
+        ['Software',      'Software'],
+      ]},
+      { title: 'Capture', fields: [
+        ['Date taken',    'DateTimeOriginal',        v => fmtDate(v)],
+        ['Shutter speed', 'ExposureTime',            v => v < 1 ? `1/${Math.round(1/v)}s` : `${v}s`],
+        ['Aperture',      'FNumber',                 v => `f/${v}`],
+        ['ISO',           'ISO',                     v => String(Array.isArray(v) ? v[0] : v)],
+        ['Focal length',  'FocalLength',             v => `${Array.isArray(v) ? v[0] : v}mm`],
+        ['35mm equiv.',   'FocalLengthIn35mmFormat', v => `${v}mm`],
+        ['Exposure comp.','ExposureBiasValue',       v => `${v >= 0 ? '+' : ''}${Number(v.toFixed(2))} EV`],
+        ['Flash',         'Flash'],
+        ['Exposure mode', 'ExposureProgram'],
+        ['Metering',      'MeteringMode'],
+        ['White balance', 'WhiteBalance'],
+      ]},
+      { title: 'Image', fields: [
+        ['Width',         'PixelXDimension', v => `${v}px`],
+        ['Height',        'PixelYDimension', v => `${v}px`],
+        ['Orientation',   'Orientation'],
+        ['Colour space',  'ColorSpace'],
+        ['Resolution',    'XResolution',    v => `${v} dpi`],
+      ]},
+      { title: 'Copyright', fields: [
+        ['Artist',        'Artist'],
+        ['Copyright',     'Copyright'],
+        ['Description',   'ImageDescription'],
+      ]},
+    ];
+
+    function buildGrid(exif) {
+      const grid = document.getElementById('exif-grid');
+      grid.innerHTML = '';
+
+      if (!exif) {
+        grid.innerHTML = '<div class="no-exif-box">No EXIF metadata found in this image. You can still download a stripped copy to remove any other embedded data.</div>';
+        return;
+      }
+
+      for (const section of SECTIONS) {
+        const rows = [];
+        for (const field of section.fields) {
+          const [label, key] = field;
+          const fmt = field[2] || (v => String(v));
+          const val = exif[key];
+          if (val == null || val === '') continue;
+          try { const s = fmt(val); if (s) rows.push([label, s]); } catch (e) {}
+        }
+        if (rows.length) grid.appendChild(makeCard(section.title, rows, false));
+      }
+
+      if (exif.latitude != null && exif.longitude != null) {
+        const lat = exif.latitude, lon = exif.longitude;
+        const rows = [
+          ['Latitude',  `${Math.abs(lat).toFixed(6)}° ${lat >= 0 ? 'N' : 'S'}`],
+          ['Longitude', `${Math.abs(lon).toFixed(6)}° ${lon >= 0 ? 'E' : 'W'}`],
+        ];
+        if (exif.GPSAltitude != null) rows.push(['Altitude', `${Math.round(exif.GPSAltitude)}m`]);
+        const card = makeCard('Location', rows, true);
+        const link = document.createElement('a');
+        link.href = `https://www.google.com/maps?q=${lat},${lon}`;
+        link.target = '_blank'; link.rel = 'noopener noreferrer';
+        link.className = 'maps-link';
+        link.textContent = 'Open in Google Maps →';
+        card.appendChild(link);
+        grid.appendChild(card);
+      }
+    }
+
+    function makeCard(title, rows, isGps) {
+      const card = document.createElement('div');
+      card.className = 'exif-card' + (isGps ? ' gps-card' : '');
+      const hdr = document.createElement('div');
+      hdr.className = 'exif-card-title';
+      hdr.textContent = title;
+      if (isGps) {
+        const badge = document.createElement('span');
+        badge.className = 'gps-badge'; badge.textContent = 'GPS';
+        hdr.appendChild(badge);
+      }
+      card.appendChild(hdr);
+      const tbl = document.createElement('div');
+      tbl.className = 'exif-rows';
+      for (const [k, v] of rows) {
+        const row = document.createElement('div'); row.className = 'exif-row';
+        const kEl = document.createElement('div'); kEl.className = 'exif-k'; kEl.textContent = k;
+        const vEl = document.createElement('div'); vEl.className = 'exif-v'; vEl.textContent = v;
+        row.appendChild(kEl); row.appendChild(vEl);
+        tbl.appendChild(row);
+      }
+      card.appendChild(tbl);
+      return card;
+    }
+
+    function fmtDate(d) {
+      if (d instanceof Date) return d.toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return String(d);
+    }
+
+    function fmtSize(n) {
+      if (n < 1024) return `${n} B`;
+      if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / 1048576).toFixed(1)} MB`;
+    }
+
+    document.getElementById('strip-btn').addEventListener('click', () => {
+      if (!currentFile) return;
+      const src = document.getElementById('summary-thumb');
+      const c = document.createElement('canvas');
+      c.width = src.naturalWidth; c.height = src.naturalHeight;
+      c.getContext('2d').drawImage(src, 0, 0);
+      const isPng = currentFile.name.toLowerCase().endsWith('.png');
+      const base = currentFile.name.replace(/\.[^.]+$/, '');
+      const a = document.createElement('a');
+      a.download = `${base}-stripped.${isPng ? 'png' : 'jpg'}`;
+      a.href = c.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.95);
+      a.click();
+    });
+  </script>
+</body>
+</html>
