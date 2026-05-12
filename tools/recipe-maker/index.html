@@ -125,15 +125,16 @@
     .qt-hv { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .qt-hv-col { display: flex; flex-direction: column; gap: 0.35rem; }
     .qt-wrap { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-    .qt-adj-row { display: flex; gap: 0.35rem; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: none; -ms-overflow-style: none; }
-    .qt-adj-row::-webkit-scrollbar { display: none; }
-    .qt-abtn { flex-shrink: 0; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; font-family: var(--font); font-size: 0.88rem; font-weight: 700; height: 44px; min-width: 56px; padding: 0 0.6rem; transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s; }
-    .qt-abtn:active { transform: scale(0.92); }
+    .qt-adj-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+    .qt-adj-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+    .qt-adj-lbl { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+    .qt-adj-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; width: 100%; }
+    .qt-abtn { background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; font-family: var(--font); font-size: 1.1rem; font-weight: 700; height: 44px; transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s; }
+    .qt-abtn:active { transform: scale(0.9); }
     .qt-abtn.sub { color: var(--muted); }
     .qt-abtn.add { color: var(--accent-hover); border-color: rgba(99,102,241,0.35); }
     .qt-abtn.sub:hover { background: rgba(239,68,68,0.08); border-color: #f87171; color: #f87171; }
     .qt-abtn.add:hover { background: rgba(99,102,241,0.12); border-color: var(--accent); }
-    .qt-adj-sep { flex-shrink: 0; width: 1px; background: var(--border); margin: 6px 0.15rem; }
     .qt-timer-row { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
     .qt-tog { background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; padding: 0; text-align: left; }
     .qt-tog:hover { color: var(--accent-hover); }
@@ -485,8 +486,7 @@
   const HEAT_PRESETS = ['Low','Med-low','Medium','Med-high','High','Very high'];
   const VESSEL_PRESETS = ['Frying pan','Non-stick pan','Cast iron','Saucepan','Stock pot','Wok','Baking tray','Roasting tin','Dutch oven','Casserole','Grill pan','Mixing bowl'];
   const TIME_ADJS = [
-    {l:'−30m',s:-1800},{l:'−5m',s:-300},{l:'−1m',s:-60},{l:'−30s',s:-30},
-    {l:'+30s',s:30},{l:'+1m',s:60},{l:'+5m',s:300},{l:'+30m',s:1800},
+    {l:'30s',s:30},{l:'1m',s:60},{l:'5m',s:300},{l:'30m',s:1800},
   ];
 
   // ── Schema factory ──
@@ -860,22 +860,30 @@
     document.getElementById('rec-dur-s').value = recTimerElapsed % 60 || '';
   }
   function buildTimeAdj() {
-    const row = document.getElementById('time-adj-row');
-    TIME_ADJS.forEach((ta, i) => {
-      if (i === 4) {
-        const sep = document.createElement('div');
-        sep.className = 'qt-adj-sep';
-        row.appendChild(sep);
-      }
-      const btn = document.createElement('button');
-      btn.className = 'qt-abtn ' + (ta.s < 0 ? 'sub' : 'add');
-      btn.textContent = ta.l;
-      btn.addEventListener('click', () => {
-        vibe();
-        recTimerElapsed = Math.max(0, recTimerElapsed + ta.s);
-        syncTimeFields();
+    const grid = document.getElementById('time-adj-row');
+    grid.className = 'qt-adj-grid';
+    TIME_ADJS.forEach(ta => {
+      const col = document.createElement('div');
+      col.className = 'qt-adj-col';
+      const lbl = document.createElement('div');
+      lbl.className = 'qt-adj-lbl';
+      lbl.textContent = ta.l;
+      const btns = document.createElement('div');
+      btns.className = 'qt-adj-btns';
+      [['−', -ta.s, 'sub'], ['+', ta.s, 'add']].forEach(([sym, delta, cls]) => {
+        const btn = document.createElement('button');
+        btn.className = 'qt-abtn ' + cls;
+        btn.textContent = sym;
+        btn.addEventListener('click', () => {
+          vibe();
+          recTimerElapsed = Math.max(0, recTimerElapsed + delta);
+          syncTimeFields();
+        });
+        btns.appendChild(btn);
       });
-      row.appendChild(btn);
+      col.appendChild(lbl);
+      col.appendChild(btns);
+      grid.appendChild(col);
     });
   }
 
@@ -1101,7 +1109,7 @@
                 <span style="color:var(--muted);font-size:.85rem">h</span>
                 <input type="number" class="e-dur-m" placeholder="0" min="0" max="59" value="${Math.floor(((step.duration_s||0)%3600)/60)||''}">
                 <span style="color:var(--muted);font-size:.85rem">m</span>
-                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||''}">
+                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||\'\'}">
                 <span style="color:var(--muted);font-size:.85rem">s</span>
               </div>
             </div>
