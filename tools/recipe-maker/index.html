@@ -125,12 +125,16 @@
     .qt-hv { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .qt-hv-col { display: flex; flex-direction: column; gap: 0.35rem; }
     .qt-wrap { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-    .qt-time-row { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: none; -ms-overflow-style: none; }
-    .qt-time-row::-webkit-scrollbar { display: none; }
-    .qt-tbtn { flex-shrink: 0; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; color: var(--fg); cursor: pointer; font-family: var(--font); font-size: 0.88rem; font-weight: 600; height: 44px; min-width: 52px; padding: 0 0.6rem; transition: background 0.1s, border-color 0.1s; }
-    .qt-tbtn:hover, .qt-tbtn.sel { background: rgba(99,102,241,0.12); border-color: var(--accent); color: var(--accent-hover); }
+    .qt-adj-row { display: flex; gap: 0.35rem; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: none; -ms-overflow-style: none; }
+    .qt-adj-row::-webkit-scrollbar { display: none; }
+    .qt-abtn { flex-shrink: 0; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; font-family: var(--font); font-size: 0.88rem; font-weight: 700; height: 44px; min-width: 56px; padding: 0 0.6rem; transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s; }
+    .qt-abtn:active { transform: scale(0.92); }
+    .qt-abtn.sub { color: var(--muted); }
+    .qt-abtn.add { color: var(--accent-hover); border-color: rgba(99,102,241,0.35); }
+    .qt-abtn.sub:hover { background: rgba(239,68,68,0.08); border-color: #f87171; color: #f87171; }
+    .qt-abtn.add:hover { background: rgba(99,102,241,0.12); border-color: var(--accent); }
+    .qt-adj-sep { flex-shrink: 0; width: 1px; background: var(--border); margin: 6px 0.15rem; }
     .qt-timer-row { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
-    .qt-time-tgt { font-size: 0.82rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
     .qt-tog { background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; padding: 0; text-align: left; }
     .qt-tog:hover { color: var(--accent-hover); }
     .rec-hdr { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
@@ -254,15 +258,11 @@
         <!-- TIME -->
         <div class="qt-card">
           <div class="section-title">Time</div>
-          <div class="qt-time-row" id="time-presets-row"></div>
+          <div class="qt-adj-row" id="time-adj-row"></div>
           <div class="qt-timer-row">
             <div class="record-timer" id="rec-timer">0:00</div>
             <button class="btn btn-lg" id="rec-start-btn">&#9654; Start</button>
             <button class="btn btn-lg btn-stop" id="rec-stop-btn" style="display:none">&#9632; Stop</button>
-          </div>
-          <div class="qt-time-tgt" id="time-tgt-disp" style="display:none">
-            Target: <strong id="time-tgt-label"></strong>
-            <button class="qt-x" id="time-tgt-clear" style="font-size:0.9rem">&#215;</button>
           </div>
           <div class="dur-row" style="margin-top:0.25rem">
             <input type="number" id="rec-dur-h" placeholder="0h" min="0">
@@ -484,10 +484,9 @@
 
   const HEAT_PRESETS = ['Low','Med-low','Medium','Med-high','High','Very high'];
   const VESSEL_PRESETS = ['Frying pan','Non-stick pan','Cast iron','Saucepan','Stock pot','Wok','Baking tray','Roasting tin','Dutch oven','Casserole','Grill pan','Mixing bowl'];
-  const TIME_PRESETS = [
-    {l:'30s',s:30},{l:'1m',s:60},{l:'2m',s:120},{l:'3m',s:180},{l:'5m',s:300},
-    {l:'8m',s:480},{l:'10m',s:600},{l:'15m',s:900},{l:'20m',s:1200},{l:'30m',s:1800},
-    {l:'45m',s:2700},{l:'1h',s:3600},{l:'1½h',s:5400},{l:'2h',s:7200},{l:'3h+',s:10800},
+  const TIME_ADJS = [
+    {l:'−30m',s:-1800},{l:'−5m',s:-300},{l:'−1m',s:-60},{l:'−30s',s:-30},
+    {l:'+30s',s:30},{l:'+1m',s:60},{l:'+5m',s:300},{l:'+30m',s:1800},
   ];
 
   // ── Schema factory ──
@@ -853,41 +852,32 @@
     });
   }
 
-  // ── Time presets ──
-  function buildTimePresets() {
-    const row = document.getElementById('time-presets-row');
-    TIME_PRESETS.forEach(tp => {
+  // ── Time adjust buttons ──
+  function syncTimeFields() {
+    document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
+    document.getElementById('rec-dur-h').value = Math.floor(recTimerElapsed / 3600) || '';
+    document.getElementById('rec-dur-m').value = Math.floor((recTimerElapsed % 3600) / 60) || '';
+    document.getElementById('rec-dur-s').value = recTimerElapsed % 60 || '';
+  }
+  function buildTimeAdj() {
+    const row = document.getElementById('time-adj-row');
+    TIME_ADJS.forEach((ta, i) => {
+      if (i === 4) {
+        const sep = document.createElement('div');
+        sep.className = 'qt-adj-sep';
+        row.appendChild(sep);
+      }
       const btn = document.createElement('button');
-      btn.className = 'qt-tbtn';
-      btn.textContent = tp.l;
+      btn.className = 'qt-abtn ' + (ta.s < 0 ? 'sub' : 'add');
+      btn.textContent = ta.l;
       btn.addEventListener('click', () => {
         vibe();
-        row.querySelectorAll('.qt-tbtn').forEach(b => b.classList.remove('sel'));
-        btn.classList.add('sel');
-        document.getElementById('time-tgt-label').textContent = tp.l;
-        document.getElementById('time-tgt-disp').style.display = '';
-        // Pre-fill manual fields
-        const h = Math.floor(tp.s / 3600);
-        const m = Math.floor((tp.s % 3600) / 60);
-        const s = tp.s % 60;
-        document.getElementById('rec-dur-h').value = h || '';
-        document.getElementById('rec-dur-m').value = m || '';
-        document.getElementById('rec-dur-s').value = s || '';
-        recTimerElapsed = tp.s;
-        document.getElementById('rec-timer').textContent = fmtTime(tp.s);
+        recTimerElapsed = Math.max(0, recTimerElapsed + ta.s);
+        syncTimeFields();
       });
       row.appendChild(btn);
     });
   }
-  document.getElementById('time-tgt-clear').addEventListener('click', () => {
-    document.getElementById('time-tgt-disp').style.display = 'none';
-    document.getElementById('time-presets-row').querySelectorAll('.qt-tbtn').forEach(b => b.classList.remove('sel'));
-    recTimerElapsed = 0;
-    document.getElementById('rec-timer').textContent = '0:00';
-    document.getElementById('rec-dur-h').value = '';
-    document.getElementById('rec-dur-m').value = '';
-    document.getElementById('rec-dur-s').value = '';
-  });
 
   // ── Timer ──
   function fmtTime(s) {
@@ -1045,8 +1035,6 @@
     document.getElementById('rec-dur-s').value = '';
     document.getElementById('rec-notes').value = '';
     document.getElementById('rec-target').value = '';
-    document.getElementById('time-tgt-disp').style.display = 'none';
-    document.getElementById('time-presets-row').querySelectorAll('.qt-tbtn').forEach(b => b.classList.remove('sel'));
     document.getElementById('ing-search-wrap').style.display = 'none';
     document.getElementById('ing-search-input').value = '';
     document.getElementById('proc-search-wrap').style.display = 'none';
@@ -1448,7 +1436,7 @@
   // ── Init ──
   buildIngL0();
   buildProcL0();
-  buildTimePresets();
+  buildTimeAdj();
   if (loadDraft()) { populateMeta(); renderRecipeTips(); renderRecStepsDone(); }
   renderRecPhotos();
 
