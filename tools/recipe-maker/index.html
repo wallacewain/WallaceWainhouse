@@ -1109,7 +1109,7 @@
                 <span style="color:var(--muted);font-size:.85rem">h</span>
                 <input type="number" class="e-dur-m" placeholder="0" min="0" max="59" value="${Math.floor(((step.duration_s||0)%3600)/60)||''}">
                 <span style="color:var(--muted);font-size:.85rem">m</span>
-                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||\'\'}">
+                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||''}">
                 <span style="color:var(--muted);font-size:.85rem">s</span>
               </div>
             </div>
