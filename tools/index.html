@@ -15,6 +15,7 @@
   <meta name="twitter:title" content="Free Browser Tools &mdash; Wallace Wainhouse">
   <meta name="twitter:description" content="Free tools that run entirely in your browser. No ads, no tracking, nothing uploaded.">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -23,6 +24,11 @@
     .cat-head:first-child { margin-top: 0; }
     .tools-grid { margin-top: 0; }
     .tool-card.featured { border-top: 2px solid var(--accent); }
+    .cat-head.wip-head { color: #fbbf24; border-color: rgba(234,179,8,0.3); }
+    .wip-banner { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.25); border-radius: 8px; padding: 0.85rem 1.1rem; font-size: 0.875rem; color: #fbbf24; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.6rem; }
+    .wip-banner strong { font-weight: 700; }
+    .tool-card.wip { opacity: 0.7; border-color: rgba(234,179,8,0.2); pointer-events: auto; }
+    .tool-card.wip:hover { border-color: rgba(234,179,8,0.5); transform: none; }
   </style>
   <script type="application/ld+json">
   {
@@ -45,9 +51,7 @@
       {"@type":"ListItem","position":12,"name":"JSON Formatter","url":"https://wallacewainhouse.com/tools/json-formatter/"},
       {"@type":"ListItem","position":13,"name":"Text Diff","url":"https://wallacewainhouse.com/tools/text-diff/"},
       {"@type":"ListItem","position":14,"name":"Colour Converter","url":"https://wallacewainhouse.com/tools/colour-converter/"},
-      {"@type":"ListItem","position":15,"name":"Regex Tester","url":"https://wallacewainhouse.com/tools/regex-tester/"},
-      {"@type":"ListItem","position":16,"name":"Recipe Maker","url":"https://wallacewainhouse.com/tools/recipe-maker/"},
-      {"@type":"ListItem","position":17,"name":"Recipe Reader","url":"https://wallacewainhouse.com/tools/recipe-reader/"}
+      {"@type":"ListItem","position":15,"name":"Regex Tester","url":"https://wallacewainhouse.com/tools/regex-tester/"}
     ]
   }
   </script>
@@ -55,7 +59,7 @@
 <body>
   <header>
     <nav>
-      <a href="/" class="logo">WW</a>
+      <a href="/" class="logo"><svg viewBox="-32 -2 884 244" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-28,0 28,0 128,240 72,240"/><polygon points="72,240 128,240 186,100.80 130,100.80"/><polygon points="130,100.80 186,100.80 244,240 188,240"/><polygon points="188,240 244,240 344,0 288,0"/><polygon points="288,0 344,0 438,225.60 382,225.60"/><polygon points="382,225.60 438,225.60 532,0 476,0"/><polygon points="476,0 532,0 632,240 576,240"/><polygon points="576,240 632,240 690,100.80 634,100.80"/><polygon points="634,100.80 690,100.80 748,240 692,240"/><polygon points="692,240 748,240 848,0 792,0"/></svg></a>
       <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
@@ -85,22 +89,6 @@
           <h3>Invoice Maker</h3>
           <p>Create a professional invoice with line items, tax, and your logo &mdash; download as PDF.</p>
           <div class="tags"><span class="tag">JS</span></div>
-        </a>
-      </div>
-
-      <h2 class="cat-head">Recipes</h2>
-      <div class="tools-grid">
-        <a class="tool-card" href="/tools/recipe-maker/">
-          <div class="tool-icon">&#127859;</div>
-          <h3>Recipe Maker</h3>
-          <p>Record a recipe as you cook &mdash; time each step, photograph results, add tips, capture parallel processes. Saves as an open JSON format.</p>
-          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
-        </a>
-        <a class="tool-card" href="/tools/recipe-reader/">
-          <div class="tool-icon">&#128336;</div>
-          <h3>Recipe Reader</h3>
-          <p>Load one or more recipe files and see a live timeline &mdash; timers, photos, tips, and parallel steps for single dishes or full service planning.</p>
-          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
         </a>
       </div>
 
@@ -189,6 +177,26 @@
           <h3>JWT Decoder</h3>
           <p>Decode a JSON Web Token to inspect its header and payload. Does not verify the signature.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
+        </a>
+      </div>
+
+      <h2 class="cat-head wip-head">Under Construction</h2>
+      <div class="wip-banner">
+        <span>&#128679;</span>
+        <span><strong>These tools are not yet functional.</strong> They are works-in-progress and may be broken, incomplete, or change significantly before release.</span>
+      </div>
+      <div class="tools-grid">
+        <a class="tool-card wip" href="/tools/recipe-maker/">
+          <div class="tool-icon">&#127859;</div>
+          <h3>Recipe Maker</h3>
+          <p>Record a recipe as you cook &mdash; time each step, photograph results, add tips, capture parallel processes. Saves as an open JSON format.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
+        </a>
+        <a class="tool-card wip" href="/tools/recipe-reader/">
+          <div class="tool-icon">&#128336;</div>
+          <h3>Recipe Reader</h3>
+          <p>Load one or more recipe files and see a live timeline &mdash; timers, photos, tips, and parallel steps for single dishes or full service planning.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
         </a>
       </div>
 

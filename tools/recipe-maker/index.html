@@ -22,6 +22,7 @@
   <meta name="twitter:title" content="Recipe Maker &mdash; Wallace Wainhouse">
   <meta name="twitter:description" content="Record recipes as you cook. Saves as an open JSON format.">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -154,7 +155,7 @@
 <body>
   <header>
     <nav>
-      <a href="/" class="logo"><svg viewBox="0 0 36 24" width="36" height="24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-label="WMW"><path d="M0,12 L6,0 L12,9 L18,2 L24,9 L30,0 L36,12 L30,24 L24,15 L18,22 L12,15 L6,24 Z"/></svg></a>
+      <a href="/" class="logo"><svg viewBox="-32 -2 884 244" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-28,0 28,0 128,240 72,240"/><polygon points="72,240 128,240 186,100.80 130,100.80"/><polygon points="130,100.80 186,100.80 244,240 188,240"/><polygon points="188,240 244,240 344,0 288,0"/><polygon points="288,0 344,0 438,225.60 382,225.60"/><polygon points="382,225.60 438,225.60 532,0 476,0"/><polygon points="476,0 532,0 632,240 576,240"/><polygon points="576,240 632,240 690,100.80 634,100.80"/><polygon points="634,100.80 690,100.80 748,240 692,240"/><polygon points="692,240 748,240 848,0 792,0"/></svg></a>
       <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
@@ -217,7 +218,7 @@
           </div>
           <div class="qt-bc" id="ing-bc" style="display:none"></div>
           <div id="ing-recent-wrap" style="display:none">
-            <div class="section-title" style="margin-bottom:0.3rem">From previous steps</div>
+            <div class="section-title" style="margin-bottom:0.3rem">Use from previous step</div>
             <div class="qt-recent" id="ing-recent"></div>
           </div>
           <div class="qt-grid" id="ing-grid"></div>
@@ -331,6 +332,7 @@
         <div class="qt-card">
           <button class="qt-tog" id="extras-toggle">+ Notes, tips &amp; photos</button>
           <div id="extras-body" style="display:none;flex-direction:column;gap:0.85rem;margin-top:0.25rem">
+            <div class="field"><label>Output name <span style="font-size:0.75em;color:var(--muted)">(optional — e.g. "Herby onions", "Reduced sauce")</span></label><input type="text" id="rec-output-label" placeholder="Auto-derived if blank"></div>
             <div class="field"><label>Step notes</label><textarea id="rec-notes" placeholder="e.g. fine dice, until translucent…" style="min-height:56px"></textarea></div>
             <div class="field"><label>Target result (custom text)</label><input type="text" id="rec-target" placeholder="or tap a button above"></div>
             <div>
@@ -550,7 +552,7 @@
   function newStep(parallel_with = []) {
     return { id:uid(), order:0, process:'', process_category:'prep', ingredient_ids:[],
              vessel:null, heat:null, heat_unit:null, duration_s:null, duration_type:'recorded',
-             notes:'', target:'', tips:[], photos:[], additions:[], after:[], parallel_ok:parallel_with.length>0,
+             notes:'', target:'', output_label:null, tips:[], photos:[], additions:[], after:[], parallel_ok:parallel_with.length>0,
              parallel_with, stream:null, attention:'periodic', check_interval_s:null,
              can_extend_s:null, can_interrupt:true };
   }
@@ -1068,6 +1070,7 @@
     step.duration_type = recTimerInterval !== null ? 'recorded' : (step.duration_s ? 'estimated' : 'recorded');
     step.notes = document.getElementById('rec-notes').value.trim();
     step.target = document.getElementById('rec-target').value.trim() || qtSelectedTarget;
+    step.output_label = document.getElementById('rec-output-label').value.trim() || null;
     step.tips = recStepTips.filter(Boolean);
     step.additions = recStepAdditions.filter(a => a.ingredient_ids.length || a.notes);
     step.photos = recStepPhotos.map(p => p.id);
@@ -1099,6 +1102,7 @@
     document.getElementById('rec-dur-s').value = '';
     document.getElementById('rec-notes').value = '';
     document.getElementById('rec-target').value = '';
+    document.getElementById('rec-output-label').value = '';
     document.getElementById('ing-search-wrap').style.display = 'none';
     document.getElementById('ing-search-input').value = '';
     document.getElementById('proc-search-wrap').style.display = 'none';
@@ -1125,16 +1129,88 @@
     recipe.steps.forEach((step, i) => {
       const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x=>x.id===id)?.name||id).join(', ');
       const dur = step.duration_s ? fmtTime(step.duration_s) : '—';
+      const label = step.output_label || (step.process ? (PAST_TENSE[step.process]||step.process) : '—');
       const el = document.createElement('div');
       el.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.65rem 1rem;display:flex;gap:0.75rem;align-items:center';
       el.innerHTML = `<div class="step-num">${i+1}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.9rem;font-weight:600">${esc(step.process||'—')}${ingNames?' — '+esc(ingNames):''}</div>
+          <div style="font-size:0.9rem;font-weight:600">${esc(label)}${ingNames?' — '+esc(ingNames):''}</div>
           <div style="font-size:0.78rem;color:var(--muted)">${dur}${step.parallel_ok?' · parallel':''}</div>
-        </div>`;
+        </div>
+        <button class="btn-ghost-sm" style="padding:0.3rem 0.65rem;font-size:0.78rem;flex-shrink:0">Edit</button>
+        <button class="btn-ghost-sm" style="padding:0.3rem 0.55rem;font-size:0.78rem;color:#f87171;border-color:rgba(248,113,113,0.4);flex-shrink:0">&times;</button>`;
+      el.querySelectorAll('.btn-ghost-sm')[0].addEventListener('click', () => editRecStep(i));
+      el.querySelectorAll('.btn-ghost-sm')[1].addEventListener('click', () => {
+        recipe.steps.splice(i, 1);
+        recipe.steps.forEach((s, idx) => s.order = idx + 1);
+        saveDraft(); renderRecStepsDone();
+      });
       list.appendChild(el);
     });
     document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1}`;
+  }
+
+  function editRecStep(i) {
+    const step = recipe.steps.splice(i, 1)[0];
+    recipe.steps.forEach((s, idx) => s.order = idx + 1);
+    resetRecStep(true);
+
+    // Restore ingredients
+    recStepIngredients = step.ingredient_ids
+      .map(id => recipe.ingredients.find(x => x.id === id)).filter(Boolean);
+    renderRecIngChips();
+    renderRecentIngs();
+
+    // Restore process
+    if (step.process) {
+      let found = null;
+      for (const [, data] of Object.entries(PROC_TAXONOMY)) {
+        for (const proc of data.items) {
+          if (proc.n === step.process) { found = { proc, cat: data.cat }; break; }
+        }
+        if (found) break;
+      }
+      if (found) {
+        selectProcess(found.proc, found.cat);
+      } else {
+        recStepProcess = step.process;
+        recStepCategory = step.process_category || 'prep';
+        document.getElementById('proc-sel-name').textContent = step.process;
+        document.getElementById('proc-selected').style.display = '';
+        document.getElementById('proc-grid').style.display = 'none';
+        maybeShowAdditionsCard();
+      }
+    }
+
+    // Restore timer
+    recTimerElapsed = step.duration_s || 0;
+    syncTimeFields();
+
+    // Restore fields
+    document.getElementById('rec-notes').value = step.notes || '';
+    document.getElementById('rec-target').value = step.target || '';
+    document.getElementById('rec-output-label').value = step.output_label || '';
+
+    // Restore additions and tips
+    recStepAdditions = step.additions ? step.additions.slice() : [];
+    renderAdditions();
+    recStepTips = step.tips ? step.tips.slice() : [];
+    renderRecTips();
+
+    // Restore attention settings
+    recStepAttention = step.attention || 'periodic';
+    recStepCheckInterval = step.check_interval_s;
+    recStepCanExtend = step.can_extend_s;
+    recStepCanInterrupt = step.can_interrupt !== undefined ? step.can_interrupt : true;
+
+    // Open extras if there's content to show
+    if (step.notes || step.target || step.output_label || step.tips?.length) {
+      document.getElementById('extras-body').style.display = 'flex';
+      document.getElementById('extras-toggle').textContent = '− Notes, tips & photos';
+    }
+
+    saveDraft(); renderRecStepsDone();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ── Edit mode ──
@@ -1496,19 +1572,59 @@
     document.getElementById('r-desc').value    = recipe.description||'';
   }
 
-  // ── Recent ingredients ──
+  // ── Step output labels ──
+  const PAST_TENSE = {
+    'Chop':'Chopped','Slice':'Sliced','Dice':'Diced','Mince':'Minced','Julienne':'Julienned',
+    'Grate':'Grated','Peel':'Peeled','Crush':'Crushed','Zest':'Zested','Squeeze':'Squeezed',
+    'Mix':'Mixed','Whisk':'Whisked','Beat':'Beaten','Fold':'Folded','Blend':'Blended',
+    'Knead':'Kneaded','Marinate':'Marinated','Season':'Seasoned','Coat':'Coated','Drain':'Drained',
+    'Fry':'Fried','Sauté':'Sautéed','Stir-fry':'Stir-fried','Deep-fry':'Deep-fried',
+    'Sear':'Seared','Brown':'Browned','Sweat':'Sweated','Caramelise':'Caramelised',
+    'Simmer':'Simmered','Reduce':'Reduced','Deglaze':'Deglazed','Glaze':'Glazed',
+    'Roast':'Roasted','Bake':'Baked','Grill / Broil':'Grilled','Slow roast':'Slow-roasted',
+    'Blind bake':'Blind-baked','Gratinate':'Gratinated',
+    'Boil':'Boiled','Steam':'Steamed','Poach':'Poached','Blanch':'Blanched',
+    'Pressure cook':'Pressure cooked','Rest':'Rested','Cool':'Cooled','Chill':'Chilled',
+    'Proof':'Proofed','Set':'Set','Freeze':'Frozen',
+    'Plate':'Plated','Garnish':'Garnished','Dress':'Dressed','Carve':'Carved',
+    'Portion':'Portioned','Strain':'Strained',
+  };
+
+  function stepOutputLabel(step) {
+    if (step.output_label) return step.output_label;
+    const ingNames = step.ingredient_ids
+      .map(id => recipe.ingredients.find(x => x.id === id)?.name || '')
+      .filter(Boolean).join(', ');
+    const past = step.process ? (PAST_TENSE[step.process] || step.process) : null;
+    if (past && ingNames) return `${past} ${ingNames}`;
+    if (past) return past;
+    return ingNames || `Step ${step.order}`;
+  }
+
+  // ── Previous steps as chips ──
   function renderRecentIngs() {
     const wrap = document.getElementById('ing-recent-wrap');
     const row = document.getElementById('ing-recent');
     if (!wrap) return;
-    const used = recipe.ingredients.filter(x => !recStepIngredients.find(y => y.id === x.id));
-    wrap.style.display = used.length ? '' : 'none';
+    const prevSteps = recipe.steps.filter(s => s.ingredient_ids.length || s.process);
+    wrap.style.display = prevSteps.length ? '' : 'none';
     row.innerHTML = '';
-    used.forEach(ing => {
+    prevSteps.forEach(step => {
       const chip = document.createElement('button');
       chip.className = 'qt-recent-chip';
-      chip.textContent = ing.name;
-      chip.addEventListener('click', () => { vibe(); selectIngredient(ing.name, ing.category); });
+      chip.textContent = stepOutputLabel(step);
+      chip.addEventListener('click', () => {
+        vibe();
+        step.ingredient_ids.forEach(id => {
+          const ing = recipe.ingredients.find(x => x.id === id);
+          if (ing && !recStepIngredients.find(y => y.id === ing.id)) {
+            recStepIngredients.push(ing);
+          }
+        });
+        renderRecIngChips();
+        renderRecentIngs();
+        saveDraft();
+      });
       row.appendChild(chip);
     });
   }
