@@ -1,0 +1,1178 @@
+<!--
+  Recipe Maker — Wallace Wainhouse
+  Copyright © Wallace Wainhouse. Licensed under CC BY-NC 4.0.
+  https://creativecommons.org/licenses/by-nc/4.0/
+  You may share and adapt this tool for non-commercial purposes with attribution.
+  Commercial use — including integration into paid products or services — is not permitted.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Record recipes as you cook. Time each step, photograph results, add tips and capture parallel processes. Saves as an open JSON format.">
+  <title>Recipe Maker &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/recipe-maker/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/recipe-maker/">
+  <meta property="og:title" content="Recipe Maker &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Record recipes as you cook. Saves as an open JSON format.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Recipe Maker &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Record recipes as you cook. Saves as an open JSON format.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Layout ── */
+    .rm-wrap { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem 0 4rem; }
+
+    /* ── Mode pill ── */
+    .mode-pill { display: inline-flex; border: 1px solid var(--border); border-radius: 99px; overflow: hidden; align-self: flex-start; }
+    .mode-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; padding: 0.45rem 1.1rem; transition: background 0.15s, color 0.15s; }
+    .mode-btn.active { background: var(--accent); color: #fff; }
+
+    /* ── Recipe meta ── */
+    .meta-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
+    .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .meta-row.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    @media (max-width: 600px) { .meta-row, .meta-row.four { grid-template-columns: 1fr; } }
+    .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+
+    /* ── Steps list (edit mode) ── */
+    .steps-list { display: flex; flex-direction: column; gap: 1rem; }
+    .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .step-card-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    .step-num { background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-card-title { flex: 1; font-size: 0.95rem; font-weight: 600; }
+    .step-card-meta { font-size: 0.8rem; color: var(--muted); }
+    .step-card-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+    .step-card-body.hidden { display: none; }
+    .step-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 600px) { .step-grid { grid-template-columns: 1fr; } }
+
+    /* ── Record mode ── */
+    .record-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+    .record-active { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+    .record-timer { font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; text-align: center; }
+    .record-timer.running { color: var(--accent-hover); }
+    .record-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+    .btn-lg { padding: 0.85rem 1.75rem; font-size: 1.05rem; }
+    .btn-stop { background: #ef4444; }
+    .btn-stop:hover { background: #dc2626; }
+    .btn-ghost-sm { background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 500; padding: 0.5rem 1rem; transition: border-color 0.15s, color 0.15s; }
+    .btn-ghost-sm:hover { border-color: var(--accent); color: var(--accent-hover); }
+    .parallel-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 4px; font-size: 0.75rem; color: var(--accent-hover); padding: 0.2rem 0.55rem; }
+
+    /* ── Autocomplete ── */
+    .ac-wrap { position: relative; }
+    .ac-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); z-index: 50; max-height: 200px; overflow-y: auto; display: none; }
+    .ac-list.open { display: block; }
+    .ac-item { padding: 0.5rem 0.75rem; font-size: 0.9rem; cursor: pointer; }
+    .ac-item:hover, .ac-item.focused { background: rgba(99,102,241,0.1); }
+    .ac-add { color: var(--accent-hover); font-weight: 600; }
+
+    /* ── Tips ── */
+    .tips-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .tip-row { display: flex; gap: 0.5rem; align-items: flex-start; }
+    .tip-row textarea { min-height: 56px; flex: 1; }
+    .tip-del { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.15s, color 0.15s; margin-top: 2px; }
+    .tip-del:hover { border-color: #f87171; color: #f87171; }
+
+    /* ── Photos ── */
+    .photos-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start; }
+    .photo-thumb { position: relative; width: 72px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-del { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); border: none; border-radius: 50%; color: #fff; cursor: pointer; font-size: 0.7rem; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+    .photo-add-btn { width: 72px; height: 72px; border: 2px dashed var(--border); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 1.4rem; color: var(--muted); background: none; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
+    .photo-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Duration picker ── */
+    .dur-row { display: flex; gap: 0.5rem; align-items: center; }
+    .dur-row input[type=number] { width: 72px; text-align: center; }
+
+    /* ── Ingredient chips ── */
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+    .chip { display: inline-flex; align-items: center; gap: 0.3rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 99px; font-size: 0.78rem; padding: 0.2rem 0.6rem; color: var(--accent-hover); }
+    .chip-del { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: 0.85rem; line-height: 1; }
+
+    /* ── Action bar ── */
+    .action-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Preview ── */
+    .preview-recipe { background: #fff; color: #111; border-radius: var(--radius); padding: 2rem; font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; }
+    .preview-title { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .preview-meta { font-size: 0.85rem; color: #666; margin-bottom: 1.5rem; }
+    .preview-section { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e5e5; }
+    .preview-ing-list { display: flex; flex-direction: column; gap: 0.25rem; }
+    .preview-ing { font-size: 0.9rem; color: #333; }
+    .preview-step { display: flex; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid #e5e5e5; }
+    .preview-step:last-child { border-bottom: none; }
+    .preview-step-num { background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 700; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .preview-step-body { flex: 1; min-width: 0; }
+    .preview-step-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.2rem; }
+    .preview-step-sub { font-size: 0.83rem; color: #666; }
+    .preview-tip { background: #fef9c3; border: 1px solid #fde047; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.83rem; color: #713f12; margin-top: 0.5rem; }
+    .preview-photos { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .preview-photos img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }
+    .preview-dur { font-size: 0.78rem; color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><svg viewBox="0 0 36 24" width="36" height="24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-label="WMW"><path d="M0,12 L6,0 L12,9 L18,2 L24,9 L30,0 L36,12 L30,24 L24,15 L18,22 L12,15 L6,24 Z"/></svg></a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1rem">
+      <h1>Recipe Maker <span class="tag tag-warning" style="font-size:0.5em;vertical-align:middle">WIP</span></h1>
+      <p>Record a recipe as you cook, or build one from scratch. Saves as an open JSON file.</p>
+    </section>
+
+    <div class="rm-wrap">
+
+      <!-- Mode pill -->
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
+        <div class="mode-pill">
+          <button class="mode-btn active" data-mode="record">&#9654; Record</button>
+          <button class="mode-btn" data-mode="edit">&#9998; Edit</button>
+          <button class="mode-btn" data-mode="preview">&#128065; Preview</button>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn-ghost-sm" id="load-btn">Open file</button>
+          <button class="btn-ghost-sm" id="new-btn">New recipe</button>
+          <input type="file" id="load-file" accept=".json" style="display:none">
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           META (always visible)
+      ══════════════════════════════════════════ -->
+      <div class="meta-card">
+        <div class="section-title">Recipe details</div>
+        <div class="field"><label>Title</label><input type="text" id="r-title" placeholder="e.g. Pasta Bolognese"></div>
+        <div class="meta-row">
+          <div class="field"><label>Serves</label><input type="number" id="r-serves" placeholder="4" min="1"></div>
+          <div class="field"><label>Cuisine</label><input type="text" id="r-cuisine" placeholder="Italian"></div>
+        </div>
+        <div class="field"><label>Tags (comma separated)</label><input type="text" id="r-tags" placeholder="pasta, meat, weeknight"></div>
+        <div class="field"><label>Recipe notes / intro</label><textarea id="r-desc" placeholder="Brief description or intro notes" style="min-height:64px"></textarea></div>
+        <div id="recipe-tips-wrap">
+          <div class="section-title" style="margin-top:0.25rem">Overall tips</div>
+          <div class="tips-list" id="recipe-tips-list"></div>
+          <button class="btn-ghost-sm" id="add-recipe-tip" style="margin-top:0.4rem">+ Add tip</button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           RECORD MODE
+      ══════════════════════════════════════════ -->
+      <div id="mode-record" class="record-panel">
+
+        <div class="record-active" id="record-active">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+            <div>
+              <div class="section-title">Current step</div>
+              <div style="font-size:1rem;font-weight:600;margin-top:0.15rem" id="rec-step-label">Step 1</div>
+            </div>
+            <div id="rec-parallel-badge" style="display:none" class="parallel-badge">&#9654;&#9654; parallel</div>
+          </div>
+
+          <!-- Ingredient selector -->
+          <div class="field">
+            <label>Ingredient(s)</label>
+            <div class="ac-wrap">
+              <input type="text" id="rec-ing-input" placeholder="Type ingredient name…" autocomplete="off">
+              <div class="ac-list" id="rec-ing-list"></div>
+            </div>
+            <div class="chips" id="rec-ing-chips"></div>
+          </div>
+
+          <!-- Process selector -->
+          <div class="field">
+            <label>Process</label>
+            <div class="ac-wrap">
+              <input type="text" id="rec-proc-input" placeholder="e.g. chop, fry, simmer…" autocomplete="off">
+              <div class="ac-list" id="rec-proc-list"></div>
+            </div>
+          </div>
+
+          <!-- Heat (shown when process is a cook process) -->
+          <div class="field" id="rec-heat-wrap" style="display:none">
+            <label>Heat level</label>
+            <div style="display:flex;gap:0.5rem">
+              <select id="rec-heat-unit" style="width:140px">
+                <option value="descriptive">Descriptive</option>
+                <option value="gas">Gas mark</option>
+                <option value="induction">Induction level</option>
+                <option value="celsius">°C</option>
+                <option value="fahrenheit">°F</option>
+              </select>
+              <input type="text" id="rec-heat-val" placeholder="e.g. medium-high" style="flex:1">
+            </div>
+          </div>
+
+          <!-- Vessel -->
+          <div class="field" id="rec-vessel-wrap" style="display:none">
+            <label>Vessel / pan</label>
+            <div class="ac-wrap">
+              <input type="text" id="rec-vessel-input" placeholder="e.g. frying pan, saucepan…" autocomplete="off">
+              <div class="ac-list" id="rec-vessel-list"></div>
+            </div>
+          </div>
+
+          <!-- Timer -->
+          <div>
+            <div class="section-title">Timer</div>
+            <div class="record-timer" id="rec-timer">0:00</div>
+            <div class="record-btns">
+              <button class="btn btn-lg" id="rec-start-btn">&#9654; Start</button>
+              <button class="btn btn-lg btn-stop" id="rec-stop-btn" style="display:none">&#9632; Stop</button>
+            </div>
+            <div style="text-align:center;margin-top:0.75rem">
+              <span style="font-size:0.82rem;color:var(--muted)">Or enter time manually: </span>
+              <div class="dur-row" style="justify-content:center;margin-top:0.3rem">
+                <input type="number" id="rec-dur-h" placeholder="0" min="0" max="23"> <span style="color:var(--muted);font-size:0.85rem">h</span>
+                <input type="number" id="rec-dur-m" placeholder="0" min="0" max="59"> <span style="color:var(--muted);font-size:0.85rem">m</span>
+                <input type="number" id="rec-dur-s" placeholder="0" min="0" max="59"> <span style="color:var(--muted);font-size:0.85rem">s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="field">
+            <label>Step notes</label>
+            <textarea id="rec-notes" placeholder="e.g. fine dice ~5mm, until translucent…" style="min-height:64px"></textarea>
+          </div>
+
+          <!-- Target result -->
+          <div class="field">
+            <label>Target result</label>
+            <input type="text" id="rec-target" placeholder="e.g. golden and translucent, still has squish">
+          </div>
+
+          <!-- Tips -->
+          <div>
+            <div class="section-title">Tips for this step</div>
+            <div class="tips-list" id="rec-tips-list"></div>
+            <button class="btn-ghost-sm" id="rec-add-tip">+ Add tip</button>
+          </div>
+
+          <!-- Photos -->
+          <div>
+            <div class="section-title">Photos</div>
+            <div class="photos-row" id="rec-photos-row">
+              <button class="photo-add-btn" id="rec-photo-btn" title="Add photo">&#128247;</button>
+              <input type="file" id="rec-photo-file" accept="image/*" capture="environment" style="display:none" multiple>
+            </div>
+          </div>
+
+          <!-- Parallel -->
+          <div style="border-top:1px solid var(--border);padding-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn-ghost-sm" id="rec-parallel-btn">&#9654;&#9654; Add parallel step</button>
+            <button class="btn btn-lg" id="rec-save-step-btn" style="flex:1;min-width:140px">Save step &#8594;</button>
+          </div>
+        </div>
+
+        <!-- Saved steps summary -->
+        <div id="rec-steps-done" style="display:none">
+          <div class="section-title">Recorded steps</div>
+          <div id="rec-steps-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem"></div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           EDIT MODE
+      ══════════════════════════════════════════ -->
+      <div id="mode-edit" style="display:none">
+        <div class="section-title" style="margin-bottom:0.75rem">Steps</div>
+        <div class="steps-list" id="edit-steps-list"></div>
+        <button class="btn-ghost-sm" id="edit-add-step" style="margin-top:0.75rem;width:100%">+ Add step</button>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           PREVIEW MODE
+      ══════════════════════════════════════════ -->
+      <div id="mode-preview" style="display:none">
+        <div class="preview-recipe" id="preview-content"></div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           ACTION BAR
+      ══════════════════════════════════════════ -->
+      <div class="action-bar">
+        <button class="btn" id="save-json-btn">&#11123; Download JSON</button>
+        <button class="btn-ghost-sm" id="save-folder-btn" style="display:none">&#128193; Save to folder</button>
+        <span style="font-size:0.8rem;color:var(--muted)" id="draft-status"></span>
+      </div>
+
+    </div>
+  </main>
+  <footer>
+    <p>&copy; <span id="yr"></span> Wallace Wainhouse &mdash; Recipe Maker is licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener" style="color:inherit">CC BY-NC 4.0</a>. Non-commercial use only.</p>
+  </footer>
+
+  <script>
+  (() => {
+  'use strict';
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // ── File System Access API support ──
+  const hasFSA = 'showSaveFilePicker' in window;
+  if (hasFSA) document.getElementById('save-folder-btn').style.display = '';
+
+  // ── Schema factory ──
+  function uid() { return Math.random().toString(36).slice(2, 9); }
+  function newRecipe() {
+    return {
+      schema: 'wmw-recipe/1',
+      license: 'CC BY-NC 4.0',
+      id: uid(),
+      title: '',
+      serves: null,
+      cuisine: '',
+      tags: [],
+      description: '',
+      tips: [],
+      ingredients: [],
+      steps: [],
+      media: []
+    };
+  }
+  function newStep(parallel_with = []) {
+    return {
+      id: uid(),
+      order: 0,
+      process: '',
+      process_category: 'prep',
+      ingredient_ids: [],
+      vessel: null,
+      heat: null,
+      heat_unit: null,
+      duration_s: null,
+      duration_type: 'recorded',
+      notes: '',
+      target: '',
+      tips: [],
+      photos: [],
+      after: [],
+      parallel_ok: parallel_with.length > 0,
+      parallel_with
+    };
+  }
+
+  // ── Built-in process library ──
+  const PROCESS_LIBRARY = [
+    { name: 'chop',          category: 'prep' },
+    { name: 'slice',         category: 'prep' },
+    { name: 'dice',          category: 'prep' },
+    { name: 'mince',         category: 'prep' },
+    { name: 'grate',         category: 'prep' },
+    { name: 'peel',          category: 'prep' },
+    { name: 'crush',         category: 'prep' },
+    { name: 'zest',          category: 'prep' },
+    { name: 'squeeze',       category: 'prep' },
+    { name: 'measure',       category: 'prep' },
+    { name: 'weigh',         category: 'prep' },
+    { name: 'mix',           category: 'prep' },
+    { name: 'whisk',         category: 'prep' },
+    { name: 'beat',          category: 'prep' },
+    { name: 'blend',         category: 'prep' },
+    { name: 'marinate',      category: 'prep' },
+    { name: 'soak',          category: 'prep' },
+    { name: 'fry',           category: 'cook' },
+    { name: 'sauté',         category: 'cook' },
+    { name: 'stir-fry',      category: 'cook' },
+    { name: 'deep-fry',      category: 'cook' },
+    { name: 'boil',          category: 'cook' },
+    { name: 'simmer',        category: 'cook' },
+    { name: 'poach',         category: 'cook' },
+    { name: 'steam',         category: 'cook' },
+    { name: 'roast',         category: 'cook' },
+    { name: 'bake',          category: 'cook' },
+    { name: 'grill',         category: 'cook' },
+    { name: 'broil',         category: 'cook' },
+    { name: 'sear',          category: 'cook' },
+    { name: 'slow-cook',     category: 'cook' },
+    { name: 'pressure-cook', category: 'cook' },
+    { name: 'rest',          category: 'rest' },
+    { name: 'cool',          category: 'rest' },
+    { name: 'chill',         category: 'rest' },
+    { name: 'proof',         category: 'rest' },
+    { name: 'plate',         category: 'serve' },
+    { name: 'garnish',       category: 'serve' },
+  ];
+  const COOK_PROCESSES = new Set(PROCESS_LIBRARY.filter(p => p.category === 'cook').map(p => p.name));
+
+  // ── localStorage library ──
+  function loadLib(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
+  function saveLib(key, arr) { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} }
+  function addToLib(key, item) {
+    const lib = loadLib(key);
+    if (!lib.find(x => x.name.toLowerCase() === item.name.toLowerCase())) {
+      lib.push(item);
+      saveLib(key, lib);
+    }
+  }
+
+  function getIngLib() { return loadLib('wmw-ing-lib'); }
+  function getProcLib() {
+    const custom = loadLib('wmw-proc-lib');
+    const names = new Set(custom.map(p => p.name.toLowerCase()));
+    return [...PROCESS_LIBRARY.filter(p => !names.has(p.name.toLowerCase())), ...custom];
+  }
+  function getVesselLib() { return loadLib('wmw-vessel-lib'); }
+
+  // ── State ──
+  let recipe = newRecipe();
+  let currentMode = 'record';
+  let recTimerInterval = null;
+  let recTimerStart = null;
+  let recTimerElapsed = 0; // seconds accumulated
+  let recStepIngredients = []; // {id, name, qty, unit}
+  let recStepProcess = '';
+  let recStepTips = [];
+  let recStepPhotos = []; // {id, data, caption}
+  let recParallelWith = [];
+
+  // ── Draft persistence ──
+  function saveDraft() {
+    try {
+      localStorage.setItem('wmw-recipe-draft', JSON.stringify(recipe));
+      document.getElementById('draft-status').textContent = 'Draft saved ' + new Date().toLocaleTimeString();
+    } catch {}
+  }
+  function loadDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem('wmw-recipe-draft'));
+      if (d && d.schema === 'wmw-recipe/1') { recipe = d; return true; }
+    } catch {}
+    return false;
+  }
+
+  // ── Mode switching ──
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentMode = btn.dataset.mode;
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('mode-record').style.display  = currentMode === 'record'  ? '' : 'none';
+      document.getElementById('mode-edit').style.display    = currentMode === 'edit'    ? '' : 'none';
+      document.getElementById('mode-preview').style.display = currentMode === 'preview' ? '' : 'none';
+      if (currentMode === 'edit')    renderEditSteps();
+      if (currentMode === 'preview') renderPreview();
+    });
+  });
+
+  // ── Meta inputs → recipe ──
+  function bindMeta() {
+    document.getElementById('r-title').addEventListener('input', e => { recipe.title = e.target.value; saveDraft(); });
+    document.getElementById('r-serves').addEventListener('input', e => { recipe.serves = parseInt(e.target.value) || null; saveDraft(); });
+    document.getElementById('r-cuisine').addEventListener('input', e => { recipe.cuisine = e.target.value; saveDraft(); });
+    document.getElementById('r-tags').addEventListener('input', e => { recipe.tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean); saveDraft(); });
+    document.getElementById('r-desc').addEventListener('input', e => { recipe.description = e.target.value; saveDraft(); });
+  }
+  bindMeta();
+
+  // ── Recipe-level tips ──
+  function renderRecipeTips() {
+    const list = document.getElementById('recipe-tips-list');
+    list.innerHTML = '';
+    recipe.tips.forEach((tip, i) => {
+      const row = document.createElement('div');
+      row.className = 'tip-row';
+      row.innerHTML = `<textarea class="rec-tip-ta" placeholder="Enter tip or warning…">${esc(tip)}</textarea>
+        <button class="tip-del" data-i="${i}">&times;</button>`;
+      row.querySelector('textarea').addEventListener('input', e => { recipe.tips[i] = e.target.value; saveDraft(); });
+      row.querySelector('.tip-del').addEventListener('click', () => { recipe.tips.splice(i, 1); renderRecipeTips(); saveDraft(); });
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('add-recipe-tip').addEventListener('click', () => { recipe.tips.push(''); renderRecipeTips(); saveDraft(); });
+
+  // ── Autocomplete helper ──
+  function setupAC(inputId, listId, getItems, onSelect, allowNew = true) {
+    const input = document.getElementById(inputId);
+    const list  = document.getElementById(listId);
+    let focused = -1;
+
+    function show(items) {
+      list.innerHTML = '';
+      focused = -1;
+      if (!items.length && !allowNew) { list.classList.remove('open'); return; }
+      items.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'ac-item';
+        el.textContent = typeof item === 'string' ? item : item.name;
+        el.addEventListener('mousedown', e => { e.preventDefault(); onSelect(item); input.value = ''; list.classList.remove('open'); });
+        list.appendChild(el);
+      });
+      if (allowNew && input.value.trim() && !items.find(x => (typeof x === 'string' ? x : x.name).toLowerCase() === input.value.trim().toLowerCase())) {
+        const el = document.createElement('div');
+        el.className = 'ac-item ac-add';
+        el.textContent = `+ Add "${input.value.trim()}"`;
+        el.addEventListener('mousedown', e => { e.preventDefault(); onSelect({ name: input.value.trim(), _new: true }); input.value = ''; list.classList.remove('open'); });
+        list.appendChild(el);
+      }
+      list.classList.toggle('open', list.children.length > 0);
+    }
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      if (!q) { list.classList.remove('open'); return; }
+      const filtered = getItems().filter(x => (typeof x === 'string' ? x : x.name).toLowerCase().includes(q)).slice(0, 8);
+      show(filtered);
+    });
+    input.addEventListener('focus', () => {
+      if (input.value.trim()) input.dispatchEvent(new Event('input'));
+    });
+    input.addEventListener('keydown', e => {
+      const items = list.querySelectorAll('.ac-item');
+      if (e.key === 'ArrowDown') { focused = Math.min(focused + 1, items.length - 1); items.forEach((el,i) => el.classList.toggle('focused', i === focused)); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { focused = Math.max(focused - 1, 0); items.forEach((el,i) => el.classList.toggle('focused', i === focused)); e.preventDefault(); }
+      else if (e.key === 'Enter' && focused >= 0) { items[focused].dispatchEvent(new MouseEvent('mousedown')); e.preventDefault(); }
+      else if (e.key === 'Escape') { list.classList.remove('open'); }
+    });
+    document.addEventListener('click', e => { if (!input.contains(e.target) && !list.contains(e.target)) list.classList.remove('open'); });
+  }
+
+  // ── Record mode: ingredient AC ──
+  setupAC('rec-ing-input', 'rec-ing-list',
+    () => getIngLib(),
+    item => {
+      if (item._new) {
+        // prompt for qty/unit
+        const qty = prompt(`Quantity of "${item.name}"? (leave blank to skip)`);
+        const unit = qty ? prompt('Unit? (e.g. whole, g, ml, tsp)') || '' : '';
+        const ing = { id: uid(), name: item.name, qty: parseFloat(qty) || null, unit: unit || null, category: '' };
+        addToLib('wmw-ing-lib', ing);
+        recipe.ingredients.push(ing);
+        recStepIngredients.push(ing);
+      } else {
+        if (!recStepIngredients.find(x => x.id === item.id)) {
+          if (!recipe.ingredients.find(x => x.id === item.id)) recipe.ingredients.push(item);
+          recStepIngredients.push(item);
+        }
+      }
+      renderRecIngChips();
+      saveDraft();
+    }
+  );
+
+  function renderRecIngChips() {
+    const chips = document.getElementById('rec-ing-chips');
+    chips.innerHTML = '';
+    recStepIngredients.forEach((ing, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `${esc(ing.name)}${ing.qty ? ' ' + ing.qty : ''}${ing.unit ? ' ' + ing.unit : ''} <button class="chip-del" data-i="${i}">&times;</button>`;
+      chip.querySelector('.chip-del').addEventListener('click', () => { recStepIngredients.splice(i, 1); renderRecIngChips(); });
+      chips.appendChild(chip);
+    });
+  }
+
+  // ── Record mode: process AC ──
+  setupAC('rec-proc-input', 'rec-proc-list',
+    () => getProcLib(),
+    item => {
+      recStepProcess = typeof item === 'string' ? item : item.name;
+      document.getElementById('rec-proc-input').value = recStepProcess;
+      if (item._new) addToLib('wmw-proc-lib', { name: recStepProcess, category: 'prep' });
+      const isCook = COOK_PROCESSES.has(recStepProcess.toLowerCase());
+      document.getElementById('rec-heat-wrap').style.display   = isCook ? '' : 'none';
+      document.getElementById('rec-vessel-wrap').style.display = isCook ? '' : 'none';
+      document.getElementById('rec-proc-list').classList.remove('open');
+    }
+  );
+
+  // ── Record mode: vessel AC ──
+  setupAC('rec-vessel-input', 'rec-vessel-list',
+    () => getVesselLib(),
+    item => {
+      const name = typeof item === 'string' ? item : item.name;
+      document.getElementById('rec-vessel-input').value = name;
+      if (item._new) addToLib('wmw-vessel-lib', { name });
+      document.getElementById('rec-vessel-list').classList.remove('open');
+    }
+  );
+
+  // ── Record timer ──
+  function fmtTime(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (h) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }
+
+  document.getElementById('rec-start-btn').addEventListener('click', () => {
+    recTimerStart = Date.now() - recTimerElapsed * 1000;
+    recTimerInterval = setInterval(() => {
+      recTimerElapsed = Math.floor((Date.now() - recTimerStart) / 1000);
+      document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
+    }, 500);
+    document.getElementById('rec-start-btn').style.display = 'none';
+    document.getElementById('rec-stop-btn').style.display  = '';
+    document.getElementById('rec-timer').classList.add('running');
+  });
+
+  document.getElementById('rec-stop-btn').addEventListener('click', () => {
+    clearInterval(recTimerInterval);
+    recTimerInterval = null;
+    document.getElementById('rec-start-btn').style.display = '';
+    document.getElementById('rec-stop-btn').style.display  = 'none';
+    document.getElementById('rec-timer').classList.remove('running');
+    // sync manual fields
+    document.getElementById('rec-dur-h').value = Math.floor(recTimerElapsed / 3600) || '';
+    document.getElementById('rec-dur-m').value = Math.floor((recTimerElapsed % 3600) / 60) || '';
+    document.getElementById('rec-dur-s').value = recTimerElapsed % 60 || '';
+  });
+
+  // Manual duration → update elapsed
+  ['rec-dur-h','rec-dur-m','rec-dur-s'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      const h = parseInt(document.getElementById('rec-dur-h').value) || 0;
+      const m = parseInt(document.getElementById('rec-dur-m').value) || 0;
+      const s = parseInt(document.getElementById('rec-dur-s').value) || 0;
+      recTimerElapsed = h * 3600 + m * 60 + s;
+      document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
+    });
+  });
+
+  // ── Record tips ──
+  function renderRecTips() {
+    const list = document.getElementById('rec-tips-list');
+    list.innerHTML = '';
+    recStepTips.forEach((tip, i) => {
+      const row = document.createElement('div');
+      row.className = 'tip-row';
+      row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea>
+        <button class="tip-del" data-i="${i}">&times;</button>`;
+      row.querySelector('textarea').addEventListener('input', e => { recStepTips[i] = e.target.value; });
+      row.querySelector('.tip-del').addEventListener('click', () => { recStepTips.splice(i, 1); renderRecTips(); });
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('rec-add-tip').addEventListener('click', () => { recStepTips.push(''); renderRecTips(); });
+
+  // ── Record photos ──
+  document.getElementById('rec-photo-btn').addEventListener('click', () => document.getElementById('rec-photo-file').click());
+  document.getElementById('rec-photo-file').addEventListener('change', e => {
+    Array.from(e.target.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const photo = { id: uid(), type: file.type, caption: '', storage: 'embedded', data: ev.target.result, filename: file.name };
+        recStepPhotos.push(photo);
+        renderRecPhotos();
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  });
+
+  function renderRecPhotos() {
+    const row = document.getElementById('rec-photos-row');
+    const btn = document.getElementById('rec-photo-btn');
+    row.innerHTML = '';
+    recStepPhotos.forEach((photo, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'photo-thumb';
+      wrap.innerHTML = `<img src="${photo.data}" alt="${esc(photo.caption)}">
+        <button class="photo-del" data-i="${i}">&times;</button>`;
+      wrap.querySelector('.photo-del').addEventListener('click', () => { recStepPhotos.splice(i, 1); renderRecPhotos(); });
+      row.appendChild(wrap);
+    });
+    row.appendChild(btn);
+  }
+
+  // ── Parallel step ──
+  document.getElementById('rec-parallel-btn').addEventListener('click', () => {
+    // Save current step first as parallel anchor, then start new step linked to it
+    if (recipe.steps.length === 0) { alert('Save your first step before adding a parallel one.'); return; }
+    const lastId = recipe.steps[recipe.steps.length - 1].id;
+    recParallelWith = [lastId];
+    document.getElementById('rec-parallel-badge').style.display = '';
+    document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1} (parallel)`;
+    resetRecStep(false);
+  });
+
+  // ── Save step ──
+  document.getElementById('rec-save-step-btn').addEventListener('click', () => {
+    if (!recStepProcess && recStepIngredients.length === 0) {
+      alert('Add at least an ingredient or a process before saving.'); return;
+    }
+    const step = newStep(recParallelWith);
+    step.order = recipe.steps.length + 1;
+    step.process = recStepProcess;
+    step.process_category = getProcLib().find(p => p.name.toLowerCase() === recStepProcess.toLowerCase())?.category || 'prep';
+    step.ingredient_ids = recStepIngredients.map(i => i.id);
+    step.vessel = document.getElementById('rec-vessel-input').value.trim() || null;
+    step.heat = document.getElementById('rec-heat-val').value.trim() || null;
+    step.heat_unit = step.heat ? document.getElementById('rec-heat-unit').value : null;
+    step.duration_s = recTimerElapsed || null;
+    step.duration_type = recTimerInterval !== null ? 'recorded' : 'estimated';
+    step.notes = document.getElementById('rec-notes').value.trim();
+    step.target = document.getElementById('rec-target').value.trim();
+    step.tips = recStepTips.filter(Boolean);
+    step.photos = recStepPhotos.map(p => p.id);
+    recStepPhotos.forEach(p => { if (!recipe.media.find(m => m.id === p.id)) recipe.media.push(p); });
+
+    recipe.steps.push(step);
+    saveDraft();
+    renderRecStepsDone();
+    resetRecStep(true);
+  });
+
+  function resetRecStep(clearParallel) {
+    if (clearParallel) recParallelWith = [];
+    recStepIngredients = [];
+    recStepProcess = '';
+    recStepTips = [];
+    recStepPhotos = [];
+    recTimerElapsed = 0;
+    clearInterval(recTimerInterval);
+    recTimerInterval = null;
+    document.getElementById('rec-timer').textContent = '0:00';
+    document.getElementById('rec-timer').classList.remove('running');
+    document.getElementById('rec-start-btn').style.display = '';
+    document.getElementById('rec-stop-btn').style.display = 'none';
+    document.getElementById('rec-ing-input').value = '';
+    document.getElementById('rec-proc-input').value = '';
+    document.getElementById('rec-vessel-input').value = '';
+    document.getElementById('rec-heat-val').value = '';
+    document.getElementById('rec-notes').value = '';
+    document.getElementById('rec-target').value = '';
+    document.getElementById('rec-dur-h').value = '';
+    document.getElementById('rec-dur-m').value = '';
+    document.getElementById('rec-dur-s').value = '';
+    document.getElementById('rec-heat-wrap').style.display = 'none';
+    document.getElementById('rec-vessel-wrap').style.display = 'none';
+    if (clearParallel) {
+      document.getElementById('rec-parallel-badge').style.display = 'none';
+      document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1}`;
+    }
+    renderRecIngChips();
+    renderRecTips();
+    renderRecPhotos();
+  }
+
+  function renderRecStepsDone() {
+    const wrap = document.getElementById('rec-steps-done');
+    const list = document.getElementById('rec-steps-list');
+    wrap.style.display = recipe.steps.length ? '' : 'none';
+    list.innerHTML = '';
+    recipe.steps.forEach((step, i) => {
+      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x => x.id === id)?.name || id).join(', ');
+      const dur = step.duration_s ? fmtTime(step.duration_s) : '—';
+      const el = document.createElement('div');
+      el.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.65rem 1rem;display:flex;gap:0.75rem;align-items:center';
+      el.innerHTML = `<div class="step-num">${i+1}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.9rem;font-weight:600">${esc(step.process || '—')}${ingNames ? ' — ' + esc(ingNames) : ''}</div>
+          <div style="font-size:0.78rem;color:var(--muted)">${dur}${step.parallel_ok ? ' · parallel' : ''}</div>
+        </div>`;
+      list.appendChild(el);
+    });
+    document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1}`;
+  }
+
+  // ── Edit mode ──
+  function renderEditSteps() {
+    const list = document.getElementById('edit-steps-list');
+    list.innerHTML = '';
+    recipe.steps.forEach((step, i) => {
+      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x => x.id === id)?.name || id).join(', ');
+      const dur = step.duration_s ? fmtTime(step.duration_s) : '—';
+      const card = document.createElement('div');
+      card.className = 'step-card';
+      card.dataset.id = step.id;
+      card.innerHTML = `
+        <div class="step-card-head">
+          <div class="step-num">${i+1}</div>
+          <div class="step-card-title">${esc(step.process || 'Step ' + (i+1))}</div>
+          <div class="step-card-meta">${esc(ingNames)} · ${dur}</div>
+          <span style="color:var(--muted);margin-left:auto">&#8964;</span>
+        </div>
+        <div class="step-card-body hidden">
+          <div class="step-grid">
+            <div class="field"><label>Process</label>
+              <div class="ac-wrap">
+                <input type="text" class="e-proc" value="${esc(step.process)}" placeholder="e.g. chop, fry…">
+                <div class="ac-list e-proc-list"></div>
+              </div>
+            </div>
+            <div class="field"><label>Duration</label>
+              <div class="dur-row">
+                <input type="number" class="e-dur-h" placeholder="0" min="0" value="${Math.floor((step.duration_s||0)/3600)||''}"> <span style="color:var(--muted);font-size:.85rem">h</span>
+                <input type="number" class="e-dur-m" placeholder="0" min="0" max="59" value="${Math.floor(((step.duration_s||0)%3600)/60)||''}"> <span style="color:var(--muted);font-size:.85rem">m</span>
+                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||''}"> <span style="color:var(--muted);font-size:.85rem">s</span>
+              </div>
+            </div>
+          </div>
+          <div class="field"><label>Ingredients</label>
+            <div class="ac-wrap">
+              <input type="text" class="e-ing" placeholder="Add ingredient…" autocomplete="off">
+              <div class="ac-list e-ing-list"></div>
+            </div>
+            <div class="chips e-ing-chips"></div>
+          </div>
+          <div class="step-grid">
+            <div class="field"><label>Vessel</label><input type="text" class="e-vessel" value="${esc(step.vessel||'')}" placeholder="frying pan…"></div>
+            <div class="field"><label>Heat</label>
+              <div style="display:flex;gap:0.4rem">
+                <select class="e-heat-unit" style="width:120px">
+                  <option value="descriptive"${step.heat_unit==='descriptive'?' selected':''}>Descriptive</option>
+                  <option value="gas"${step.heat_unit==='gas'?' selected':''}>Gas mark</option>
+                  <option value="induction"${step.heat_unit==='induction'?' selected':''}>Induction</option>
+                  <option value="celsius"${step.heat_unit==='celsius'?' selected':''}>°C</option>
+                  <option value="fahrenheit"${step.heat_unit==='fahrenheit'?' selected':''}>°F</option>
+                </select>
+                <input type="text" class="e-heat-val" value="${esc(step.heat||'')}" placeholder="medium-high" style="flex:1">
+              </div>
+            </div>
+          </div>
+          <div class="field"><label>Notes</label><textarea class="e-notes" style="min-height:56px">${esc(step.notes)}</textarea></div>
+          <div class="field"><label>Target result</label><input type="text" class="e-target" value="${esc(step.target)}" placeholder="golden and translucent…"></div>
+          <div>
+            <div class="section-title">Tips</div>
+            <div class="tips-list e-tips-list"></div>
+            <button class="btn-ghost-sm e-add-tip" style="margin-top:0.35rem">+ Add tip</button>
+          </div>
+          <div>
+            <div class="section-title">Photos</div>
+            <div class="photos-row e-photos-row">
+              <button class="photo-add-btn e-photo-btn">&#128247;</button>
+              <input type="file" class="e-photo-file" accept="image/*" style="display:none" multiple>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:flex-end;border-top:1px solid var(--border);padding-top:0.75rem;margin-top:0.25rem">
+            <button class="btn-ghost-sm e-del-step" style="color:#f87171;border-color:#f87171">Delete step</button>
+            <button class="btn-ghost-sm e-move-up">&#8593; Up</button>
+            <button class="btn-ghost-sm e-move-down">&#8595; Down</button>
+          </div>
+        </div>`;
+
+      // Toggle open/closed
+      card.querySelector('.step-card-head').addEventListener('click', () => {
+        card.querySelector('.step-card-body').classList.toggle('hidden');
+      });
+
+      // Bind edit fields
+      const body = card.querySelector('.step-card-body');
+
+      function bindEdit(sel, field, transform) {
+        const el = body.querySelector(sel);
+        if (!el) return;
+        el.addEventListener('input', () => { step[field] = transform ? transform(el.value) : el.value; saveDraft(); });
+      }
+      bindEdit('.e-vessel', 'vessel');
+      bindEdit('.e-heat-val', 'heat');
+      bindEdit('.e-notes', 'notes');
+      bindEdit('.e-target', 'target');
+      body.querySelector('.e-heat-unit').addEventListener('change', e => { step.heat_unit = e.target.value; saveDraft(); });
+
+      // Duration
+      function updateEditDur() {
+        const h = parseInt(body.querySelector('.e-dur-h').value) || 0;
+        const m = parseInt(body.querySelector('.e-dur-m').value) || 0;
+        const s = parseInt(body.querySelector('.e-dur-s').value) || 0;
+        step.duration_s = h * 3600 + m * 60 + s || null;
+        step.duration_type = 'estimated';
+        saveDraft();
+      }
+      body.querySelectorAll('.e-dur-h,.e-dur-m,.e-dur-s').forEach(el => el.addEventListener('input', updateEditDur));
+
+      // Process AC
+      const procInput = body.querySelector('.e-proc');
+      const procList  = body.querySelector('.e-proc-list');
+      procInput.addEventListener('input', () => {
+        const q = procInput.value.trim().toLowerCase();
+        procList.innerHTML = '';
+        if (!q) { procList.classList.remove('open'); return; }
+        const matches = getProcLib().filter(p => p.name.toLowerCase().includes(q)).slice(0,8);
+        matches.forEach(p => {
+          const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = p.name;
+          el.addEventListener('mousedown', ev => { ev.preventDefault(); procInput.value = p.name; step.process = p.name; step.process_category = p.category; procList.classList.remove('open'); saveDraft(); renderEditSteps(); });
+          procList.appendChild(el);
+        });
+        if (!matches.find(p => p.name.toLowerCase() === q)) {
+          const el = document.createElement('div'); el.className = 'ac-item ac-add'; el.textContent = `+ Add "${procInput.value.trim()}"`;
+          el.addEventListener('mousedown', ev => { ev.preventDefault(); step.process = procInput.value.trim(); procList.classList.remove('open'); saveDraft(); renderEditSteps(); });
+          procList.appendChild(el);
+        }
+        procList.classList.toggle('open', procList.children.length > 0);
+      });
+
+      // Ingredient chips for edit
+      function renderEditIngChips() {
+        const chipsEl = body.querySelector('.e-ing-chips');
+        chipsEl.innerHTML = '';
+        step.ingredient_ids.forEach((id, ci) => {
+          const ing = recipe.ingredients.find(x => x.id === id);
+          if (!ing) return;
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.innerHTML = `${esc(ing.name)} <button class="chip-del">&times;</button>`;
+          chip.querySelector('.chip-del').addEventListener('click', () => { step.ingredient_ids.splice(ci, 1); renderEditIngChips(); saveDraft(); });
+          chipsEl.appendChild(chip);
+        });
+      }
+      renderEditIngChips();
+
+      const ingInput = body.querySelector('.e-ing');
+      const ingList  = body.querySelector('.e-ing-list');
+      ingInput.addEventListener('input', () => {
+        const q = ingInput.value.trim().toLowerCase();
+        ingList.innerHTML = '';
+        if (!q) { ingList.classList.remove('open'); return; }
+        const matches = getIngLib().filter(x => x.name.toLowerCase().includes(q)).slice(0,8);
+        matches.forEach(ing => {
+          const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = ing.name;
+          el.addEventListener('mousedown', ev => { ev.preventDefault(); if (!recipe.ingredients.find(x=>x.id===ing.id)) recipe.ingredients.push(ing); if (!step.ingredient_ids.includes(ing.id)) step.ingredient_ids.push(ing.id); ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft(); });
+          ingList.appendChild(el);
+        });
+        if (!matches.find(x=>x.name.toLowerCase()===q)) {
+          const el = document.createElement('div'); el.className='ac-item ac-add'; el.textContent=`+ Add "${ingInput.value.trim()}"`;
+          el.addEventListener('mousedown', ev => { ev.preventDefault(); const ing={id:uid(),name:ingInput.value.trim(),qty:null,unit:null,category:''}; addToLib('wmw-ing-lib',ing); recipe.ingredients.push(ing); step.ingredient_ids.push(ing.id); ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft(); });
+          ingList.appendChild(el);
+        }
+        ingList.classList.toggle('open', ingList.children.length > 0);
+      });
+
+      // Edit tips
+      function renderEditTips() {
+        const tipsList = body.querySelector('.e-tips-list');
+        tipsList.innerHTML = '';
+        step.tips.forEach((tip, ti) => {
+          const row = document.createElement('div');
+          row.className = 'tip-row';
+          row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea><button class="tip-del">&times;</button>`;
+          row.querySelector('textarea').addEventListener('input', e => { step.tips[ti] = e.target.value; saveDraft(); });
+          row.querySelector('.tip-del').addEventListener('click', () => { step.tips.splice(ti,1); renderEditTips(); saveDraft(); });
+          tipsList.appendChild(row);
+        });
+      }
+      renderEditTips();
+      body.querySelector('.e-add-tip').addEventListener('click', () => { step.tips.push(''); renderEditTips(); saveDraft(); });
+
+      // Edit photos
+      const photosRow = body.querySelector('.e-photos-row');
+      const photoBtn  = body.querySelector('.e-photo-btn');
+      const photoFile = body.querySelector('.e-photo-file');
+
+      function renderEditPhotos() {
+        while (photosRow.firstChild && photosRow.firstChild !== photoBtn) photosRow.removeChild(photosRow.firstChild);
+        const photosBefore = [...photosRow.children];
+        photosRow.innerHTML = '';
+        step.photos.forEach((pid, pi) => {
+          const media = recipe.media.find(m => m.id === pid);
+          if (!media) return;
+          const wrap = document.createElement('div');
+          wrap.className = 'photo-thumb';
+          wrap.innerHTML = `<img src="${media.data}" alt=""><button class="photo-del">&times;</button>`;
+          wrap.querySelector('.photo-del').addEventListener('click', () => { step.photos.splice(pi,1); renderEditPhotos(); saveDraft(); });
+          photosRow.appendChild(wrap);
+        });
+        photosRow.appendChild(photoBtn);
+      }
+      renderEditPhotos();
+
+      photoBtn.addEventListener('click', () => photoFile.click());
+      photoFile.addEventListener('change', e => {
+        Array.from(e.target.files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            const photo = { id: uid(), type: file.type, caption: '', storage: 'embedded', data: ev.target.result, filename: file.name };
+            recipe.media.push(photo);
+            step.photos.push(photo.id);
+            renderEditPhotos();
+            saveDraft();
+          };
+          reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+      });
+
+      // Delete / reorder
+      body.querySelector('.e-del-step').addEventListener('click', () => {
+        if (!confirm('Delete this step?')) return;
+        recipe.steps.splice(i, 1);
+        recipe.steps.forEach((s, idx) => s.order = idx + 1);
+        saveDraft();
+        renderEditSteps();
+      });
+      body.querySelector('.e-move-up').addEventListener('click', () => {
+        if (i === 0) return;
+        [recipe.steps[i-1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i-1]];
+        recipe.steps.forEach((s, idx) => s.order = idx + 1);
+        saveDraft();
+        renderEditSteps();
+      });
+      body.querySelector('.e-move-down').addEventListener('click', () => {
+        if (i === recipe.steps.length - 1) return;
+        [recipe.steps[i+1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i+1]];
+        recipe.steps.forEach((s, idx) => s.order = idx + 1);
+        saveDraft();
+        renderEditSteps();
+      });
+
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('edit-add-step').addEventListener('click', () => {
+    const step = newStep();
+    step.order = recipe.steps.length + 1;
+    recipe.steps.push(step);
+    saveDraft();
+    renderEditSteps();
+    // open the new card
+    setTimeout(() => {
+      const cards = document.querySelectorAll('.step-card');
+      const last = cards[cards.length - 1];
+      if (last) { last.querySelector('.step-card-body').classList.remove('hidden'); last.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }, 50);
+  });
+
+  // ── Preview ──
+  function renderPreview() {
+    const el = document.getElementById('preview-content');
+    const ings = recipe.ingredients;
+    const ingName = id => ings.find(x => x.id === id)?.name || id;
+    let html = `<div class="preview-title">${esc(recipe.title || 'Untitled Recipe')}</div>`;
+    const meta = [recipe.serves ? `Serves ${recipe.serves}` : '', recipe.cuisine, (recipe.tags||[]).join(', ')].filter(Boolean).join(' · ');
+    if (meta) html += `<div class="preview-meta">${esc(meta)}</div>`;
+    if (recipe.description) html += `<p style="font-size:0.9rem;color:#444;margin-bottom:1rem">${esc(recipe.description)}</p>`;
+    if (recipe.tips?.length) {
+      html += `<div class="preview-section">Overall tips</div>`;
+      recipe.tips.forEach(t => { html += `<div class="preview-tip">&#128161; ${esc(t)}</div>`; });
+    }
+    if (ings.length) {
+      html += `<div class="preview-section">Ingredients</div><div class="preview-ing-list">`;
+      ings.forEach(ing => {
+        html += `<div class="preview-ing">${ing.qty ? ing.qty + ' ' : ''}${ing.unit ? ing.unit + ' ' : ''}${esc(ing.name)}</div>`;
+      });
+      html += `</div>`;
+    }
+    if (recipe.steps.length) {
+      html += `<div class="preview-section">Steps</div>`;
+      recipe.steps.forEach((step, i) => {
+        const ingStr = step.ingredient_ids.map(ingName).join(', ');
+        const dur = step.duration_s ? fmtTime(step.duration_s) : '';
+        const parallel = step.parallel_ok && step.parallel_with?.length ? ' · can run in parallel' : '';
+        html += `<div class="preview-step">
+          <div class="preview-step-num">${i+1}</div>
+          <div class="preview-step-body">
+            <div class="preview-step-title">${esc(step.process || '—')}${ingStr ? ' — ' + esc(ingStr) : ''}</div>
+            <div class="preview-step-sub">${[dur ? `${dur}${step.duration_type==='estimated'?' (est.)':''}` : '', step.vessel, step.heat ? step.heat + (step.heat_unit && step.heat_unit !== 'descriptive' ? ' ' + step.heat_unit : '') : ''].filter(Boolean).join(' · ')}${parallel}</div>
+            ${step.notes ? `<div style="font-size:0.83rem;color:#555;margin-top:0.3rem">${esc(step.notes)}</div>` : ''}
+            ${step.target ? `<div style="font-size:0.83rem;color:#555;font-style:italic;margin-top:0.15rem">Target: ${esc(step.target)}</div>` : ''}
+            ${step.tips?.length ? step.tips.filter(Boolean).map(t => `<div class="preview-tip">&#128161; ${esc(t)}</div>`).join('') : ''}
+            ${step.photos?.length ? `<div class="preview-photos">${step.photos.map(pid => { const m = recipe.media.find(x=>x.id===pid); return m ? `<img src="${m.data}" alt="${esc(m.caption)}">` : ''; }).join('')}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    }
+    el.innerHTML = html;
+  }
+
+  // ── Save / load ──
+  function recipeToJson() {
+    return JSON.stringify(recipe, null, 2);
+  }
+
+  document.getElementById('save-json-btn').addEventListener('click', () => {
+    const blob = new Blob([recipeToJson()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (recipe.title || 'recipe').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.wmw-recipe.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  });
+
+  if (hasFSA) {
+    document.getElementById('save-folder-btn').addEventListener('click', async () => {
+      try {
+        const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+        // Write recipe JSON (strip embedded data, use filenames instead)
+        const exportRecipe = JSON.parse(JSON.stringify(recipe));
+        exportRecipe.media.forEach(m => { if (m.storage === 'embedded') { m.storage = 'external'; delete m.data; } });
+        const jsonFile = await dir.getFileHandle((recipe.title || 'recipe').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '.wmw-recipe.json', { create: true });
+        const jsonWriter = await jsonFile.createWritable();
+        await jsonWriter.write(JSON.stringify(exportRecipe, null, 2));
+        await jsonWriter.close();
+        // Write media files
+        const mediaDir = await dir.getDirectoryHandle('media', { create: true });
+        for (const m of recipe.media) {
+          if (!m.data) continue;
+          const [, b64] = m.data.split(',');
+          const bin = atob(b64);
+          const buf = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+          const fh = await mediaDir.getFileHandle(m.filename || m.id, { create: true });
+          const w = await fh.createWritable();
+          await w.write(buf.buffer);
+          await w.close();
+        }
+        alert('Saved to folder successfully.');
+      } catch (e) { if (e.name !== 'AbortError') alert('Could not save: ' + e.message); }
+    });
+  }
+
+  document.getElementById('load-btn').addEventListener('click', () => document.getElementById('load-file').click());
+  document.getElementById('load-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const loaded = JSON.parse(ev.target.result);
+        if (loaded.schema !== 'wmw-recipe/1') { alert('Not a valid WMW recipe file.'); return; }
+        recipe = loaded;
+        populateMeta();
+        renderRecipeTips();
+        renderRecStepsDone();
+        saveDraft();
+        alert(`Loaded: ${recipe.title || 'Untitled'}`);
+      } catch { alert('Could not parse file.'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('new-btn').addEventListener('click', () => {
+    if (recipe.steps.length && !confirm('Start a new recipe? Unsaved changes will be lost.')) return;
+    recipe = newRecipe();
+    populateMeta();
+    renderRecipeTips();
+    renderRecStepsDone();
+    resetRecStep(true);
+    saveDraft();
+  });
+
+  function populateMeta() {
+    document.getElementById('r-title').value   = recipe.title || '';
+    document.getElementById('r-serves').value  = recipe.serves || '';
+    document.getElementById('r-cuisine').value = recipe.cuisine || '';
+    document.getElementById('r-tags').value    = (recipe.tags || []).join(', ');
+    document.getElementById('r-desc').value    = recipe.description || '';
+  }
+
+  // ── Utility ──
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── Init ──
+  if (loadDraft()) {
+    populateMeta();
+    renderRecipeTips();
+    renderRecStepsDone();
+  }
+  renderRecPhotos();
+
+  })();
+  </script>
+</body>
+</html>
