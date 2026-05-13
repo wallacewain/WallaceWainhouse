@@ -125,12 +125,12 @@
       if (halo) { cr *= 0.6; cg *= 0.6; cb *= 0.6; }
 
       const dim = halo ? (0.18 + Math.random() * 0.25) : (0.28 + Math.random() * 0.58);
-      // Much smaller stars
       const sz  = halo
         ? (0.0006 + Math.random() * 0.0012)
         : (0.0004 + Math.random() * 0.0018) * (1 - t * 0.35);
+      const glitFactor = 0.3 + Math.random() * 0.7;
 
-      stars.push({ x, y, z, cr, cg, cb, dim, sz });
+      stars.push({ x, y, z, cr, cg, cb, dim, sz, glitFactor });
     }
 
     // ── Interaction state — orientation only via click-drag ───────────────
@@ -196,8 +196,8 @@
       ctx.clearRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
 
-      // Very tight mouse radius — only nearest stars brighten, steep falloff
-      const mRad = Math.min(W, H) * 0.055;
+      // Glitter radius — wide area, subtle per-star random catch
+      const glitRad = Math.min(W, H) * 0.18;
 
       for (const p of proj) {
         const { sx, sy, sc, s } = p;
@@ -206,24 +206,29 @@
         if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
 
         const dx = sx - msx, dy = sy - msy;
-        const nd = Math.sqrt(dx*dx + dy*dy) / mRad;
-        // Quadratic: falls to zero sharply, no effect beyond mRad
-        const boost  = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
-        const bright = s.dim * (1 + boost * 6);
-        const drawR  = baseR * (1 + boost * 3);
+        const nd = Math.sqrt(dx*dx + dy*dy) / glitRad;
+        const distFactor = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
+        const boost = distFactor * s.glitFactor * 0.45;
 
+        const bright = s.dim * (1 + boost);
         const ri = Math.min(255, s.cr * bright * 255) | 0;
         const gi = Math.min(255, s.cg * bright * 255) | 0;
         const bi = Math.min(255, s.cb * bright * 255) | 0;
 
-        ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + boost * 0.75);
+        // Glow halo — faint, wide
+        ctx.globalAlpha = Math.min(0.35, s.dim * 0.1 * (1 + boost * 2));
         ctx.fillStyle   = `rgb(${ri},${gi},${bi})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, baseR * 4, 0, 6.2832);
+        ctx.fill();
 
-        if (drawR < 1.0) {
+        // Core — small, bright
+        ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + boost * 0.4);
+        if (baseR < 1.0) {
           ctx.fillRect(sx | 0, sy | 0, 1, 1);
         } else {
           ctx.beginPath();
-          ctx.arc(sx, sy, drawR, 0, 6.2832);
+          ctx.arc(sx, sy, baseR, 0, 6.2832);
           ctx.fill();
         }
       }
