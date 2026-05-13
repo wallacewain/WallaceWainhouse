@@ -30,14 +30,15 @@
   }
   </script>
   <style>
+    html { background: #0e0e10; }
+    body { background: transparent; }
     #galaxy-bg {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      z-index: 0;
+      z-index: -1;
       pointer-events: none;
     }
-    header, main, footer { position: relative; z-index: 1; }
     .hero {
       min-height: calc(100vh - 60px);
       display: flex;
@@ -68,14 +69,14 @@
   <footer>
     <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
   </footer>
-  <script src="https://unpkg.com/three@0.163.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.min.js"></script>
   <script>
   (function () {
     const canvas = document.getElementById('galaxy-bg');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x0e0e10, 1);
+    renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
