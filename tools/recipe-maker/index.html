@@ -22,6 +22,7 @@
   <meta name="twitter:title" content="Recipe Maker &mdash; Wallace Wainhouse">
   <meta name="twitter:description" content="Record recipes as you cook. Saves as an open JSON format.">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,11 +38,10 @@
     /* ── Recipe meta ── */
     .meta-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
     .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .meta-row.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    @media (max-width: 600px) { .meta-row, .meta-row.four { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .meta-row { grid-template-columns: 1fr; } }
     .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
 
-    /* ── Steps list (edit mode) ── */
+    /* ── Edit mode ── */
     .steps-list { display: flex; flex-direction: column; gap: 1rem; }
     .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .step-card-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
@@ -53,52 +53,38 @@
     .step-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     @media (max-width: 600px) { .step-grid { grid-template-columns: 1fr; } }
 
-    /* ── Record mode ── */
-    .record-panel { display: flex; flex-direction: column; gap: 1.25rem; }
-    .record-active { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
-    .record-timer { font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; text-align: center; }
+    /* ── Shared record/edit ── */
+    .record-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .record-timer { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
     .record-timer.running { color: var(--accent-hover); }
-    .record-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
     .btn-lg { padding: 0.85rem 1.75rem; font-size: 1.05rem; }
     .btn-stop { background: #ef4444; }
     .btn-stop:hover { background: #dc2626; }
     .btn-ghost-sm { background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 500; padding: 0.5rem 1rem; transition: border-color 0.15s, color 0.15s; }
     .btn-ghost-sm:hover { border-color: var(--accent); color: var(--accent-hover); }
     .parallel-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 4px; font-size: 0.75rem; color: var(--accent-hover); padding: 0.2rem 0.55rem; }
-
-    /* ── Autocomplete ── */
     .ac-wrap { position: relative; }
-    .ac-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); z-index: 50; max-height: 200px; overflow-y: auto; display: none; }
+    .ac-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); z-index: 50; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .ac-list.open { display: block; }
     .ac-item { padding: 0.5rem 0.75rem; font-size: 0.9rem; cursor: pointer; }
-    .ac-item:hover, .ac-item.focused { background: rgba(99,102,241,0.1); }
+    .ac-item:hover { background: rgba(99,102,241,0.1); }
     .ac-add { color: var(--accent-hover); font-weight: 600; }
-
-    /* ── Tips ── */
     .tips-list { display: flex; flex-direction: column; gap: 0.4rem; }
     .tip-row { display: flex; gap: 0.5rem; align-items: flex-start; }
     .tip-row textarea { min-height: 56px; flex: 1; }
     .tip-del { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.15s, color 0.15s; margin-top: 2px; }
     .tip-del:hover { border-color: #f87171; color: #f87171; }
-
-    /* ── Photos ── */
     .photos-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start; }
     .photo-thumb { position: relative; width: 72px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
     .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .photo-del { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); border: none; border-radius: 50%; color: #fff; cursor: pointer; font-size: 0.7rem; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
     .photo-add-btn { width: 72px; height: 72px; border: 2px dashed var(--border); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 1.4rem; color: var(--muted); background: none; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
     .photo-add-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* ── Duration picker ── */
     .dur-row { display: flex; gap: 0.5rem; align-items: center; }
-    .dur-row input[type=number] { width: 72px; text-align: center; }
-
-    /* ── Ingredient chips ── */
-    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+    .dur-row input[type=number] { width: 64px; text-align: center; }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
     .chip { display: inline-flex; align-items: center; gap: 0.3rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 99px; font-size: 0.78rem; padding: 0.2rem 0.6rem; color: var(--accent-hover); }
     .chip-del { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: 0.85rem; line-height: 1; }
-
-    /* ── Action bar ── */
     .action-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
 
     /* ── Preview ── */
@@ -117,13 +103,59 @@
     .preview-tip { background: #fef9c3; border: 1px solid #fde047; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.83rem; color: #713f12; margin-top: 0.5rem; }
     .preview-photos { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
     .preview-photos img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }
-    .preview-dur { font-size: 0.78rem; color: #888; }
+
+    /* ── Quick-tap record UI ── */
+    .qt-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .qt-card-head { display: flex; justify-content: space-between; align-items: center; }
+    .qt-link { background: none; border: none; color: var(--accent-hover); cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 0; font-family: var(--font); }
+    .qt-bc { display: flex; align-items: center; }
+    .qt-back { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 0.78rem; font-family: var(--font); padding: 0.3rem 0.6rem; transition: border-color 0.12s, color 0.12s; }
+    .qt-back:hover { border-color: var(--accent); color: var(--accent-hover); }
+    .qt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
+    .qt-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .qt-btn { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; color: var(--fg); cursor: pointer; font-family: var(--font); font-size: 0.82rem; font-weight: 500; min-height: 54px; padding: 0.45rem 0.3rem; text-align: center; transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s; line-height: 1.25; word-break: break-word; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; }
+    .qt-btn:active { transform: scale(0.94); }
+    .qt-btn:hover, .qt-btn.sel { background: rgba(99,102,241,0.12); border-color: var(--accent); color: var(--accent-hover); }
+    .qt-icon { font-size: 1.25rem; line-height: 1; }
+    .qt-btn-sm { min-height: 40px; font-size: 0.8rem; padding: 0.35rem 0.25rem; border-radius: 8px; }
+    .qt-sel { display: flex; align-items: center; gap: 0.5rem; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.9rem; font-weight: 600; color: var(--accent-hover); flex-wrap: wrap; }
+    .qt-sel-sm { font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
+    .qt-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 0; margin-left: auto; line-height: 1; }
+    .qt-x:hover { color: #f87171; }
+    .qt-search-wrap { position: relative; }
+    .qt-hv { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .qt-hv-col { display: flex; flex-direction: column; gap: 0.35rem; }
+    .qt-wrap { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .qt-adj-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+    .qt-adj-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+    .qt-adj-lbl { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+    .qt-adj-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; width: 100%; }
+    .qt-abtn { background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; font-family: var(--font); font-size: 1.1rem; font-weight: 700; height: 44px; transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s; }
+    .qt-abtn:active { transform: scale(0.9); }
+    .qt-abtn.sub { color: var(--muted); }
+    .qt-abtn.add { color: var(--accent-hover); border-color: rgba(99,102,241,0.35); }
+    .qt-abtn.sub:hover { background: rgba(239,68,68,0.08); border-color: #f87171; color: #f87171; }
+    .qt-abtn.add:hover { background: rgba(99,102,241,0.12); border-color: var(--accent); }
+    .qt-timer-row { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    .qt-recent { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .qt-recent-chip { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 99px; color: var(--accent-hover); cursor: pointer; font-family: var(--font); font-size: 0.78rem; font-weight: 500; padding: 0.25rem 0.65rem; transition: background 0.1s; }
+    .qt-recent-chip:hover { background: rgba(99,102,241,0.18); }
+    .addition-row { display: flex; align-items: center; gap: 0.5rem; background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 0.4rem 0.65rem; font-size: 0.82rem; }
+    .addition-time { font-weight: 700; color: var(--accent-hover); flex-shrink: 0; }
+    .addition-text { flex: 1; color: var(--fg); }
+    .addition-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0; line-height: 1; }
+    .addition-del:hover { color: #f87171; }
+    .add-at-form { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.65rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+    .add-at-row { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; }
+    .qt-tog { background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; padding: 0; text-align: left; }
+    .qt-tog:hover { color: var(--accent-hover); }
+    .rec-hdr { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   </style>
 </head>
 <body>
   <header>
     <nav>
-      <a href="/" class="logo"><svg viewBox="0 0 36 24" width="36" height="24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-label="WMW"><path d="M0,12 L6,0 L12,9 L18,2 L24,9 L30,0 L36,12 L30,24 L24,15 L18,22 L12,15 L6,24 Z"/></svg></a>
+      <a href="/" class="logo"><svg viewBox="-46.0 -46.0 1492.0 332.0" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="#d4d4d8"><polygon points="-40,0 40,0 180,240 100,240"/><polygon points="100,240 180,240 320,0 240,0"/><polygon points="240,0 320,0 460,240 380,240"/><polygon points="380,240 460,240 600,0 520,0"/><polygon points="520,0 600,0 740,240 660,240"/><polygon points="660,240 740,240 880,0 800,0"/><polygon points="800,0 880,0 1020,240 940,240"/><polygon points="940,240 1020,240 1160,0 1080,0"/><polygon points="1080,0 1160,0 1300,240 1220,240"/><polygon points="1220,240 1300,240 1440,0 1360,0"/></svg></a>
       <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
@@ -149,9 +181,7 @@
         </div>
       </div>
 
-      <!-- ══════════════════════════════════════════
-           META (always visible)
-      ══════════════════════════════════════════ -->
+      <!-- Meta (always visible) -->
       <div class="meta-card">
         <div class="section-title">Recipe details</div>
         <div class="field"><label>Title</label><input type="text" id="r-title" placeholder="e.g. Pasta Bolognese"></div>
@@ -161,150 +191,192 @@
         </div>
         <div class="field"><label>Tags (comma separated)</label><input type="text" id="r-tags" placeholder="pasta, meat, weeknight"></div>
         <div class="field"><label>Recipe notes / intro</label><textarea id="r-desc" placeholder="Brief description or intro notes" style="min-height:64px"></textarea></div>
-        <div id="recipe-tips-wrap">
+        <div>
           <div class="section-title" style="margin-top:0.25rem">Overall tips</div>
           <div class="tips-list" id="recipe-tips-list"></div>
           <button class="btn-ghost-sm" id="add-recipe-tip" style="margin-top:0.4rem">+ Add tip</button>
         </div>
       </div>
 
-      <!-- ══════════════════════════════════════════
-           RECORD MODE
-      ══════════════════════════════════════════ -->
+      <!-- ════════════ RECORD MODE ════════════ -->
       <div id="mode-record" class="record-panel">
 
-        <div class="record-active" id="record-active">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
-            <div>
-              <div class="section-title">Current step</div>
-              <div style="font-size:1rem;font-weight:600;margin-top:0.15rem" id="rec-step-label">Step 1</div>
-            </div>
-            <div id="rec-parallel-badge" style="display:none" class="parallel-badge">&#9654;&#9654; parallel</div>
-          </div>
-
-          <!-- Ingredient selector -->
-          <div class="field">
-            <label>Ingredient(s)</label>
-            <div class="ac-wrap">
-              <input type="text" id="rec-ing-input" placeholder="Type ingredient name…" autocomplete="off">
-              <div class="ac-list" id="rec-ing-list"></div>
-            </div>
-            <div class="chips" id="rec-ing-chips"></div>
-          </div>
-
-          <!-- Process selector -->
-          <div class="field">
-            <label>Process</label>
-            <div class="ac-wrap">
-              <input type="text" id="rec-proc-input" placeholder="e.g. chop, fry, simmer…" autocomplete="off">
-              <div class="ac-list" id="rec-proc-list"></div>
-            </div>
-          </div>
-
-          <!-- Heat (shown when process is a cook process) -->
-          <div class="field" id="rec-heat-wrap" style="display:none">
-            <label>Heat level</label>
-            <div style="display:flex;gap:0.5rem">
-              <select id="rec-heat-unit" style="width:140px">
-                <option value="descriptive">Descriptive</option>
-                <option value="gas">Gas mark</option>
-                <option value="induction">Induction level</option>
-                <option value="celsius">°C</option>
-                <option value="fahrenheit">°F</option>
-              </select>
-              <input type="text" id="rec-heat-val" placeholder="e.g. medium-high" style="flex:1">
-            </div>
-          </div>
-
-          <!-- Vessel -->
-          <div class="field" id="rec-vessel-wrap" style="display:none">
-            <label>Vessel / pan</label>
-            <div class="ac-wrap">
-              <input type="text" id="rec-vessel-input" placeholder="e.g. frying pan, saucepan…" autocomplete="off">
-              <div class="ac-list" id="rec-vessel-list"></div>
-            </div>
-          </div>
-
-          <!-- Timer -->
+        <!-- Step header -->
+        <div class="rec-hdr">
           <div>
-            <div class="section-title">Timer</div>
-            <div class="record-timer" id="rec-timer">0:00</div>
-            <div class="record-btns">
-              <button class="btn btn-lg" id="rec-start-btn">&#9654; Start</button>
-              <button class="btn btn-lg btn-stop" id="rec-stop-btn" style="display:none">&#9632; Stop</button>
-            </div>
-            <div style="text-align:center;margin-top:0.75rem">
-              <span style="font-size:0.82rem;color:var(--muted)">Or enter time manually: </span>
-              <div class="dur-row" style="justify-content:center;margin-top:0.3rem">
-                <input type="number" id="rec-dur-h" placeholder="0" min="0" max="23"> <span style="color:var(--muted);font-size:0.85rem">h</span>
-                <input type="number" id="rec-dur-m" placeholder="0" min="0" max="59"> <span style="color:var(--muted);font-size:0.85rem">m</span>
-                <input type="number" id="rec-dur-s" placeholder="0" min="0" max="59"> <span style="color:var(--muted);font-size:0.85rem">s</span>
-              </div>
-            </div>
+            <div class="section-title">Current step</div>
+            <div id="rec-step-label" style="font-size:1rem;font-weight:600;margin-top:0.1rem">Step 1</div>
           </div>
+          <div id="rec-parallel-badge" style="display:none" class="parallel-badge">&#9654;&#9654; parallel</div>
+        </div>
 
-          <!-- Notes -->
-          <div class="field">
-            <label>Step notes</label>
-            <textarea id="rec-notes" placeholder="e.g. fine dice ~5mm, until translucent…" style="min-height:64px"></textarea>
+        <!-- INGREDIENTS -->
+        <div class="qt-card">
+          <div class="qt-card-head">
+            <span class="section-title">Ingredients</span>
+            <button class="qt-link" id="ing-search-toggle">+ custom</button>
           </div>
-
-          <!-- Target result -->
-          <div class="field">
-            <label>Target result</label>
-            <input type="text" id="rec-target" placeholder="e.g. golden and translucent, still has squish">
+          <div class="qt-bc" id="ing-bc" style="display:none"></div>
+          <div id="ing-recent-wrap" style="display:none">
+            <div class="section-title" style="margin-bottom:0.3rem">Use from previous step</div>
+            <div class="qt-recent" id="ing-recent"></div>
           </div>
-
-          <!-- Tips -->
-          <div>
-            <div class="section-title">Tips for this step</div>
-            <div class="tips-list" id="rec-tips-list"></div>
-            <button class="btn-ghost-sm" id="rec-add-tip">+ Add tip</button>
+          <div class="qt-grid" id="ing-grid"></div>
+          <div class="qt-search-wrap" id="ing-search-wrap" style="display:none">
+            <input type="text" id="ing-search-input" placeholder="Search or type ingredient…" autocomplete="off">
+            <div class="ac-list" id="ing-search-list"></div>
           </div>
+          <div class="chips" id="rec-ing-chips"></div>
+        </div>
 
-          <!-- Photos -->
-          <div>
-            <div class="section-title">Photos</div>
-            <div class="photos-row" id="rec-photos-row">
-              <button class="photo-add-btn" id="rec-photo-btn" title="Add photo">&#128247;</button>
-              <input type="file" id="rec-photo-file" accept="image/*" capture="environment" style="display:none" multiple>
-            </div>
+        <!-- PROCESS -->
+        <div class="qt-card">
+          <div class="qt-card-head">
+            <span class="section-title">Process</span>
+            <button class="qt-link" id="proc-search-toggle">+ custom</button>
           </div>
-
-          <!-- Parallel -->
-          <div style="border-top:1px solid var(--border);padding-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-            <button class="btn-ghost-sm" id="rec-parallel-btn">&#9654;&#9654; Add parallel step</button>
-            <button class="btn btn-lg" id="rec-save-step-btn" style="flex:1;min-width:140px">Save step &#8594;</button>
+          <div class="qt-grid qt-grid-2" id="proc-grid"></div>
+          <div id="proc-search-wrap" style="display:none">
+            <input type="text" id="proc-search-input" placeholder="Custom process (press Enter)…" autocomplete="off">
+          </div>
+          <div class="qt-sel" id="proc-selected" style="display:none">
+            <span id="proc-sel-name"></span>
+            <button class="qt-x" id="proc-clear">&#215;</button>
           </div>
         </div>
 
-        <!-- Saved steps summary -->
+        <!-- TARGET STATE (shown after process selected) -->
+        <div class="qt-card" id="qt-target-card" style="display:none">
+          <div class="section-title">Target result</div>
+          <div class="qt-grid" id="target-grid"></div>
+          <div class="qt-sel" id="target-selected" style="display:none">
+            <span id="target-sel-text"></span>
+            <button class="qt-x" id="target-clear">&#215;</button>
+          </div>
+        </div>
+
+        <!-- HEAT & VESSEL (cook processes only) -->
+        <div class="qt-card" id="qt-hv-card" style="display:none">
+          <div class="qt-hv">
+            <div class="qt-hv-col">
+              <div class="section-title">Heat</div>
+              <div class="qt-wrap" id="heat-grid"></div>
+              <div class="qt-sel-sm" id="heat-selected"></div>
+            </div>
+            <div class="qt-hv-col">
+              <div class="section-title">Vessel</div>
+              <div class="qt-wrap" id="vessel-grid"></div>
+              <div class="qt-sel-sm" id="vessel-selected"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIME -->
+        <div class="qt-card">
+          <div class="section-title">Time</div>
+          <div class="qt-adj-row" id="time-adj-row"></div>
+          <div class="qt-timer-row">
+            <div class="record-timer" id="rec-timer">0:00</div>
+            <button class="btn btn-lg" id="rec-start-btn">&#9654; Start</button>
+            <button class="btn btn-lg btn-stop" id="rec-stop-btn" style="display:none">&#9632; Stop</button>
+          </div>
+          <div class="dur-row" style="margin-top:0.25rem">
+            <input type="number" id="rec-dur-h" placeholder="0h" min="0">
+            <span style="color:var(--muted);font-size:.8rem">h</span>
+            <input type="number" id="rec-dur-m" placeholder="0m" min="0" max="59">
+            <span style="color:var(--muted);font-size:.8rem">m</span>
+            <input type="number" id="rec-dur-s" placeholder="0s" min="0" max="59">
+            <span style="color:var(--muted);font-size:.8rem">s</span>
+          </div>
+        </div>
+
+        <!-- MID-STEP ADDITIONS (cook/rest only) -->
+        <div class="qt-card" id="additions-card" style="display:none">
+          <div class="qt-card-head">
+            <span class="section-title">Mid-step additions</span>
+            <button class="qt-link" id="add-at-btn">+ Add at time</button>
+          </div>
+          <div id="add-at-form" style="display:none" class="add-at-form">
+            <div class="add-at-row">
+              <span>At:</span>
+              <input type="number" id="add-at-h" placeholder="0" min="0" style="width:52px;text-align:center">
+              <span style="color:var(--muted);font-size:.8rem">h</span>
+              <input type="number" id="add-at-m" placeholder="0" min="0" max="59" style="width:52px;text-align:center">
+              <span style="color:var(--muted);font-size:.8rem">m</span>
+              <input type="number" id="add-at-s" placeholder="0" min="0" max="59" style="width:52px;text-align:center">
+              <span style="color:var(--muted);font-size:.8rem">s</span>
+            </div>
+            <div class="add-at-row">
+              <span style="color:var(--muted);font-size:.78rem">Quick:</span>
+              <button class="qt-btn qt-btn-sm" onclick="setAddAt(300)">5m</button>
+              <button class="qt-btn qt-btn-sm" onclick="setAddAt(600)">10m</button>
+              <button class="qt-btn qt-btn-sm" onclick="setAddAt(900)">15m</button>
+              <button class="qt-btn qt-btn-sm" onclick="setAddAt(1200)">20m</button>
+              <button class="qt-btn qt-btn-sm" onclick="setAddAt(1800)">30m</button>
+            </div>
+            <div class="ac-wrap">
+              <input type="text" id="add-at-ing-input" placeholder="Add ingredient…" autocomplete="off">
+              <div class="ac-list" id="add-at-ing-list"></div>
+            </div>
+            <div class="chips" id="add-at-ing-chips"></div>
+            <input type="text" id="add-at-note" placeholder="Note (optional, e.g. crumble in)">
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+              <button class="btn-ghost-sm" id="add-at-cancel">Cancel</button>
+              <button class="btn" id="add-at-confirm">Add</button>
+            </div>
+          </div>
+          <div id="additions-list" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+        </div>
+
+        <!-- NOTES / TIPS / PHOTOS (collapsed) -->
+        <div class="qt-card">
+          <button class="qt-tog" id="extras-toggle">+ Notes, tips &amp; photos</button>
+          <div id="extras-body" style="display:none;flex-direction:column;gap:0.85rem;margin-top:0.25rem">
+            <div class="field"><label>Output name <span style="font-size:0.75em;color:var(--muted)">(optional — e.g. "Herby onions", "Reduced sauce")</span></label><input type="text" id="rec-output-label" placeholder="Auto-derived if blank"></div>
+            <div class="field"><label>Step notes</label><textarea id="rec-notes" placeholder="e.g. fine dice, until translucent…" style="min-height:56px"></textarea></div>
+            <div class="field"><label>Target result (custom text)</label><input type="text" id="rec-target" placeholder="or tap a button above"></div>
+            <div>
+              <div class="section-title">Tips for this step</div>
+              <div class="tips-list" id="rec-tips-list"></div>
+              <button class="btn-ghost-sm" id="rec-add-tip" style="margin-top:0.35rem">+ Add tip</button>
+            </div>
+            <div>
+              <div class="section-title">Photos</div>
+              <div class="photos-row" id="rec-photos-row">
+                <button class="photo-add-btn" id="rec-photo-btn" title="Add photo">&#128247;</button>
+                <input type="file" id="rec-photo-file" accept="image/*" capture="environment" style="display:none" multiple>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parallel + Save -->
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+          <button class="btn-ghost-sm" id="rec-parallel-btn">&#9654;&#9654; Parallel step</button>
+          <button class="btn btn-lg" id="rec-save-step-btn" style="flex:1">Save step &#8594;</button>
+        </div>
+
+        <!-- Done steps -->
         <div id="rec-steps-done" style="display:none">
-          <div class="section-title">Recorded steps</div>
-          <div id="rec-steps-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem"></div>
+          <div class="section-title" style="margin-bottom:0.5rem">Recorded steps</div>
+          <div id="rec-steps-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
         </div>
 
       </div>
 
-      <!-- ══════════════════════════════════════════
-           EDIT MODE
-      ══════════════════════════════════════════ -->
+      <!-- ════════════ EDIT MODE ════════════ -->
       <div id="mode-edit" style="display:none">
         <div class="section-title" style="margin-bottom:0.75rem">Steps</div>
         <div class="steps-list" id="edit-steps-list"></div>
         <button class="btn-ghost-sm" id="edit-add-step" style="margin-top:0.75rem;width:100%">+ Add step</button>
       </div>
 
-      <!-- ══════════════════════════════════════════
-           PREVIEW MODE
-      ══════════════════════════════════════════ -->
+      <!-- ════════════ PREVIEW MODE ════════════ -->
       <div id="mode-preview" style="display:none">
         <div class="preview-recipe" id="preview-content"></div>
       </div>
 
-      <!-- ══════════════════════════════════════════
-           ACTION BAR
-      ══════════════════════════════════════════ -->
+      <!-- Action bar -->
       <div class="action-bar">
         <button class="btn" id="save-json-btn">&#11123; Download JSON</button>
         <button class="btn-ghost-sm" id="save-folder-btn" style="display:none">&#128193; Save to folder</button>
@@ -322,123 +394,193 @@
   'use strict';
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  // ── File System Access API support ──
   const hasFSA = 'showSaveFilePicker' in window;
   if (hasFSA) document.getElementById('save-folder-btn').style.display = '';
+
+  // ── Taxonomy data ──
+
+  const ING_TAXONOMY = {
+    'Veg': { icon: '🥕', subs: {
+      'Root':        ['Carrot','Potato','Sweet potato','Parsnip','Beetroot','Celeriac','Turnip','Swede','Radish'],
+      'Allium':      ['Onion','Red onion','Garlic','Shallot','Leek','Spring onion','Chive'],
+      'Brassica':    ['Broccoli','Cauliflower','Cabbage','Kale','Brussels sprouts','Pak choi','Savoy cabbage','Kohlrabi'],
+      'Leaf':        ['Spinach','Lettuce','Rocket','Chard','Watercress','Radicchio','Endive'],
+      'Nightshade':  ['Tomato','Cherry tomato','Pepper','Red pepper','Aubergine','Chilli','Jalapeño'],
+      'Squash':      ['Courgette','Butternut squash','Pumpkin','Cucumber','Marrow'],
+      'Mushroom':    ['Button mushroom','Chestnut mushroom','Portobello','Shiitake','Oyster mushroom','Dried porcini','Chanterelle'],
+      'Pod & Corn':  ['Peas','Broad beans','French beans','Edamame','Sweetcorn','Mangetout','Sugar snap'],
+      'Other':       ['Fennel','Asparagus','Celery','Artichoke','Avocado','Kohlrabi','Okra'],
+    }},
+    'Fruit': { icon: '🍋', subs: {
+      'Citrus':      ['Lemon','Lime','Orange','Grapefruit','Clementine','Yuzu'],
+      'Berry':       ['Strawberry','Blueberry','Raspberry','Blackberry','Cranberry','Blackcurrant'],
+      'Stone':       ['Mango','Peach','Cherry','Plum','Apricot','Nectarine'],
+      'Tropical':    ['Banana','Pineapple','Coconut','Papaya','Passion fruit','Lychee'],
+      'Pome':        ['Apple','Pear','Quince'],
+      'Dried':       ['Raisin','Sultana','Date','Fig','Prune','Dried apricot','Dried cranberry'],
+    }},
+    'Protein': { icon: '🥩', subs: {
+      'Beef':        ['Beef mince','Steak','Brisket','Short rib','Chuck','Sirloin','Fillet steak','Ribeye'],
+      'Lamb':        ['Lamb mince','Lamb chop','Lamb shoulder','Lamb leg','Rack of lamb'],
+      'Pork':        ['Bacon','Pancetta','Lardons','Pork belly','Pork chop','Sausage','Ham','Pork mince'],
+      'Poultry':     ['Chicken breast','Chicken thigh','Chicken leg','Whole chicken','Duck breast','Duck leg','Turkey'],
+      'Fish':        ['Salmon','Cod','Haddock','Sea bass','Mackerel','Tuna','Trout','Sardine','Halibut'],
+      'Shellfish':   ['Prawns','King prawns','Mussels','Clams','Scallops','Crab','Lobster','Squid'],
+      'Egg':         ['Egg','Egg white','Egg yolk'],
+      'Plant':       ['Tofu','Firm tofu','Silken tofu','Tempeh','Seitan'],
+    }},
+    'Dairy': { icon: '🧈', subs: {
+      'Butter':      ['Unsalted butter','Salted butter','Clarified butter','Ghee'],
+      'Cream':       ['Double cream','Single cream','Whipping cream','Crème fraîche','Sour cream','Clotted cream'],
+      'Milk':        ['Whole milk','Semi-skimmed milk','Skimmed milk','Oat milk','Almond milk','Buttermilk','Coconut milk'],
+      'Cheese':      ['Parmesan','Cheddar','Mozzarella','Feta','Brie','Ricotta','Gruyère','Cream cheese','Pecorino','Goat\'s cheese','Halloumi','Gorgonzola'],
+      'Yoghurt':     ['Greek yoghurt','Natural yoghurt','Labneh'],
+    }},
+    'Grains': { icon: '🌾', subs: {
+      'Rice':        ['Basmati rice','Risotto rice','Long-grain rice','Jasmine rice','Brown rice','Short-grain rice'],
+      'Pasta':       ['Spaghetti','Penne','Tagliatelle','Rigatoni','Fusilli','Lasagne sheets','Orzo','Linguine','Fettuccine'],
+      'Noodle':      ['Egg noodles','Rice noodles','Soba noodles','Udon noodles','Ramen noodles','Glass noodles'],
+      'Flour':       ['Plain flour','Self-raising flour','Bread flour','Tipo 00','Cornflour','Semolina','Rye flour','Buckwheat flour'],
+      'Other':       ['Polenta','Couscous','Quinoa','Bulgur wheat','Pearl barley','Rolled oats','Breadcrumbs','Panko'],
+    }},
+    'Herb & Spice': { icon: '🌿', subs: {
+      'Fresh herb':  ['Parsley','Basil','Coriander','Thyme','Rosemary','Sage','Mint','Dill','Tarragon','Chives','Bay leaf','Lemongrass','Kaffir lime leaf'],
+      'Dried herb':  ['Dried oregano','Dried thyme','Bay leaf','Herbes de Provence','Mixed herbs','Dried basil'],
+      'Warm spice':  ['Cumin','Coriander seed','Cinnamon','Cardamom','Clove','Nutmeg','Allspice','Star anise','Turmeric','Paprika','Smoked paprika','Saffron','Fennel seed'],
+      'Heat':        ['Chilli flakes','Cayenne pepper','Black pepper','White pepper','Szechuan pepper','Chilli powder'],
+      'Seeds':       ['Sesame seeds','Mustard seeds','Poppy seeds','Caraway seeds','Nigella seeds'],
+      'Spice blend': ['Garam masala','Ras el hanout','Chinese 5-spice','Za\'atar','Sumac','Dukkah','Jerk seasoning','Baharat'],
+    }},
+    'Pantry': { icon: '🫙', subs: {
+      'Sugar & sweet':['Caster sugar','Brown sugar','Icing sugar','Demerara','Honey','Maple syrup','Golden syrup','Molasses'],
+      'Canned':      ['Chopped tomatoes','Passata','Coconut milk','Chickpeas','Kidney beans','Cannellini beans','Tuna','Anchovies'],
+      'Nuts':        ['Almonds','Walnuts','Pecans','Cashews','Pine nuts','Pistachios','Hazelnuts','Peanuts'],
+      'Pulses':      ['Red lentils','Green lentils','Black lentils','Dried chickpeas','Split peas'],
+      'Baking':      ['Baking powder','Bicarbonate of soda','Dried yeast','Vanilla extract','Cocoa powder','Dark chocolate'],
+      'Paste':       ['Tomato paste','White miso','Red miso','Harissa','Tahini','Chipotle paste','Curry paste','Pesto'],
+      'Seasoning':   ['Sea salt','Fleur de sel','MSG','Nutritional yeast'],
+    }},
+    'Liquid': { icon: '🫗', subs: {
+      'Oil':         ['Olive oil','Extra virgin olive oil','Vegetable oil','Sesame oil','Coconut oil','Groundnut oil'],
+      'Stock':       ['Chicken stock','Beef stock','Vegetable stock','Fish stock','Dashi','Bone broth'],
+      'Wine':        ['White wine','Red wine','Rosé','Sherry','Marsala','Vermouth','Champagne'],
+      'Asian':       ['Soy sauce','Light soy','Dark soy','Fish sauce','Oyster sauce','Hoisin','Mirin','Sake','Shaoxing wine','Tamari','Ponzu'],
+      'Vinegar':     ['White wine vinegar','Red wine vinegar','Balsamic vinegar','Rice vinegar','Cider vinegar','Sherry vinegar'],
+      'Spirits':     ['Brandy','Cognac','Whisky','Rum','Gin'],
+      'Juice & water':['Lemon juice','Lime juice','Orange juice','Water','Tomato juice','Beer'],
+    }},
+  };
+
+  const PROC_TAXONOMY = {
+    'Prep':  { icon: '🔪', cat: 'prep', items: [
+      {n:'Chop',t:'knife_size'},{n:'Slice',t:'knife_size'},{n:'Dice',t:'knife_size'},
+      {n:'Mince',t:null},{n:'Julienne',t:null},{n:'Grate',t:null},
+      {n:'Peel',t:null},{n:'Crush',t:null},{n:'Zest',t:null},{n:'Squeeze',t:null},
+      {n:'Mix',t:'mix_state'},{n:'Whisk',t:'mix_state'},{n:'Beat',t:'mix_state'},
+      {n:'Fold',t:'mix_state'},{n:'Blend',t:'blend_state'},{n:'Knead',t:'dough_state'},
+      {n:'Marinate',t:null},{n:'Season',t:null},{n:'Coat',t:null},{n:'Drain',t:null},
+    ]},
+    'Pan':   { icon: '🍳', cat: 'cook', items: [
+      {n:'Fry',t:'cook_colour'},{n:'Sauté',t:'cook_colour'},{n:'Stir-fry',t:'cook_colour'},
+      {n:'Deep-fry',t:'cook_colour'},{n:'Sear',t:'meat_done'},{n:'Brown',t:'cook_colour'},
+      {n:'Sweat',t:'cook_colour'},{n:'Caramelise',t:'caramel'},{n:'Simmer',t:'liquid_state'},
+      {n:'Reduce',t:'liquid_state'},{n:'Deglaze',t:null},{n:'Glaze',t:'cook_colour'},
+    ]},
+    'Oven':  { icon: '🔥', cat: 'cook', items: [
+      {n:'Roast',t:'cook_colour'},{n:'Bake',t:'bake_state'},{n:'Grill / Broil',t:'cook_colour'},
+      {n:'Slow roast',t:null},{n:'Blind bake',t:'bake_state'},{n:'Gratinate',t:'cook_colour'},
+    ]},
+    'Water': { icon: '💧', cat: 'cook', items: [
+      {n:'Boil',t:'boil_state'},{n:'Simmer',t:'liquid_state'},{n:'Steam',t:null},
+      {n:'Poach',t:null},{n:'Blanch',t:null},{n:'Pressure cook',t:null},
+    ]},
+    'Rest':  { icon: '⏸', cat: 'rest', items: [
+      {n:'Rest',t:null},{n:'Cool',t:null},{n:'Chill',t:null},
+      {n:'Proof',t:'proof_state'},{n:'Set',t:null},{n:'Freeze',t:null},
+    ]},
+    'Serve': { icon: '🍽', cat: 'serve', items: [
+      {n:'Plate',t:null},{n:'Garnish',t:null},{n:'Dress',t:null},
+      {n:'Carve',t:null},{n:'Portion',t:null},{n:'Strain',t:null},
+    ]},
+  };
+
+  const TARGET_STATES = {
+    knife_size:  ['Fine','Medium','Rough','Thin slices','Thick slices','Matchsticks','Ribbons'],
+    cook_colour: ['Softened','Translucent','Golden','Light brown','Browned','Caramelised','Crispy','Charred'],
+    meat_done:   ['Rare','Med-rare','Medium','Med-well','Well done','Browned all over','Crispy skin'],
+    caramel:     ['Lightly golden','Amber','Deep amber','Dark caramel'],
+    liquid_state:['Gentle simmer','Rolling boil','Reduced by half','Thickened','Coating spoon','Syrupy','Nearly dry'],
+    boil_state:  ['Al dente','Tender','Soft','Falling apart'],
+    bake_state:  ['Golden','Dark golden','Cooked through','Springy','Crusty'],
+    mix_state:   ['Just combined','Smooth','Pale and fluffy','Stiff peaks','Soft peaks','Ribbon stage'],
+    blend_state: ['Smooth','Chunky','Emulsified'],
+    dough_state: ['Smooth','Windowpane ready'],
+    proof_state: ['Doubled in size','Puffed up','Springs back'],
+  };
+
+  // [attention, check_interval_s, can_extend_s, can_interrupt]
+  const PROC_DEFAULTS = {
+    'Fry':['constant',null,60,false],'Sauté':['constant',null,60,false],
+    'Stir-fry':['constant',null,30,false],'Deep-fry':['constant',null,30,false],
+    'Sear':['constant',null,null,false],'Brown':['periodic',120,120,false],
+    'Sweat':['periodic',120,300,true],'Caramelise':['periodic',60,60,false],
+    'Simmer':['passive',300,600,true],'Reduce':['periodic',120,120,false],
+    'Deglaze':['constant',null,null,false],'Glaze':['periodic',60,120,false],
+    'Roast':['passive',600,900,true],'Bake':['passive',600,600,true],
+    'Grill / Broil':['constant',null,120,false],'Slow roast':['none',null,1800,true],
+    'Blind bake':['passive',600,600,true],'Gratinate':['constant',null,120,false],
+    'Boil':['periodic',180,120,true],'Steam':['passive',300,300,true],
+    'Poach':['periodic',120,120,true],'Blanch':['constant',null,null,false],
+    'Pressure cook':['none',null,1200,false],
+    'Rest':['none',null,-1,true],'Cool':['none',null,-1,true],
+    'Chill':['none',null,-1,true],'Proof':['none',null,-1,true],
+    'Set':['none',null,-1,true],'Freeze':['none',null,-1,true],
+  };
+
+  const HEAT_PRESETS = ['Low','Med-low','Medium','Med-high','High','Very high'];
+  const VESSEL_PRESETS = ['Frying pan','Non-stick pan','Cast iron','Saucepan','Stock pot','Wok','Baking tray','Roasting tin','Dutch oven','Casserole','Grill pan','Mixing bowl'];
+  const TIME_ADJS = [
+    {l:'30s',s:30},{l:'1m',s:60},{l:'5m',s:300},{l:'30m',s:1800},
+  ];
 
   // ── Schema factory ──
   function uid() { return Math.random().toString(36).slice(2, 9); }
   function newRecipe() {
-    return {
-      schema: 'wmw-recipe/1',
-      license: 'CC BY-NC 4.0',
-      id: uid(),
-      title: '',
-      serves: null,
-      cuisine: '',
-      tags: [],
-      description: '',
-      tips: [],
-      ingredients: [],
-      steps: [],
-      media: []
-    };
+    return { schema:'wmw-recipe/1', license:'CC BY-NC 4.0', id:uid(), title:'', serves:null,
+             cuisine:'', tags:[], description:'', tips:[], ingredients:[], steps:[], media:[] };
   }
   function newStep(parallel_with = []) {
-    return {
-      id: uid(),
-      order: 0,
-      process: '',
-      process_category: 'prep',
-      ingredient_ids: [],
-      vessel: null,
-      heat: null,
-      heat_unit: null,
-      duration_s: null,
-      duration_type: 'recorded',
-      notes: '',
-      target: '',
-      tips: [],
-      photos: [],
-      after: [],
-      parallel_ok: parallel_with.length > 0,
-      parallel_with
-    };
+    return { id:uid(), order:0, process:'', process_category:'prep', ingredient_ids:[],
+             vessel:null, heat:null, heat_unit:null, duration_s:null, duration_type:'recorded',
+             notes:'', target:'', output_label:null, tips:[], photos:[], additions:[], after:[], parallel_ok:parallel_with.length>0,
+             parallel_with, stream:null, attention:'periodic', check_interval_s:null,
+             can_extend_s:null, can_interrupt:true };
   }
-
-  // ── Built-in process library ──
-  const PROCESS_LIBRARY = [
-    { name: 'chop',          category: 'prep' },
-    { name: 'slice',         category: 'prep' },
-    { name: 'dice',          category: 'prep' },
-    { name: 'mince',         category: 'prep' },
-    { name: 'grate',         category: 'prep' },
-    { name: 'peel',          category: 'prep' },
-    { name: 'crush',         category: 'prep' },
-    { name: 'zest',          category: 'prep' },
-    { name: 'squeeze',       category: 'prep' },
-    { name: 'measure',       category: 'prep' },
-    { name: 'weigh',         category: 'prep' },
-    { name: 'mix',           category: 'prep' },
-    { name: 'whisk',         category: 'prep' },
-    { name: 'beat',          category: 'prep' },
-    { name: 'blend',         category: 'prep' },
-    { name: 'marinate',      category: 'prep' },
-    { name: 'soak',          category: 'prep' },
-    { name: 'fry',           category: 'cook' },
-    { name: 'sauté',         category: 'cook' },
-    { name: 'stir-fry',      category: 'cook' },
-    { name: 'deep-fry',      category: 'cook' },
-    { name: 'boil',          category: 'cook' },
-    { name: 'simmer',        category: 'cook' },
-    { name: 'poach',         category: 'cook' },
-    { name: 'steam',         category: 'cook' },
-    { name: 'roast',         category: 'cook' },
-    { name: 'bake',          category: 'cook' },
-    { name: 'grill',         category: 'cook' },
-    { name: 'broil',         category: 'cook' },
-    { name: 'sear',          category: 'cook' },
-    { name: 'slow-cook',     category: 'cook' },
-    { name: 'pressure-cook', category: 'cook' },
-    { name: 'rest',          category: 'rest' },
-    { name: 'cool',          category: 'rest' },
-    { name: 'chill',         category: 'rest' },
-    { name: 'proof',         category: 'rest' },
-    { name: 'plate',         category: 'serve' },
-    { name: 'garnish',       category: 'serve' },
-  ];
-  const COOK_PROCESSES = new Set(PROCESS_LIBRARY.filter(p => p.category === 'cook').map(p => p.name));
 
   // ── localStorage library ──
   function loadLib(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
   function saveLib(key, arr) { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} }
   function addToLib(key, item) {
     const lib = loadLib(key);
-    if (!lib.find(x => x.name.toLowerCase() === item.name.toLowerCase())) {
-      lib.push(item);
-      saveLib(key, lib);
-    }
+    if (!lib.find(x => x.name.toLowerCase() === item.name.toLowerCase())) { lib.push(item); saveLib(key, lib); }
   }
-
   function getIngLib() { return loadLib('wmw-ing-lib'); }
   function getProcLib() {
     const custom = loadLib('wmw-proc-lib');
     const names = new Set(custom.map(p => p.name.toLowerCase()));
-    return [...PROCESS_LIBRARY.filter(p => !names.has(p.name.toLowerCase())), ...custom];
+    const builtin = Object.values(PROC_TAXONOMY).flatMap(g => g.items.map(i => ({name:i.n,category:g.cat})));
+    return [...builtin.filter(p => !names.has(p.name.toLowerCase())), ...custom];
   }
-  function getVesselLib() { return loadLib('wmw-vessel-lib'); }
 
   // ── State ──
   let recipe = newRecipe();
   let currentMode = 'record';
-  let recTimerInterval = null;
-  let recTimerStart = null;
-  let recTimerElapsed = 0; // seconds accumulated
-  let recStepIngredients = []; // {id, name, qty, unit}
-  let recStepProcess = '';
-  let recStepTips = [];
-  let recStepPhotos = []; // {id, data, caption}
-  let recParallelWith = [];
+  let recTimerInterval = null, recTimerStart = null, recTimerElapsed = 0;
+  let recStepIngredients = [], recStepProcess = '', recStepCategory = 'prep';
+  let recStepTips = [], recStepPhotos = [], recStepAdditions = [], recParallelWith = [];
+  let recStepAttention = 'periodic', recStepCheckInterval = null;
+  let recStepCanExtend = null, recStepCanInterrupt = true;
+  let qtSelectedTarget = '', qtSelectedHeat = '', qtSelectedVessel = '';
 
   // ── Draft persistence ──
   function saveDraft() {
@@ -469,145 +611,345 @@
     });
   });
 
-  // ── Meta inputs → recipe ──
-  function bindMeta() {
-    document.getElementById('r-title').addEventListener('input', e => { recipe.title = e.target.value; saveDraft(); });
-    document.getElementById('r-serves').addEventListener('input', e => { recipe.serves = parseInt(e.target.value) || null; saveDraft(); });
-    document.getElementById('r-cuisine').addEventListener('input', e => { recipe.cuisine = e.target.value; saveDraft(); });
-    document.getElementById('r-tags').addEventListener('input', e => { recipe.tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean); saveDraft(); });
-    document.getElementById('r-desc').addEventListener('input', e => { recipe.description = e.target.value; saveDraft(); });
-  }
-  bindMeta();
+  // ── Meta inputs ──
+  document.getElementById('r-title').addEventListener('input', e => { recipe.title = e.target.value; saveDraft(); });
+  document.getElementById('r-serves').addEventListener('input', e => { recipe.serves = parseInt(e.target.value)||null; saveDraft(); });
+  document.getElementById('r-cuisine').addEventListener('input', e => { recipe.cuisine = e.target.value; saveDraft(); });
+  document.getElementById('r-tags').addEventListener('input', e => { recipe.tags = e.target.value.split(',').map(t=>t.trim()).filter(Boolean); saveDraft(); });
+  document.getElementById('r-desc').addEventListener('input', e => { recipe.description = e.target.value; saveDraft(); });
 
   // ── Recipe-level tips ──
   function renderRecipeTips() {
     const list = document.getElementById('recipe-tips-list');
     list.innerHTML = '';
     recipe.tips.forEach((tip, i) => {
-      const row = document.createElement('div');
-      row.className = 'tip-row';
-      row.innerHTML = `<textarea class="rec-tip-ta" placeholder="Enter tip or warning…">${esc(tip)}</textarea>
-        <button class="tip-del" data-i="${i}">&times;</button>`;
+      const row = document.createElement('div'); row.className = 'tip-row';
+      row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea><button class="tip-del">&times;</button>`;
       row.querySelector('textarea').addEventListener('input', e => { recipe.tips[i] = e.target.value; saveDraft(); });
-      row.querySelector('.tip-del').addEventListener('click', () => { recipe.tips.splice(i, 1); renderRecipeTips(); saveDraft(); });
+      row.querySelector('.tip-del').addEventListener('click', () => { recipe.tips.splice(i,1); renderRecipeTips(); saveDraft(); });
       list.appendChild(row);
     });
   }
   document.getElementById('add-recipe-tip').addEventListener('click', () => { recipe.tips.push(''); renderRecipeTips(); saveDraft(); });
 
-  // ── Autocomplete helper ──
-  function setupAC(inputId, listId, getItems, onSelect, allowNew = true) {
-    const input = document.getElementById(inputId);
-    const list  = document.getElementById(listId);
-    let focused = -1;
+  // ── Quick-tap helpers ──
+  function vibe() { if (navigator.vibrate) navigator.vibrate(8); }
 
-    function show(items) {
-      list.innerHTML = '';
-      focused = -1;
-      if (!items.length && !allowNew) { list.classList.remove('open'); return; }
-      items.forEach((item, i) => {
-        const el = document.createElement('div');
-        el.className = 'ac-item';
-        el.textContent = typeof item === 'string' ? item : item.name;
-        el.addEventListener('mousedown', e => { e.preventDefault(); onSelect(item); input.value = ''; list.classList.remove('open'); });
-        list.appendChild(el);
-      });
-      if (allowNew && input.value.trim() && !items.find(x => (typeof x === 'string' ? x : x.name).toLowerCase() === input.value.trim().toLowerCase())) {
-        const el = document.createElement('div');
-        el.className = 'ac-item ac-add';
-        el.textContent = `+ Add "${input.value.trim()}"`;
-        el.addEventListener('mousedown', e => { e.preventDefault(); onSelect({ name: input.value.trim(), _new: true }); input.value = ''; list.classList.remove('open'); });
-        list.appendChild(el);
-      }
-      list.classList.toggle('open', list.children.length > 0);
+  function qbtn(label, icon, onClick, small) {
+    const btn = document.createElement('button');
+    btn.className = 'qt-btn' + (small ? ' qt-btn-sm' : '');
+    if (icon) {
+      btn.innerHTML = `<span class="qt-icon">${icon}</span><span>${esc(label)}</span>`;
+    } else {
+      btn.textContent = label;
     }
-
-    input.addEventListener('input', () => {
-      const q = input.value.trim().toLowerCase();
-      if (!q) { list.classList.remove('open'); return; }
-      const filtered = getItems().filter(x => (typeof x === 'string' ? x : x.name).toLowerCase().includes(q)).slice(0, 8);
-      show(filtered);
-    });
-    input.addEventListener('focus', () => {
-      if (input.value.trim()) input.dispatchEvent(new Event('input'));
-    });
-    input.addEventListener('keydown', e => {
-      const items = list.querySelectorAll('.ac-item');
-      if (e.key === 'ArrowDown') { focused = Math.min(focused + 1, items.length - 1); items.forEach((el,i) => el.classList.toggle('focused', i === focused)); e.preventDefault(); }
-      else if (e.key === 'ArrowUp') { focused = Math.max(focused - 1, 0); items.forEach((el,i) => el.classList.toggle('focused', i === focused)); e.preventDefault(); }
-      else if (e.key === 'Enter' && focused >= 0) { items[focused].dispatchEvent(new MouseEvent('mousedown')); e.preventDefault(); }
-      else if (e.key === 'Escape') { list.classList.remove('open'); }
-    });
-    document.addEventListener('click', e => { if (!input.contains(e.target) && !list.contains(e.target)) list.classList.remove('open'); });
+    btn.addEventListener('click', () => { vibe(); onClick(); });
+    return btn;
   }
 
-  // ── Record mode: ingredient AC ──
-  setupAC('rec-ing-input', 'rec-ing-list',
-    () => getIngLib(),
-    item => {
-      if (item._new) {
-        // prompt for qty/unit
-        const qty = prompt(`Quantity of "${item.name}"? (leave blank to skip)`);
-        const unit = qty ? prompt('Unit? (e.g. whole, g, ml, tsp)') || '' : '';
-        const ing = { id: uid(), name: item.name, qty: parseFloat(qty) || null, unit: unit || null, category: '' };
-        addToLib('wmw-ing-lib', ing);
-        recipe.ingredients.push(ing);
-        recStepIngredients.push(ing);
-      } else {
-        if (!recStepIngredients.find(x => x.id === item.id)) {
-          if (!recipe.ingredients.find(x => x.id === item.id)) recipe.ingredients.push(item);
-          recStepIngredients.push(item);
-        }
-      }
+  // ── Ingredient quick-tap ──
+  function buildIngL0() {
+    const grid = document.getElementById('ing-grid');
+    const bc = document.getElementById('ing-bc');
+    grid.className = 'qt-grid';
+    grid.innerHTML = '';
+    bc.innerHTML = ''; bc.style.display = 'none';
+    Object.entries(ING_TAXONOMY).forEach(([cat, data]) => {
+      grid.appendChild(qbtn(cat, data.icon, () => buildIngL1(cat)));
+    });
+    renderRecentIngs();
+  }
+
+  function buildIngL1(cat) {
+    const grid = document.getElementById('ing-grid');
+    const bc = document.getElementById('ing-bc');
+    grid.className = 'qt-grid';
+    grid.innerHTML = '';
+    bc.innerHTML = '';
+    bc.style.display = '';
+    const back = document.createElement('button');
+    back.className = 'qt-back';
+    back.textContent = '← ' + cat;
+    back.addEventListener('click', buildIngL0);
+    bc.appendChild(back);
+    Object.keys(ING_TAXONOMY[cat].subs).forEach(sub => {
+      grid.appendChild(qbtn(sub, null, () => buildIngL2(cat, sub)));
+    });
+  }
+
+  function buildIngL2(cat, sub) {
+    const grid = document.getElementById('ing-grid');
+    const bc = document.getElementById('ing-bc');
+    grid.className = 'qt-grid';
+    grid.innerHTML = '';
+    bc.innerHTML = '';
+    bc.style.display = '';
+    const back = document.createElement('button');
+    back.className = 'qt-back';
+    back.textContent = '← ' + sub;
+    back.addEventListener('click', () => buildIngL1(cat));
+    bc.appendChild(back);
+    ING_TAXONOMY[cat].subs[sub].forEach(name => {
+      grid.appendChild(qbtn(name, null, () => selectIngredient(name, cat)));
+    });
+  }
+
+  function selectIngredient(name, cat) {
+    const existing = recipe.ingredients.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const ing = existing || { id:uid(), name, qty:null, unit:null, category:cat||'' };
+    if (!existing) {
+      recipe.ingredients.push(ing);
+      addToLib('wmw-ing-lib', {id:uid(), name, qty:null, unit:null, category:cat||''});
+    }
+    if (!recStepIngredients.find(x => x.id === ing.id)) {
+      recStepIngredients.push(ing);
       renderRecIngChips();
       saveDraft();
     }
-  );
+    buildIngL0();
+  }
 
-  function renderRecIngChips() {
-    const chips = document.getElementById('rec-ing-chips');
-    chips.innerHTML = '';
-    recStepIngredients.forEach((ing, i) => {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.innerHTML = `${esc(ing.name)}${ing.qty ? ' ' + ing.qty : ''}${ing.unit ? ' ' + ing.unit : ''} <button class="chip-del" data-i="${i}">&times;</button>`;
-      chip.querySelector('.chip-del').addEventListener('click', () => { recStepIngredients.splice(i, 1); renderRecIngChips(); });
-      chips.appendChild(chip);
+  // Ingredient search / custom
+  document.getElementById('ing-search-toggle').addEventListener('click', () => {
+    const wrap = document.getElementById('ing-search-wrap');
+    const visible = wrap.style.display !== 'none';
+    wrap.style.display = visible ? 'none' : '';
+    if (!visible) document.getElementById('ing-search-input').focus();
+  });
+
+  const ingSearchInput = document.getElementById('ing-search-input');
+  const ingSearchList  = document.getElementById('ing-search-list');
+  ingSearchInput.addEventListener('input', () => {
+    const q = ingSearchInput.value.trim().toLowerCase();
+    ingSearchList.innerHTML = '';
+    if (!q) { ingSearchList.classList.remove('open'); return; }
+    const matches = [];
+    Object.entries(ING_TAXONOMY).forEach(([cat, data]) => {
+      Object.entries(data.subs).forEach(([, items]) => {
+        items.forEach(name => { if (name.toLowerCase().includes(q)) matches.push({name, cat}); });
+      });
+    });
+    getIngLib().forEach(ing => {
+      if (ing.name.toLowerCase().includes(q) && !matches.find(m => m.name.toLowerCase() === ing.name.toLowerCase()))
+        matches.push({name:ing.name, cat:''});
+    });
+    matches.slice(0,8).forEach(m => {
+      const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = m.name;
+      el.addEventListener('mousedown', e => {
+        e.preventDefault(); selectIngredient(m.name, m.cat);
+        ingSearchInput.value = ''; ingSearchList.classList.remove('open');
+        document.getElementById('ing-search-wrap').style.display = 'none';
+      });
+      ingSearchList.appendChild(el);
+    });
+    if (!matches.find(m => m.name.toLowerCase() === q)) {
+      const el = document.createElement('div'); el.className = 'ac-item ac-add';
+      el.textContent = `+ Add "${ingSearchInput.value.trim()}"`;
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const name = ingSearchInput.value.trim();
+        selectIngredient(name, '');
+        ingSearchInput.value = ''; ingSearchList.classList.remove('open');
+        document.getElementById('ing-search-wrap').style.display = 'none';
+      });
+      ingSearchList.appendChild(el);
+    }
+    ingSearchList.classList.toggle('open', ingSearchList.children.length > 0);
+  });
+  document.addEventListener('click', e => {
+    if (!ingSearchInput.contains(e.target) && !ingSearchList.contains(e.target))
+      ingSearchList.classList.remove('open');
+  });
+
+  // ── Process quick-tap ──
+  function buildProcL0() {
+    const grid = document.getElementById('proc-grid');
+    grid.className = 'qt-grid qt-grid-2';
+    grid.innerHTML = '';
+    grid.style.display = '';
+    Object.entries(PROC_TAXONOMY).forEach(([grp, data]) => {
+      grid.appendChild(qbtn(grp, data.icon, () => buildProcL1(grp)));
     });
   }
 
-  // ── Record mode: process AC ──
-  setupAC('rec-proc-input', 'rec-proc-list',
-    () => getProcLib(),
-    item => {
-      recStepProcess = typeof item === 'string' ? item : item.name;
-      document.getElementById('rec-proc-input').value = recStepProcess;
-      if (item._new) addToLib('wmw-proc-lib', { name: recStepProcess, category: 'prep' });
-      const isCook = COOK_PROCESSES.has(recStepProcess.toLowerCase());
-      document.getElementById('rec-heat-wrap').style.display   = isCook ? '' : 'none';
-      document.getElementById('rec-vessel-wrap').style.display = isCook ? '' : 'none';
-      document.getElementById('rec-proc-list').classList.remove('open');
-    }
-  );
+  function buildProcL1(grp) {
+    const grid = document.getElementById('proc-grid');
+    grid.className = 'qt-grid';
+    grid.innerHTML = '';
+    // Back button spanning all columns
+    const backWrap = document.createElement('div');
+    backWrap.style.cssText = 'grid-column:1/-1';
+    const back = document.createElement('button');
+    back.className = 'qt-back';
+    back.textContent = '← ' + grp;
+    back.addEventListener('click', () => { buildProcL0(); clearProcSelected(); });
+    backWrap.appendChild(back);
+    grid.appendChild(backWrap);
+    PROC_TAXONOMY[grp].items.forEach(proc => {
+      grid.appendChild(qbtn(proc.n, null, () => selectProcess(proc, PROC_TAXONOMY[grp].cat)));
+    });
+  }
 
-  // ── Record mode: vessel AC ──
-  setupAC('rec-vessel-input', 'rec-vessel-list',
-    () => getVesselLib(),
-    item => {
-      const name = typeof item === 'string' ? item : item.name;
-      document.getElementById('rec-vessel-input').value = name;
-      if (item._new) addToLib('wmw-vessel-lib', { name });
-      document.getElementById('rec-vessel-list').classList.remove('open');
-    }
-  );
+  function selectProcess(proc, cat) {
+    recStepProcess = proc.n;
+    recStepCategory = cat;
+    const defs = PROC_DEFAULTS[proc.n] || ['periodic', null, null, true];
+    recStepAttention = defs[0]; recStepCheckInterval = defs[1];
+    recStepCanExtend = defs[2]; recStepCanInterrupt = defs[3];
 
-  // ── Record timer ──
+    document.getElementById('proc-grid').style.display = 'none';
+    document.getElementById('proc-search-wrap').style.display = 'none';
+    const sel = document.getElementById('proc-selected');
+    document.getElementById('proc-sel-name').textContent = proc.n;
+    sel.style.display = '';
+
+    // Target states
+    const targetCard = document.getElementById('qt-target-card');
+    if (proc.t && TARGET_STATES[proc.t]) {
+      buildTargetGrid(proc.t);
+      targetCard.style.display = '';
+    } else {
+      targetCard.style.display = 'none';
+    }
+    // Heat & vessel for cook
+    document.getElementById('qt-hv-card').style.display = cat === 'cook' ? '' : 'none';
+    if (cat === 'cook') { buildHeatGrid(); buildVesselGrid(); }
+    maybeShowAdditionsCard();
+  }
+
+  function clearProcSelected() {
+    recStepProcess = ''; recStepCategory = 'prep';
+    document.getElementById('proc-selected').style.display = 'none';
+    document.getElementById('qt-target-card').style.display = 'none';
+    document.getElementById('qt-hv-card').style.display = 'none';
+    document.getElementById('additions-card').style.display = 'none';
+    qtSelectedTarget = ''; qtSelectedHeat = ''; qtSelectedVessel = '';
+  }
+
+  document.getElementById('proc-clear').addEventListener('click', () => {
+    buildProcL0(); clearProcSelected();
+  });
+
+  document.getElementById('proc-search-toggle').addEventListener('click', () => {
+    const wrap = document.getElementById('proc-search-wrap');
+    const visible = wrap.style.display !== 'none';
+    wrap.style.display = visible ? 'none' : '';
+    if (!visible) document.getElementById('proc-search-input').focus();
+  });
+  document.getElementById('proc-search-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const val = e.target.value.trim();
+      if (!val) return;
+      addToLib('wmw-proc-lib', {name:val, category:'prep'});
+      selectProcess({n:val, t:null}, 'prep');
+      e.target.value = '';
+      document.getElementById('proc-search-wrap').style.display = 'none';
+    }
+  });
+
+  // ── Target states ──
+  function buildTargetGrid(type) {
+    const grid = document.getElementById('target-grid');
+    grid.innerHTML = '';
+    TARGET_STATES[type].forEach(state => {
+      const btn = document.createElement('button');
+      btn.className = 'qt-btn qt-btn-sm';
+      btn.textContent = state;
+      btn.addEventListener('click', () => {
+        vibe();
+        qtSelectedTarget = state;
+        document.getElementById('rec-target').value = state;
+        grid.querySelectorAll('.qt-btn').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        const sel = document.getElementById('target-selected');
+        document.getElementById('target-sel-text').textContent = state;
+        sel.style.display = '';
+      });
+      grid.appendChild(btn);
+    });
+  }
+  document.getElementById('target-clear').addEventListener('click', () => {
+    qtSelectedTarget = '';
+    document.getElementById('rec-target').value = '';
+    document.getElementById('target-selected').style.display = 'none';
+    document.getElementById('target-grid').querySelectorAll('.qt-btn').forEach(b => b.classList.remove('sel'));
+  });
+
+  // ── Heat & vessel ──
+  function buildHeatGrid() {
+    const grid = document.getElementById('heat-grid');
+    if (grid.children.length) return;
+    HEAT_PRESETS.forEach(h => {
+      const btn = document.createElement('button');
+      btn.className = 'qt-btn qt-btn-sm';
+      btn.textContent = h;
+      btn.addEventListener('click', () => {
+        vibe(); qtSelectedHeat = h;
+        document.getElementById('heat-selected').textContent = h;
+        grid.querySelectorAll('.qt-btn').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+      });
+      grid.appendChild(btn);
+    });
+  }
+  function buildVesselGrid() {
+    const grid = document.getElementById('vessel-grid');
+    if (grid.children.length) return;
+    VESSEL_PRESETS.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'qt-btn qt-btn-sm';
+      btn.textContent = v;
+      btn.addEventListener('click', () => {
+        vibe(); qtSelectedVessel = v;
+        document.getElementById('vessel-selected').textContent = v;
+        grid.querySelectorAll('.qt-btn').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  // ── Time adjust buttons ──
+  function syncTimeFields() {
+    document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
+    document.getElementById('rec-dur-h').value = Math.floor(recTimerElapsed / 3600) || '';
+    document.getElementById('rec-dur-m').value = Math.floor((recTimerElapsed % 3600) / 60) || '';
+    document.getElementById('rec-dur-s').value = recTimerElapsed % 60 || '';
+  }
+  function buildTimeAdj() {
+    const grid = document.getElementById('time-adj-row');
+    grid.className = 'qt-adj-grid';
+    TIME_ADJS.forEach(ta => {
+      const col = document.createElement('div');
+      col.className = 'qt-adj-col';
+      const lbl = document.createElement('div');
+      lbl.className = 'qt-adj-lbl';
+      lbl.textContent = ta.l;
+      const btns = document.createElement('div');
+      btns.className = 'qt-adj-btns';
+      [['−', -ta.s, 'sub'], ['+', ta.s, 'add']].forEach(([sym, delta, cls]) => {
+        const btn = document.createElement('button');
+        btn.className = 'qt-abtn ' + cls;
+        btn.textContent = sym;
+        btn.addEventListener('click', () => {
+          vibe();
+          recTimerElapsed = Math.max(0, recTimerElapsed + delta);
+          syncTimeFields();
+        });
+        btns.appendChild(btn);
+      });
+      col.appendChild(lbl);
+      col.appendChild(btns);
+      grid.appendChild(col);
+    });
+  }
+
+  // ── Timer ──
   function fmtTime(s) {
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
     if (h) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     return `${m}:${String(sec).padStart(2,'0')}`;
   }
-
   document.getElementById('rec-start-btn').addEventListener('click', () => {
     recTimerStart = Date.now() - recTimerElapsed * 1000;
     recTimerInterval = setInterval(() => {
@@ -615,31 +957,34 @@
       document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
     }, 500);
     document.getElementById('rec-start-btn').style.display = 'none';
-    document.getElementById('rec-stop-btn').style.display  = '';
+    document.getElementById('rec-stop-btn').style.display = '';
     document.getElementById('rec-timer').classList.add('running');
   });
-
   document.getElementById('rec-stop-btn').addEventListener('click', () => {
-    clearInterval(recTimerInterval);
-    recTimerInterval = null;
+    clearInterval(recTimerInterval); recTimerInterval = null;
     document.getElementById('rec-start-btn').style.display = '';
-    document.getElementById('rec-stop-btn').style.display  = 'none';
+    document.getElementById('rec-stop-btn').style.display = 'none';
     document.getElementById('rec-timer').classList.remove('running');
-    // sync manual fields
-    document.getElementById('rec-dur-h').value = Math.floor(recTimerElapsed / 3600) || '';
-    document.getElementById('rec-dur-m').value = Math.floor((recTimerElapsed % 3600) / 60) || '';
-    document.getElementById('rec-dur-s').value = recTimerElapsed % 60 || '';
+    document.getElementById('rec-dur-h').value = Math.floor(recTimerElapsed/3600)||'';
+    document.getElementById('rec-dur-m').value = Math.floor((recTimerElapsed%3600)/60)||'';
+    document.getElementById('rec-dur-s').value = recTimerElapsed%60||'';
   });
-
-  // Manual duration → update elapsed
   ['rec-dur-h','rec-dur-m','rec-dur-s'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => {
-      const h = parseInt(document.getElementById('rec-dur-h').value) || 0;
-      const m = parseInt(document.getElementById('rec-dur-m').value) || 0;
-      const s = parseInt(document.getElementById('rec-dur-s').value) || 0;
-      recTimerElapsed = h * 3600 + m * 60 + s;
+      const h = parseInt(document.getElementById('rec-dur-h').value)||0;
+      const m = parseInt(document.getElementById('rec-dur-m').value)||0;
+      const s = parseInt(document.getElementById('rec-dur-s').value)||0;
+      recTimerElapsed = h*3600+m*60+s;
       document.getElementById('rec-timer').textContent = fmtTime(recTimerElapsed);
     });
+  });
+
+  // ── Extras toggle ──
+  document.getElementById('extras-toggle').addEventListener('click', () => {
+    const body = document.getElementById('extras-body');
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'flex';
+    document.getElementById('extras-toggle').textContent = open ? '+ Notes, tips & photos' : '− Notes, tips & photos';
   });
 
   // ── Record tips ──
@@ -647,12 +992,10 @@
     const list = document.getElementById('rec-tips-list');
     list.innerHTML = '';
     recStepTips.forEach((tip, i) => {
-      const row = document.createElement('div');
-      row.className = 'tip-row';
-      row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea>
-        <button class="tip-del" data-i="${i}">&times;</button>`;
+      const row = document.createElement('div'); row.className = 'tip-row';
+      row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea><button class="tip-del">&times;</button>`;
       row.querySelector('textarea').addEventListener('input', e => { recStepTips[i] = e.target.value; });
-      row.querySelector('.tip-del').addEventListener('click', () => { recStepTips.splice(i, 1); renderRecTips(); });
+      row.querySelector('.tip-del').addEventListener('click', () => { recStepTips.splice(i,1); renderRecTips(); });
       list.appendChild(row);
     });
   }
@@ -664,33 +1007,40 @@
     Array.from(e.target.files).forEach(file => {
       const reader = new FileReader();
       reader.onload = ev => {
-        const photo = { id: uid(), type: file.type, caption: '', storage: 'embedded', data: ev.target.result, filename: file.name };
-        recStepPhotos.push(photo);
+        recStepPhotos.push({ id:uid(), type:file.type, caption:'', storage:'embedded', data:ev.target.result, filename:file.name });
         renderRecPhotos();
       };
       reader.readAsDataURL(file);
     });
     e.target.value = '';
   });
-
   function renderRecPhotos() {
     const row = document.getElementById('rec-photos-row');
     const btn = document.getElementById('rec-photo-btn');
     row.innerHTML = '';
     recStepPhotos.forEach((photo, i) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'photo-thumb';
-      wrap.innerHTML = `<img src="${photo.data}" alt="${esc(photo.caption)}">
-        <button class="photo-del" data-i="${i}">&times;</button>`;
-      wrap.querySelector('.photo-del').addEventListener('click', () => { recStepPhotos.splice(i, 1); renderRecPhotos(); });
+      const wrap = document.createElement('div'); wrap.className = 'photo-thumb';
+      wrap.innerHTML = `<img src="${photo.data}" alt=""><button class="photo-del">&times;</button>`;
+      wrap.querySelector('.photo-del').addEventListener('click', () => { recStepPhotos.splice(i,1); renderRecPhotos(); });
       row.appendChild(wrap);
     });
     row.appendChild(btn);
   }
 
+  // ── Ingredient chips ──
+  function renderRecIngChips() {
+    const chips = document.getElementById('rec-ing-chips');
+    chips.innerHTML = '';
+    recStepIngredients.forEach((ing, i) => {
+      const chip = document.createElement('span'); chip.className = 'chip';
+      chip.innerHTML = `${esc(ing.name)} <button class="chip-del">&times;</button>`;
+      chip.querySelector('.chip-del').addEventListener('click', () => { recStepIngredients.splice(i,1); renderRecIngChips(); });
+      chips.appendChild(chip);
+    });
+  }
+
   // ── Parallel step ──
   document.getElementById('rec-parallel-btn').addEventListener('click', () => {
-    // Save current step first as parallel anchor, then start new step linked to it
     if (recipe.steps.length === 0) { alert('Save your first step before adding a parallel one.'); return; }
     const lastId = recipe.steps[recipe.steps.length - 1].id;
     recParallelWith = [lastId];
@@ -707,56 +1057,68 @@
     const step = newStep(recParallelWith);
     step.order = recipe.steps.length + 1;
     step.process = recStepProcess;
-    step.process_category = getProcLib().find(p => p.name.toLowerCase() === recStepProcess.toLowerCase())?.category || 'prep';
+    step.process_category = recStepCategory;
     step.ingredient_ids = recStepIngredients.map(i => i.id);
-    step.vessel = document.getElementById('rec-vessel-input').value.trim() || null;
-    step.heat = document.getElementById('rec-heat-val').value.trim() || null;
-    step.heat_unit = step.heat ? document.getElementById('rec-heat-unit').value : null;
-    step.duration_s = recTimerElapsed || null;
-    step.duration_type = recTimerInterval !== null ? 'recorded' : 'estimated';
+    step.vessel = qtSelectedVessel || null;
+    step.heat = qtSelectedHeat || null;
+    step.heat_unit = qtSelectedHeat ? 'descriptive' : null;
+    const manH = parseInt(document.getElementById('rec-dur-h').value)||0;
+    const manM = parseInt(document.getElementById('rec-dur-m').value)||0;
+    const manS = parseInt(document.getElementById('rec-dur-s').value)||0;
+    const manDur = manH*3600+manM*60+manS;
+    step.duration_s = recTimerElapsed || manDur || null;
+    step.duration_type = recTimerInterval !== null ? 'recorded' : (step.duration_s ? 'estimated' : 'recorded');
     step.notes = document.getElementById('rec-notes').value.trim();
-    step.target = document.getElementById('rec-target').value.trim();
+    step.target = document.getElementById('rec-target').value.trim() || qtSelectedTarget;
+    step.output_label = document.getElementById('rec-output-label').value.trim() || null;
     step.tips = recStepTips.filter(Boolean);
+    step.additions = recStepAdditions.filter(a => a.ingredient_ids.length || a.notes);
     step.photos = recStepPhotos.map(p => p.id);
     recStepPhotos.forEach(p => { if (!recipe.media.find(m => m.id === p.id)) recipe.media.push(p); });
-
+    step.attention = recStepAttention;
+    step.check_interval_s = recStepCheckInterval;
+    step.can_extend_s = recStepCanExtend;
+    step.can_interrupt = recStepCanInterrupt;
     recipe.steps.push(step);
-    saveDraft();
-    renderRecStepsDone();
-    resetRecStep(true);
+    saveDraft(); renderRecStepsDone(); resetRecStep(true);
   });
 
   function resetRecStep(clearParallel) {
     if (clearParallel) recParallelWith = [];
-    recStepIngredients = [];
-    recStepProcess = '';
-    recStepTips = [];
-    recStepPhotos = [];
+    recStepIngredients = []; recStepProcess = ''; recStepCategory = 'prep';
+    recStepTips = []; recStepPhotos = []; recStepAdditions = [];
     recTimerElapsed = 0;
-    clearInterval(recTimerInterval);
-    recTimerInterval = null;
+    clearInterval(recTimerInterval); recTimerInterval = null;
+    recStepAttention = 'periodic'; recStepCheckInterval = null;
+    recStepCanExtend = null; recStepCanInterrupt = true;
+    qtSelectedTarget = ''; qtSelectedHeat = ''; qtSelectedVessel = '';
+
     document.getElementById('rec-timer').textContent = '0:00';
     document.getElementById('rec-timer').classList.remove('running');
     document.getElementById('rec-start-btn').style.display = '';
     document.getElementById('rec-stop-btn').style.display = 'none';
-    document.getElementById('rec-ing-input').value = '';
-    document.getElementById('rec-proc-input').value = '';
-    document.getElementById('rec-vessel-input').value = '';
-    document.getElementById('rec-heat-val').value = '';
-    document.getElementById('rec-notes').value = '';
-    document.getElementById('rec-target').value = '';
     document.getElementById('rec-dur-h').value = '';
     document.getElementById('rec-dur-m').value = '';
     document.getElementById('rec-dur-s').value = '';
-    document.getElementById('rec-heat-wrap').style.display = 'none';
-    document.getElementById('rec-vessel-wrap').style.display = 'none';
+    document.getElementById('rec-notes').value = '';
+    document.getElementById('rec-target').value = '';
+    document.getElementById('rec-output-label').value = '';
+    document.getElementById('ing-search-wrap').style.display = 'none';
+    document.getElementById('ing-search-input').value = '';
+    document.getElementById('proc-search-wrap').style.display = 'none';
+    document.getElementById('proc-search-input').value = '';
+    document.getElementById('extras-body').style.display = 'none';
+    document.getElementById('extras-toggle').textContent = '+ Notes, tips & photos';
+    document.getElementById('add-at-form').style.display = 'none';
+    document.getElementById('additions-list').innerHTML = '';
+    buildIngL0();
+    buildProcL0();
+    clearProcSelected();
     if (clearParallel) {
       document.getElementById('rec-parallel-badge').style.display = 'none';
       document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1}`;
     }
-    renderRecIngChips();
-    renderRecTips();
-    renderRecPhotos();
+    renderRecIngChips(); renderRecTips(); renderRecPhotos();
   }
 
   function renderRecStepsDone() {
@@ -765,18 +1127,90 @@
     wrap.style.display = recipe.steps.length ? '' : 'none';
     list.innerHTML = '';
     recipe.steps.forEach((step, i) => {
-      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x => x.id === id)?.name || id).join(', ');
+      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x=>x.id===id)?.name||id).join(', ');
       const dur = step.duration_s ? fmtTime(step.duration_s) : '—';
+      const label = step.output_label || (step.process ? (PAST_TENSE[step.process]||step.process) : '—');
       const el = document.createElement('div');
       el.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.65rem 1rem;display:flex;gap:0.75rem;align-items:center';
       el.innerHTML = `<div class="step-num">${i+1}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.9rem;font-weight:600">${esc(step.process || '—')}${ingNames ? ' — ' + esc(ingNames) : ''}</div>
-          <div style="font-size:0.78rem;color:var(--muted)">${dur}${step.parallel_ok ? ' · parallel' : ''}</div>
-        </div>`;
+          <div style="font-size:0.9rem;font-weight:600">${esc(label)}${ingNames?' — '+esc(ingNames):''}</div>
+          <div style="font-size:0.78rem;color:var(--muted)">${dur}${step.parallel_ok?' · parallel':''}</div>
+        </div>
+        <button class="btn-ghost-sm" style="padding:0.3rem 0.65rem;font-size:0.78rem;flex-shrink:0">Edit</button>
+        <button class="btn-ghost-sm" style="padding:0.3rem 0.55rem;font-size:0.78rem;color:#f87171;border-color:rgba(248,113,113,0.4);flex-shrink:0">&times;</button>`;
+      el.querySelectorAll('.btn-ghost-sm')[0].addEventListener('click', () => editRecStep(i));
+      el.querySelectorAll('.btn-ghost-sm')[1].addEventListener('click', () => {
+        recipe.steps.splice(i, 1);
+        recipe.steps.forEach((s, idx) => s.order = idx + 1);
+        saveDraft(); renderRecStepsDone();
+      });
       list.appendChild(el);
     });
     document.getElementById('rec-step-label').textContent = `Step ${recipe.steps.length + 1}`;
+  }
+
+  function editRecStep(i) {
+    const step = recipe.steps.splice(i, 1)[0];
+    recipe.steps.forEach((s, idx) => s.order = idx + 1);
+    resetRecStep(true);
+
+    // Restore ingredients
+    recStepIngredients = step.ingredient_ids
+      .map(id => recipe.ingredients.find(x => x.id === id)).filter(Boolean);
+    renderRecIngChips();
+    renderRecentIngs();
+
+    // Restore process
+    if (step.process) {
+      let found = null;
+      for (const [, data] of Object.entries(PROC_TAXONOMY)) {
+        for (const proc of data.items) {
+          if (proc.n === step.process) { found = { proc, cat: data.cat }; break; }
+        }
+        if (found) break;
+      }
+      if (found) {
+        selectProcess(found.proc, found.cat);
+      } else {
+        recStepProcess = step.process;
+        recStepCategory = step.process_category || 'prep';
+        document.getElementById('proc-sel-name').textContent = step.process;
+        document.getElementById('proc-selected').style.display = '';
+        document.getElementById('proc-grid').style.display = 'none';
+        maybeShowAdditionsCard();
+      }
+    }
+
+    // Restore timer
+    recTimerElapsed = step.duration_s || 0;
+    syncTimeFields();
+
+    // Restore fields
+    document.getElementById('rec-notes').value = step.notes || '';
+    document.getElementById('rec-target').value = step.target || '';
+    document.getElementById('rec-output-label').value = step.output_label || '';
+
+    // Restore additions and tips
+    recStepAdditions = step.additions ? step.additions.slice() : [];
+    renderAdditions();
+    recStepTips = step.tips ? step.tips.slice() : [];
+    renderRecTips();
+
+    // Restore attention settings
+    recStepAttention = step.attention || 'periodic';
+    recStepCheckInterval = step.check_interval_s;
+    recStepCanExtend = step.can_extend_s;
+    recStepCanInterrupt = step.can_interrupt !== undefined ? step.can_interrupt : true;
+
+    // Open extras if there's content to show
+    if (step.notes || step.target || step.output_label || step.tips?.length) {
+      document.getElementById('extras-body').style.display = 'flex';
+      document.getElementById('extras-toggle').textContent = '− Notes, tips & photos';
+    }
+
+    saveDraft(); renderRecStepsDone();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ── Edit mode ──
@@ -784,15 +1218,14 @@
     const list = document.getElementById('edit-steps-list');
     list.innerHTML = '';
     recipe.steps.forEach((step, i) => {
-      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x => x.id === id)?.name || id).join(', ');
+      const ingNames = step.ingredient_ids.map(id => recipe.ingredients.find(x=>x.id===id)?.name||id).join(', ');
       const dur = step.duration_s ? fmtTime(step.duration_s) : '—';
       const card = document.createElement('div');
-      card.className = 'step-card';
-      card.dataset.id = step.id;
+      card.className = 'step-card'; card.dataset.id = step.id;
       card.innerHTML = `
         <div class="step-card-head">
           <div class="step-num">${i+1}</div>
-          <div class="step-card-title">${esc(step.process || 'Step ' + (i+1))}</div>
+          <div class="step-card-title">${esc(step.process||'Step '+(i+1))}</div>
           <div class="step-card-meta">${esc(ingNames)} · ${dur}</div>
           <span style="color:var(--muted);margin-left:auto">&#8964;</span>
         </div>
@@ -806,9 +1239,12 @@
             </div>
             <div class="field"><label>Duration</label>
               <div class="dur-row">
-                <input type="number" class="e-dur-h" placeholder="0" min="0" value="${Math.floor((step.duration_s||0)/3600)||''}"> <span style="color:var(--muted);font-size:.85rem">h</span>
-                <input type="number" class="e-dur-m" placeholder="0" min="0" max="59" value="${Math.floor(((step.duration_s||0)%3600)/60)||''}"> <span style="color:var(--muted);font-size:.85rem">m</span>
-                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||''}"> <span style="color:var(--muted);font-size:.85rem">s</span>
+                <input type="number" class="e-dur-h" placeholder="0" min="0" value="${Math.floor((step.duration_s||0)/3600)||''}">
+                <span style="color:var(--muted);font-size:.85rem">h</span>
+                <input type="number" class="e-dur-m" placeholder="0" min="0" max="59" value="${Math.floor(((step.duration_s||0)%3600)/60)||''}">
+                <span style="color:var(--muted);font-size:.85rem">m</span>
+                <input type="number" class="e-dur-s" placeholder="0" min="0" max="59" value="${(step.duration_s||0)%60||''}">
+                <span style="color:var(--muted);font-size:.85rem">s</span>
               </div>
             </div>
           </div>
@@ -836,6 +1272,17 @@
           </div>
           <div class="field"><label>Notes</label><textarea class="e-notes" style="min-height:56px">${esc(step.notes)}</textarea></div>
           <div class="field"><label>Target result</label><input type="text" class="e-target" value="${esc(step.target)}" placeholder="golden and translucent…"></div>
+          <div class="step-grid">
+            <div class="field"><label>Stream (parallel lane name)</label><input type="text" class="e-stream" value="${esc(step.stream||'')}" placeholder="sauce, protein…"></div>
+            <div class="field"><label>Attention</label>
+              <select class="e-attention">
+                <option value="constant"${step.attention==='constant'?' selected':''}>Constant (can't walk away)</option>
+                <option value="periodic"${step.attention==='periodic'?' selected':''}>Periodic (check regularly)</option>
+                <option value="passive"${step.attention==='passive'?' selected':''}>Passive (set and forget)</option>
+                <option value="none"${step.attention==='none'?' selected':''}>None (fully unattended)</option>
+              </select>
+            </div>
+          </div>
           <div>
             <div class="section-title">Tips</div>
             <div class="tips-list e-tips-list"></div>
@@ -855,37 +1302,30 @@
           </div>
         </div>`;
 
-      // Toggle open/closed
       card.querySelector('.step-card-head').addEventListener('click', () => {
         card.querySelector('.step-card-body').classList.toggle('hidden');
       });
 
-      // Bind edit fields
       const body = card.querySelector('.step-card-body');
-
-      function bindEdit(sel, field, transform) {
+      function bindEdit(sel, field) {
         const el = body.querySelector(sel);
         if (!el) return;
-        el.addEventListener('input', () => { step[field] = transform ? transform(el.value) : el.value; saveDraft(); });
+        el.addEventListener('input', () => { step[field] = el.value; saveDraft(); });
       }
-      bindEdit('.e-vessel', 'vessel');
-      bindEdit('.e-heat-val', 'heat');
-      bindEdit('.e-notes', 'notes');
-      bindEdit('.e-target', 'target');
+      bindEdit('.e-vessel', 'vessel'); bindEdit('.e-notes', 'notes');
+      bindEdit('.e-target', 'target'); bindEdit('.e-stream', 'stream');
       body.querySelector('.e-heat-unit').addEventListener('change', e => { step.heat_unit = e.target.value; saveDraft(); });
+      body.querySelector('.e-heat-val').addEventListener('input', e => { step.heat = e.target.value; saveDraft(); });
+      body.querySelector('.e-attention').addEventListener('change', e => { step.attention = e.target.value; saveDraft(); });
 
-      // Duration
       function updateEditDur() {
-        const h = parseInt(body.querySelector('.e-dur-h').value) || 0;
-        const m = parseInt(body.querySelector('.e-dur-m').value) || 0;
-        const s = parseInt(body.querySelector('.e-dur-s').value) || 0;
-        step.duration_s = h * 3600 + m * 60 + s || null;
-        step.duration_type = 'estimated';
-        saveDraft();
+        const h = parseInt(body.querySelector('.e-dur-h').value)||0;
+        const m = parseInt(body.querySelector('.e-dur-m').value)||0;
+        const s = parseInt(body.querySelector('.e-dur-s').value)||0;
+        step.duration_s = h*3600+m*60+s||null; step.duration_type='estimated'; saveDraft();
       }
       body.querySelectorAll('.e-dur-h,.e-dur-m,.e-dur-s').forEach(el => el.addEventListener('input', updateEditDur));
 
-      // Process AC
       const procInput = body.querySelector('.e-proc');
       const procList  = body.querySelector('.e-proc-list');
       procInput.addEventListener('input', () => {
@@ -895,28 +1335,30 @@
         const matches = getProcLib().filter(p => p.name.toLowerCase().includes(q)).slice(0,8);
         matches.forEach(p => {
           const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = p.name;
-          el.addEventListener('mousedown', ev => { ev.preventDefault(); procInput.value = p.name; step.process = p.name; step.process_category = p.category; procList.classList.remove('open'); saveDraft(); renderEditSteps(); });
+          el.addEventListener('mousedown', ev => {
+            ev.preventDefault(); procInput.value = p.name; step.process = p.name;
+            step.process_category = p.category; procList.classList.remove('open'); saveDraft(); renderEditSteps();
+          });
           procList.appendChild(el);
         });
         if (!matches.find(p => p.name.toLowerCase() === q)) {
-          const el = document.createElement('div'); el.className = 'ac-item ac-add'; el.textContent = `+ Add "${procInput.value.trim()}"`;
-          el.addEventListener('mousedown', ev => { ev.preventDefault(); step.process = procInput.value.trim(); procList.classList.remove('open'); saveDraft(); renderEditSteps(); });
+          const el = document.createElement('div'); el.className = 'ac-item ac-add';
+          el.textContent = `+ Add "${procInput.value.trim()}"`;
+          el.addEventListener('mousedown', ev => {
+            ev.preventDefault(); step.process = procInput.value.trim(); procList.classList.remove('open'); saveDraft(); renderEditSteps();
+          });
           procList.appendChild(el);
         }
         procList.classList.toggle('open', procList.children.length > 0);
       });
 
-      // Ingredient chips for edit
       function renderEditIngChips() {
-        const chipsEl = body.querySelector('.e-ing-chips');
-        chipsEl.innerHTML = '';
+        const chipsEl = body.querySelector('.e-ing-chips'); chipsEl.innerHTML = '';
         step.ingredient_ids.forEach((id, ci) => {
-          const ing = recipe.ingredients.find(x => x.id === id);
-          if (!ing) return;
-          const chip = document.createElement('span');
-          chip.className = 'chip';
+          const ing = recipe.ingredients.find(x => x.id === id); if (!ing) return;
+          const chip = document.createElement('span'); chip.className = 'chip';
           chip.innerHTML = `${esc(ing.name)} <button class="chip-del">&times;</button>`;
-          chip.querySelector('.chip-del').addEventListener('click', () => { step.ingredient_ids.splice(ci, 1); renderEditIngChips(); saveDraft(); });
+          chip.querySelector('.chip-del').addEventListener('click', () => { step.ingredient_ids.splice(ci,1); renderEditIngChips(); saveDraft(); });
           chipsEl.appendChild(chip);
         });
       }
@@ -928,29 +1370,39 @@
         const q = ingInput.value.trim().toLowerCase();
         ingList.innerHTML = '';
         if (!q) { ingList.classList.remove('open'); return; }
-        const matches = getIngLib().filter(x => x.name.toLowerCase().includes(q)).slice(0,8);
-        matches.forEach(ing => {
+        const allIngs = [...recipe.ingredients, ...getIngLib()];
+        const seen = new Set(); const matches = [];
+        allIngs.forEach(x => { if (x.name.toLowerCase().includes(q) && !seen.has(x.name.toLowerCase())) { seen.add(x.name.toLowerCase()); matches.push(x); } });
+        matches.slice(0,8).forEach(ing => {
           const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = ing.name;
-          el.addEventListener('mousedown', ev => { ev.preventDefault(); if (!recipe.ingredients.find(x=>x.id===ing.id)) recipe.ingredients.push(ing); if (!step.ingredient_ids.includes(ing.id)) step.ingredient_ids.push(ing.id); ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft(); });
+          el.addEventListener('mousedown', ev => {
+            ev.preventDefault();
+            if (!recipe.ingredients.find(x=>x.id===ing.id)) recipe.ingredients.push(ing);
+            if (!step.ingredient_ids.includes(ing.id)) step.ingredient_ids.push(ing.id);
+            ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft();
+          });
           ingList.appendChild(el);
         });
         if (!matches.find(x=>x.name.toLowerCase()===q)) {
-          const el = document.createElement('div'); el.className='ac-item ac-add'; el.textContent=`+ Add "${ingInput.value.trim()}"`;
-          el.addEventListener('mousedown', ev => { ev.preventDefault(); const ing={id:uid(),name:ingInput.value.trim(),qty:null,unit:null,category:''}; addToLib('wmw-ing-lib',ing); recipe.ingredients.push(ing); step.ingredient_ids.push(ing.id); ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft(); });
+          const el = document.createElement('div'); el.className='ac-item ac-add';
+          el.textContent=`+ Add "${ingInput.value.trim()}"`;
+          el.addEventListener('mousedown', ev => {
+            ev.preventDefault();
+            const ing={id:uid(),name:ingInput.value.trim(),qty:null,unit:null,category:''};
+            addToLib('wmw-ing-lib',ing); recipe.ingredients.push(ing); step.ingredient_ids.push(ing.id);
+            ingInput.value=''; ingList.classList.remove('open'); renderEditIngChips(); saveDraft();
+          });
           ingList.appendChild(el);
         }
         ingList.classList.toggle('open', ingList.children.length > 0);
       });
 
-      // Edit tips
       function renderEditTips() {
-        const tipsList = body.querySelector('.e-tips-list');
-        tipsList.innerHTML = '';
+        const tipsList = body.querySelector('.e-tips-list'); tipsList.innerHTML = '';
         step.tips.forEach((tip, ti) => {
-          const row = document.createElement('div');
-          row.className = 'tip-row';
+          const row = document.createElement('div'); row.className = 'tip-row';
           row.innerHTML = `<textarea placeholder="Enter tip or warning…">${esc(tip)}</textarea><button class="tip-del">&times;</button>`;
-          row.querySelector('textarea').addEventListener('input', e => { step.tips[ti] = e.target.value; saveDraft(); });
+          row.querySelector('textarea').addEventListener('input', e => { step.tips[ti]=e.target.value; saveDraft(); });
           row.querySelector('.tip-del').addEventListener('click', () => { step.tips.splice(ti,1); renderEditTips(); saveDraft(); });
           tipsList.appendChild(row);
         });
@@ -958,20 +1410,14 @@
       renderEditTips();
       body.querySelector('.e-add-tip').addEventListener('click', () => { step.tips.push(''); renderEditTips(); saveDraft(); });
 
-      // Edit photos
       const photosRow = body.querySelector('.e-photos-row');
       const photoBtn  = body.querySelector('.e-photo-btn');
       const photoFile = body.querySelector('.e-photo-file');
-
       function renderEditPhotos() {
-        while (photosRow.firstChild && photosRow.firstChild !== photoBtn) photosRow.removeChild(photosRow.firstChild);
-        const photosBefore = [...photosRow.children];
         photosRow.innerHTML = '';
         step.photos.forEach((pid, pi) => {
-          const media = recipe.media.find(m => m.id === pid);
-          if (!media) return;
-          const wrap = document.createElement('div');
-          wrap.className = 'photo-thumb';
+          const media = recipe.media.find(m => m.id === pid); if (!media) return;
+          const wrap = document.createElement('div'); wrap.className = 'photo-thumb';
           wrap.innerHTML = `<img src="${media.data}" alt=""><button class="photo-del">&times;</button>`;
           wrap.querySelector('.photo-del').addEventListener('click', () => { step.photos.splice(pi,1); renderEditPhotos(); saveDraft(); });
           photosRow.appendChild(wrap);
@@ -979,44 +1425,33 @@
         photosRow.appendChild(photoBtn);
       }
       renderEditPhotos();
-
       photoBtn.addEventListener('click', () => photoFile.click());
       photoFile.addEventListener('change', e => {
         Array.from(e.target.files).forEach(file => {
           const reader = new FileReader();
           reader.onload = ev => {
-            const photo = { id: uid(), type: file.type, caption: '', storage: 'embedded', data: ev.target.result, filename: file.name };
-            recipe.media.push(photo);
-            step.photos.push(photo.id);
-            renderEditPhotos();
-            saveDraft();
+            const photo={id:uid(),type:file.type,caption:'',storage:'embedded',data:ev.target.result,filename:file.name};
+            recipe.media.push(photo); step.photos.push(photo.id); renderEditPhotos(); saveDraft();
           };
           reader.readAsDataURL(file);
         });
         e.target.value = '';
       });
 
-      // Delete / reorder
       body.querySelector('.e-del-step').addEventListener('click', () => {
         if (!confirm('Delete this step?')) return;
-        recipe.steps.splice(i, 1);
-        recipe.steps.forEach((s, idx) => s.order = idx + 1);
-        saveDraft();
-        renderEditSteps();
+        recipe.steps.splice(i,1); recipe.steps.forEach((s,idx)=>s.order=idx+1);
+        saveDraft(); renderEditSteps();
       });
       body.querySelector('.e-move-up').addEventListener('click', () => {
-        if (i === 0) return;
-        [recipe.steps[i-1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i-1]];
-        recipe.steps.forEach((s, idx) => s.order = idx + 1);
-        saveDraft();
-        renderEditSteps();
+        if (i===0) return;
+        [recipe.steps[i-1],recipe.steps[i]]=[recipe.steps[i],recipe.steps[i-1]];
+        recipe.steps.forEach((s,idx)=>s.order=idx+1); saveDraft(); renderEditSteps();
       });
       body.querySelector('.e-move-down').addEventListener('click', () => {
-        if (i === recipe.steps.length - 1) return;
-        [recipe.steps[i+1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i+1]];
-        recipe.steps.forEach((s, idx) => s.order = idx + 1);
-        saveDraft();
-        renderEditSteps();
+        if (i===recipe.steps.length-1) return;
+        [recipe.steps[i+1],recipe.steps[i]]=[recipe.steps[i],recipe.steps[i+1]];
+        recipe.steps.forEach((s,idx)=>s.order=idx+1); saveDraft(); renderEditSteps();
       });
 
       list.appendChild(card);
@@ -1024,16 +1459,12 @@
   }
 
   document.getElementById('edit-add-step').addEventListener('click', () => {
-    const step = newStep();
-    step.order = recipe.steps.length + 1;
-    recipe.steps.push(step);
-    saveDraft();
-    renderEditSteps();
-    // open the new card
+    const step = newStep(); step.order = recipe.steps.length + 1;
+    recipe.steps.push(step); saveDraft(); renderEditSteps();
     setTimeout(() => {
       const cards = document.querySelectorAll('.step-card');
-      const last = cards[cards.length - 1];
-      if (last) { last.querySelector('.step-card-body').classList.remove('hidden'); last.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      const last = cards[cards.length-1];
+      if (last) { last.querySelector('.step-card-body').classList.remove('hidden'); last.scrollIntoView({behavior:'smooth',block:'start'}); }
     }, 50);
   });
 
@@ -1041,9 +1472,9 @@
   function renderPreview() {
     const el = document.getElementById('preview-content');
     const ings = recipe.ingredients;
-    const ingName = id => ings.find(x => x.id === id)?.name || id;
-    let html = `<div class="preview-title">${esc(recipe.title || 'Untitled Recipe')}</div>`;
-    const meta = [recipe.serves ? `Serves ${recipe.serves}` : '', recipe.cuisine, (recipe.tags||[]).join(', ')].filter(Boolean).join(' · ');
+    const ingName = id => ings.find(x=>x.id===id)?.name||id;
+    let html = `<div class="preview-title">${esc(recipe.title||'Untitled Recipe')}</div>`;
+    const meta = [recipe.serves?`Serves ${recipe.serves}`:'',recipe.cuisine,(recipe.tags||[]).join(', ')].filter(Boolean).join(' · ');
     if (meta) html += `<div class="preview-meta">${esc(meta)}</div>`;
     if (recipe.description) html += `<p style="font-size:0.9rem;color:#444;margin-bottom:1rem">${esc(recipe.description)}</p>`;
     if (recipe.tips?.length) {
@@ -1052,9 +1483,7 @@
     }
     if (ings.length) {
       html += `<div class="preview-section">Ingredients</div><div class="preview-ing-list">`;
-      ings.forEach(ing => {
-        html += `<div class="preview-ing">${ing.qty ? ing.qty + ' ' : ''}${ing.unit ? ing.unit + ' ' : ''}${esc(ing.name)}</div>`;
-      });
+      ings.forEach(ing => { html += `<div class="preview-ing">${ing.qty?ing.qty+' ':''}${ing.unit?ing.unit+' ':''}${esc(ing.name)}</div>`; });
       html += `</div>`;
     }
     if (recipe.steps.length) {
@@ -1062,16 +1491,16 @@
       recipe.steps.forEach((step, i) => {
         const ingStr = step.ingredient_ids.map(ingName).join(', ');
         const dur = step.duration_s ? fmtTime(step.duration_s) : '';
-        const parallel = step.parallel_ok && step.parallel_with?.length ? ' · can run in parallel' : '';
+        const parallel = step.parallel_ok&&step.parallel_with?.length?' · can run in parallel':'';
         html += `<div class="preview-step">
           <div class="preview-step-num">${i+1}</div>
           <div class="preview-step-body">
-            <div class="preview-step-title">${esc(step.process || '—')}${ingStr ? ' — ' + esc(ingStr) : ''}</div>
-            <div class="preview-step-sub">${[dur ? `${dur}${step.duration_type==='estimated'?' (est.)':''}` : '', step.vessel, step.heat ? step.heat + (step.heat_unit && step.heat_unit !== 'descriptive' ? ' ' + step.heat_unit : '') : ''].filter(Boolean).join(' · ')}${parallel}</div>
-            ${step.notes ? `<div style="font-size:0.83rem;color:#555;margin-top:0.3rem">${esc(step.notes)}</div>` : ''}
-            ${step.target ? `<div style="font-size:0.83rem;color:#555;font-style:italic;margin-top:0.15rem">Target: ${esc(step.target)}</div>` : ''}
-            ${step.tips?.length ? step.tips.filter(Boolean).map(t => `<div class="preview-tip">&#128161; ${esc(t)}</div>`).join('') : ''}
-            ${step.photos?.length ? `<div class="preview-photos">${step.photos.map(pid => { const m = recipe.media.find(x=>x.id===pid); return m ? `<img src="${m.data}" alt="${esc(m.caption)}">` : ''; }).join('')}</div>` : ''}
+            <div class="preview-step-title">${esc(step.process||'—')}${ingStr?' — '+esc(ingStr):''}</div>
+            <div class="preview-step-sub">${[dur?`${dur}${step.duration_type==='estimated'?' (est.)':''}`:''            ,step.vessel,step.heat?step.heat+(step.heat_unit&&step.heat_unit!=='descriptive'?' '+step.heat_unit:''):''].filter(Boolean).join(' · ')}${parallel}</div>
+            ${step.notes?`<div style="font-size:0.83rem;color:#555;margin-top:0.3rem">${esc(step.notes)}</div>`:''}
+            ${step.target?`<div style="font-size:0.83rem;color:#555;font-style:italic;margin-top:0.15rem">Target: ${esc(step.target)}</div>`:''}
+            ${step.tips?.length?step.tips.filter(Boolean).map(t=>`<div class="preview-tip">&#128161; ${esc(t)}</div>`).join(''):''}
+            ${step.photos?.length?`<div class="preview-photos">${step.photos.map(pid=>{const m=recipe.media.find(x=>x.id===pid);return m?`<img src="${m.data}" alt="${esc(m.caption)}">`:''}).join('')}</div>`:''}
           </div>
         </div>`;
       });
@@ -1080,96 +1509,256 @@
   }
 
   // ── Save / load ──
-  function recipeToJson() {
-    return JSON.stringify(recipe, null, 2);
-  }
+  function recipeToJson() { return JSON.stringify(recipe, null, 2); }
 
   document.getElementById('save-json-btn').addEventListener('click', () => {
-    const blob = new Blob([recipeToJson()], { type: 'application/json' });
+    const blob = new Blob([recipeToJson()], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (recipe.title || 'recipe').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.wmw-recipe.json';
+    a.download = (recipe.title||'recipe').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.wmw-recipe.json';
     a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    setTimeout(()=>URL.revokeObjectURL(a.href),10000);
   });
 
   if (hasFSA) {
     document.getElementById('save-folder-btn').addEventListener('click', async () => {
       try {
-        const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
-        // Write recipe JSON (strip embedded data, use filenames instead)
+        const dir = await window.showDirectoryPicker({mode:'readwrite'});
         const exportRecipe = JSON.parse(JSON.stringify(recipe));
-        exportRecipe.media.forEach(m => { if (m.storage === 'embedded') { m.storage = 'external'; delete m.data; } });
-        const jsonFile = await dir.getFileHandle((recipe.title || 'recipe').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '.wmw-recipe.json', { create: true });
-        const jsonWriter = await jsonFile.createWritable();
-        await jsonWriter.write(JSON.stringify(exportRecipe, null, 2));
-        await jsonWriter.close();
-        // Write media files
-        const mediaDir = await dir.getDirectoryHandle('media', { create: true });
+        exportRecipe.media.forEach(m => { if (m.storage==='embedded') { m.storage='external'; delete m.data; } });
+        const jsonFile = await dir.getFileHandle((recipe.title||'recipe').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.wmw-recipe.json',{create:true});
+        const jw = await jsonFile.createWritable();
+        await jw.write(JSON.stringify(exportRecipe,null,2)); await jw.close();
+        const mediaDir = await dir.getDirectoryHandle('media',{create:true});
         for (const m of recipe.media) {
           if (!m.data) continue;
-          const [, b64] = m.data.split(',');
-          const bin = atob(b64);
+          const [,b64] = m.data.split(','); const bin = atob(b64);
           const buf = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-          const fh = await mediaDir.getFileHandle(m.filename || m.id, { create: true });
-          const w = await fh.createWritable();
-          await w.write(buf.buffer);
-          await w.close();
+          for (let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+          const fh = await mediaDir.getFileHandle(m.filename||m.id,{create:true});
+          const w = await fh.createWritable(); await w.write(buf.buffer); await w.close();
         }
         alert('Saved to folder successfully.');
-      } catch (e) { if (e.name !== 'AbortError') alert('Could not save: ' + e.message); }
+      } catch(e) { if (e.name!=='AbortError') alert('Could not save: '+e.message); }
     });
   }
 
   document.getElementById('load-btn').addEventListener('click', () => document.getElementById('load-file').click());
   document.getElementById('load-file').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
       try {
         const loaded = JSON.parse(ev.target.result);
         if (loaded.schema !== 'wmw-recipe/1') { alert('Not a valid WMW recipe file.'); return; }
-        recipe = loaded;
-        populateMeta();
-        renderRecipeTips();
-        renderRecStepsDone();
-        saveDraft();
-        alert(`Loaded: ${recipe.title || 'Untitled'}`);
+        recipe = loaded; populateMeta(); renderRecipeTips(); renderRecStepsDone();
+        saveDraft(); alert(`Loaded: ${recipe.title||'Untitled'}`);
       } catch { alert('Could not parse file.'); }
     };
-    reader.readAsText(file);
-    e.target.value = '';
+    reader.readAsText(file); e.target.value = '';
   });
 
   document.getElementById('new-btn').addEventListener('click', () => {
     if (recipe.steps.length && !confirm('Start a new recipe? Unsaved changes will be lost.')) return;
-    recipe = newRecipe();
-    populateMeta();
-    renderRecipeTips();
-    renderRecStepsDone();
-    resetRecStep(true);
-    saveDraft();
+    recipe = newRecipe(); populateMeta(); renderRecipeTips(); renderRecStepsDone();
+    resetRecStep(true); saveDraft();
   });
 
   function populateMeta() {
-    document.getElementById('r-title').value   = recipe.title || '';
-    document.getElementById('r-serves').value  = recipe.serves || '';
-    document.getElementById('r-cuisine').value = recipe.cuisine || '';
-    document.getElementById('r-tags').value    = (recipe.tags || []).join(', ');
-    document.getElementById('r-desc').value    = recipe.description || '';
+    document.getElementById('r-title').value   = recipe.title||'';
+    document.getElementById('r-serves').value  = recipe.serves||'';
+    document.getElementById('r-cuisine').value = recipe.cuisine||'';
+    document.getElementById('r-tags').value    = (recipe.tags||[]).join(', ');
+    document.getElementById('r-desc').value    = recipe.description||'';
   }
+
+  // ── Step output labels ──
+  const PAST_TENSE = {
+    'Chop':'Chopped','Slice':'Sliced','Dice':'Diced','Mince':'Minced','Julienne':'Julienned',
+    'Grate':'Grated','Peel':'Peeled','Crush':'Crushed','Zest':'Zested','Squeeze':'Squeezed',
+    'Mix':'Mixed','Whisk':'Whisked','Beat':'Beaten','Fold':'Folded','Blend':'Blended',
+    'Knead':'Kneaded','Marinate':'Marinated','Season':'Seasoned','Coat':'Coated','Drain':'Drained',
+    'Fry':'Fried','Sauté':'Sautéed','Stir-fry':'Stir-fried','Deep-fry':'Deep-fried',
+    'Sear':'Seared','Brown':'Browned','Sweat':'Sweated','Caramelise':'Caramelised',
+    'Simmer':'Simmered','Reduce':'Reduced','Deglaze':'Deglazed','Glaze':'Glazed',
+    'Roast':'Roasted','Bake':'Baked','Grill / Broil':'Grilled','Slow roast':'Slow-roasted',
+    'Blind bake':'Blind-baked','Gratinate':'Gratinated',
+    'Boil':'Boiled','Steam':'Steamed','Poach':'Poached','Blanch':'Blanched',
+    'Pressure cook':'Pressure cooked','Rest':'Rested','Cool':'Cooled','Chill':'Chilled',
+    'Proof':'Proofed','Set':'Set','Freeze':'Frozen',
+    'Plate':'Plated','Garnish':'Garnished','Dress':'Dressed','Carve':'Carved',
+    'Portion':'Portioned','Strain':'Strained',
+  };
+
+  function stepOutputLabel(step) {
+    if (step.output_label) return step.output_label;
+    const ingNames = step.ingredient_ids
+      .map(id => recipe.ingredients.find(x => x.id === id)?.name || '')
+      .filter(Boolean).join(', ');
+    const past = step.process ? (PAST_TENSE[step.process] || step.process) : null;
+    if (past && ingNames) return `${past} ${ingNames}`;
+    if (past) return past;
+    return ingNames || `Step ${step.order}`;
+  }
+
+  // ── Previous steps as chips ──
+  function renderRecentIngs() {
+    const wrap = document.getElementById('ing-recent-wrap');
+    const row = document.getElementById('ing-recent');
+    if (!wrap) return;
+    const prevSteps = recipe.steps.filter(s => s.ingredient_ids.length || s.process);
+    wrap.style.display = prevSteps.length ? '' : 'none';
+    row.innerHTML = '';
+    prevSteps.forEach(step => {
+      const chip = document.createElement('button');
+      chip.className = 'qt-recent-chip';
+      chip.textContent = stepOutputLabel(step);
+      chip.addEventListener('click', () => {
+        vibe();
+        step.ingredient_ids.forEach(id => {
+          const ing = recipe.ingredients.find(x => x.id === id);
+          if (ing && !recStepIngredients.find(y => y.id === ing.id)) {
+            recStepIngredients.push(ing);
+          }
+        });
+        renderRecIngChips();
+        renderRecentIngs();
+        saveDraft();
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  // ── Mid-step additions ──
+  function fmtAddAt(s) {
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+    if (h) return `${h}h ${m}m`;
+    if (m && sec) return `${m}m ${sec}s`;
+    if (m) return `${m}m`;
+    return `${sec}s`;
+  }
+
+  window.setAddAt = function(s) {
+    document.getElementById('add-at-h').value = Math.floor(s/3600)||'';
+    document.getElementById('add-at-m').value = Math.floor((s%3600)/60)||'';
+    document.getElementById('add-at-s').value = s%60||'';
+  };
+
+  function renderAdditions() {
+    const list = document.getElementById('additions-list');
+    list.innerHTML = '';
+    recStepAdditions.forEach((add, i) => {
+      const ingNames = add.ingredient_ids.map(id => recipe.ingredients.find(x=>x.id===id)?.name||id).join(', ');
+      const row = document.createElement('div');
+      row.className = 'addition-row';
+      row.innerHTML = `<span class="addition-time">@ ${fmtAddAt(add.at_s)}</span>
+        <span class="addition-text">${esc(ingNames)}${add.notes ? ' — '+esc(add.notes) : ''}</span>
+        <button class="addition-del">&times;</button>`;
+      row.querySelector('.addition-del').addEventListener('click', () => { recStepAdditions.splice(i,1); renderAdditions(); });
+      list.appendChild(row);
+    });
+  }
+
+  let addAtIngredients = [];
+  function renderAddAtIngChips() {
+    const chips = document.getElementById('add-at-ing-chips');
+    chips.innerHTML = '';
+    addAtIngredients.forEach((ing, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `${esc(ing.name)} <button class="chip-del">&times;</button>`;
+      chip.querySelector('.chip-del').addEventListener('click', () => { addAtIngredients.splice(i,1); renderAddAtIngChips(); });
+      chips.appendChild(chip);
+    });
+  }
+
+  function maybeShowAdditionsCard() {
+    document.getElementById('additions-card').style.display = (recStepCategory === 'cook' || recStepCategory === 'rest') ? '' : 'none';
+  }
+
+  document.getElementById('add-at-btn').addEventListener('click', () => {
+    const form = document.getElementById('add-at-form');
+    const open = form.style.display !== 'none';
+    form.style.display = open ? 'none' : '';
+    if (!open) {
+      addAtIngredients = [];
+      renderAddAtIngChips();
+      ['add-at-h','add-at-m','add-at-s'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('add-at-note').value = '';
+    }
+  });
+
+  document.getElementById('add-at-cancel').addEventListener('click', () => {
+    document.getElementById('add-at-form').style.display = 'none';
+    addAtIngredients = [];
+  });
+
+  document.getElementById('add-at-confirm').addEventListener('click', () => {
+    const h = parseInt(document.getElementById('add-at-h').value)||0;
+    const m = parseInt(document.getElementById('add-at-m').value)||0;
+    const s = parseInt(document.getElementById('add-at-s').value)||0;
+    const at_s = h*3600+m*60+s;
+    const note = document.getElementById('add-at-note').value.trim();
+    if (!at_s && !addAtIngredients.length && !note) return;
+    recStepAdditions.push({ id:uid(), at_s, ingredient_ids: addAtIngredients.map(x=>x.id), notes:note });
+    recStepAdditions.sort((a,b) => a.at_s - b.at_s);
+    renderAdditions();
+    document.getElementById('add-at-form').style.display = 'none';
+    addAtIngredients = [];
+  });
+
+  const addAtIngInput = document.getElementById('add-at-ing-input');
+  const addAtIngList  = document.getElementById('add-at-ing-list');
+  addAtIngInput.addEventListener('input', () => {
+    const q = addAtIngInput.value.trim().toLowerCase();
+    addAtIngList.innerHTML = '';
+    if (!q) { addAtIngList.classList.remove('open'); return; }
+    const seen = new Set(); const matches = [];
+    recipe.ingredients.forEach(x => { if (x.name.toLowerCase().includes(q) && !seen.has(x.name.toLowerCase())) { seen.add(x.name.toLowerCase()); matches.push(x); } });
+    getIngLib().forEach(x => { if (x.name.toLowerCase().includes(q) && !seen.has(x.name.toLowerCase())) { seen.add(x.name.toLowerCase()); matches.push(x); } });
+    Object.entries(ING_TAXONOMY).forEach(([cat, data]) => {
+      Object.entries(data.subs).forEach(([, items]) => {
+        items.forEach(name => { if (name.toLowerCase().includes(q) && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); matches.push({id:null,name,category:cat}); }});
+      });
+    });
+    matches.slice(0,8).forEach(ing => {
+      const el = document.createElement('div'); el.className = 'ac-item'; el.textContent = ing.name;
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        const existing = recipe.ingredients.find(x => x.name.toLowerCase() === ing.name.toLowerCase());
+        const resolved = existing || { id:uid(), name:ing.name, qty:null, unit:null, category:ing.category||'' };
+        if (!existing) recipe.ingredients.push(resolved);
+        if (!addAtIngredients.find(x => x.id === resolved.id)) { addAtIngredients.push(resolved); renderAddAtIngChips(); }
+        addAtIngInput.value = ''; addAtIngList.classList.remove('open');
+      });
+      addAtIngList.appendChild(el);
+    });
+    if (!matches.find(x => x.name.toLowerCase() === q)) {
+      const el = document.createElement('div'); el.className = 'ac-item ac-add';
+      el.textContent = `+ Add "${addAtIngInput.value.trim()}"`;
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        const ing = {id:uid(), name:addAtIngInput.value.trim(), qty:null, unit:null, category:''};
+        recipe.ingredients.push(ing); addAtIngredients.push(ing); renderAddAtIngChips();
+        addAtIngInput.value = ''; addAtIngList.classList.remove('open');
+      });
+      addAtIngList.appendChild(el);
+    }
+    addAtIngList.classList.toggle('open', addAtIngList.children.length > 0);
+  });
+  document.addEventListener('click', e => {
+    if (!addAtIngInput.contains(e.target) && !addAtIngList.contains(e.target))
+      addAtIngList.classList.remove('open');
+  });
 
   // ── Utility ──
-  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   // ── Init ──
-  if (loadDraft()) {
-    populateMeta();
-    renderRecipeTips();
-    renderRecStepsDone();
-  }
+  buildIngL0();
+  buildProcL0();
+  buildTimeAdj();
+  if (loadDraft()) { populateMeta(); renderRecipeTips(); renderRecStepsDone(); }
   renderRecPhotos();
 
   })();

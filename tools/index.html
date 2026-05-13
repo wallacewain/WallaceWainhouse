@@ -15,6 +15,7 @@
   <meta name="twitter:title" content="Free Browser Tools &mdash; Wallace Wainhouse">
   <meta name="twitter:description" content="Free tools that run entirely in your browser. No ads, no tracking, nothing uploaded.">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -23,6 +24,12 @@
     .cat-head:first-child { margin-top: 0; }
     .tools-grid { margin-top: 0; }
     .tool-card.featured { border-top: 2px solid var(--accent); }
+    .tool-icon svg { width: 20px; height: 20px; stroke: #fff; stroke-width: 1.75; fill: none; flex-shrink: 0; }
+    .cat-head.wip-head { color: #fbbf24; border-color: rgba(234,179,8,0.3); }
+    .wip-banner { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.25); border-radius: 8px; padding: 0.85rem 1.1rem; font-size: 0.875rem; color: #fbbf24; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.6rem; }
+    .wip-banner strong { font-weight: 700; }
+    .tool-card.wip { opacity: 0.7; border-color: rgba(234,179,8,0.2); pointer-events: auto; }
+    .tool-card.wip:hover { border-color: rgba(234,179,8,0.5); transform: none; }
   </style>
   <script type="application/ld+json">
   {
@@ -45,9 +52,7 @@
       {"@type":"ListItem","position":12,"name":"JSON Formatter","url":"https://wallacewainhouse.com/tools/json-formatter/"},
       {"@type":"ListItem","position":13,"name":"Text Diff","url":"https://wallacewainhouse.com/tools/text-diff/"},
       {"@type":"ListItem","position":14,"name":"Colour Converter","url":"https://wallacewainhouse.com/tools/colour-converter/"},
-      {"@type":"ListItem","position":15,"name":"Regex Tester","url":"https://wallacewainhouse.com/tools/regex-tester/"},
-      {"@type":"ListItem","position":16,"name":"Recipe Maker","url":"https://wallacewainhouse.com/tools/recipe-maker/"},
-      {"@type":"ListItem","position":17,"name":"Recipe Reader","url":"https://wallacewainhouse.com/tools/recipe-reader/"}
+      {"@type":"ListItem","position":15,"name":"Regex Tester","url":"https://wallacewainhouse.com/tools/regex-tester/"}
     ]
   }
   </script>
@@ -55,7 +60,7 @@
 <body>
   <header>
     <nav>
-      <a href="/" class="logo">WW</a>
+      <a href="/" class="logo"><svg viewBox="-46.0 -46.0 1492.0 332.0" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="#d4d4d8"><polygon points="-40,0 40,0 180,240 100,240"/><polygon points="100,240 180,240 320,0 240,0"/><polygon points="240,0 320,0 460,240 380,240"/><polygon points="380,240 460,240 600,0 520,0"/><polygon points="520,0 600,0 740,240 660,240"/><polygon points="660,240 740,240 880,0 800,0"/><polygon points="800,0 880,0 1020,240 940,240"/><polygon points="940,240 1020,240 1160,0 1080,0"/><polygon points="1080,0 1160,0 1300,240 1220,240"/><polygon points="1220,240 1300,240 1440,0 1360,0"/></svg></a>
       <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
@@ -69,51 +74,35 @@
       <h2 class="cat-head">Featured</h2>
       <div class="tools-grid">
         <a class="tool-card featured" href="/tools/qr-code/">
-          <div class="tool-icon">&#9638;</div>
+          <div class="tool-icon"><i data-lucide="qr-code"></i></div>
           <h3>QR Code Generator</h3>
           <p>Generate a QR code from any text or URL and download it as a PNG.</p>
           <div class="tags"><span class="tag">JS</span></div>
         </a>
         <a class="tool-card featured" href="/tools/exif/">
-          <div class="tool-icon">&#128247;</div>
+          <div class="tool-icon"><i data-lucide="scan-eye"></i></div>
           <h3>EXIF Viewer &amp; Stripper</h3>
           <p>See what metadata is hidden in your photos &mdash; GPS, camera, timestamps &mdash; then strip it all before sharing.</p>
           <div class="tags"><span class="tag">JS</span></div>
         </a>
         <a class="tool-card featured" href="/tools/invoice/">
-          <div class="tool-icon">&#128190;</div>
+          <div class="tool-icon"><i data-lucide="receipt"></i></div>
           <h3>Invoice Maker</h3>
           <p>Create a professional invoice with line items, tax, and your logo &mdash; download as PDF.</p>
           <div class="tags"><span class="tag">JS</span></div>
         </a>
       </div>
 
-      <h2 class="cat-head">Recipes</h2>
-      <div class="tools-grid">
-        <a class="tool-card" href="/tools/recipe-maker/">
-          <div class="tool-icon">&#127859;</div>
-          <h3>Recipe Maker</h3>
-          <p>Record a recipe as you cook &mdash; time each step, photograph results, add tips, capture parallel processes. Saves as an open JSON format.</p>
-          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
-        </a>
-        <a class="tool-card" href="/tools/recipe-reader/">
-          <div class="tool-icon">&#128336;</div>
-          <h3>Recipe Reader</h3>
-          <p>Load one or more recipe files and see a live timeline &mdash; timers, photos, tips, and parallel steps for single dishes or full service planning.</p>
-          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
-        </a>
-      </div>
-
       <h2 class="cat-head">Privacy &amp; Security</h2>
       <div class="tools-grid">
         <a class="tool-card" href="/tools/password-generator/">
-          <div class="tool-icon">&#128273;</div>
+          <div class="tool-icon"><i data-lucide="key-round"></i></div>
           <h3>Password Generator</h3>
           <p>Generate a random password with configurable length and character sets.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/file-hash/">
-          <div class="tool-icon">#</div>
+          <div class="tool-icon"><i data-lucide="fingerprint"></i></div>
           <h3>File Hash Checker</h3>
           <p>Generate SHA-256 (and others) checksums for any file to verify downloads.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
@@ -123,19 +112,19 @@
       <h2 class="cat-head">Images</h2>
       <div class="tools-grid">
         <a class="tool-card" href="/tools/heic-to-jpg/">
-          <div class="tool-icon">&#128444;</div>
+          <div class="tool-icon"><i data-lucide="file-image"></i></div>
           <h3>HEIC to JPG</h3>
           <p>Convert HEIC photos to JPG. Supports multiple files and adjustable quality.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag">WASM</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/image-compressor/">
-          <div class="tool-icon">&#128247;</div>
+          <div class="tool-icon"><i data-lucide="minimize-2"></i></div>
           <h3>Image Compressor</h3>
           <p>Compress JPEG, PNG, or WebP images locally. See before/after file sizes.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/watermark/">
-          <div class="tool-icon">&#9749;</div>
+          <div class="tool-icon"><i data-lucide="stamp"></i></div>
           <h3>Watermark Tool</h3>
           <p>Add an image or text watermark to a photo. Tile, position, and adjust opacity.</p>
           <div class="tags"><span class="tag">JS</span></div>
@@ -145,25 +134,25 @@
       <h2 class="cat-head">Text &amp; Code</h2>
       <div class="tools-grid">
         <a class="tool-card" href="/tools/json-formatter/">
-          <div class="tool-icon">{}</div>
+          <div class="tool-icon"><i data-lucide="braces"></i></div>
           <h3>JSON Formatter</h3>
           <p>Format or minify JSON. Highlights errors for invalid input.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/text-diff/">
-          <div class="tool-icon">&#8644;</div>
+          <div class="tool-icon"><i data-lucide="diff"></i></div>
           <h3>Text Diff</h3>
           <p>Compare two blocks of text and see what changed, line by line.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/regex-tester/">
-          <div class="tool-icon">.*</div>
+          <div class="tool-icon"><i data-lucide="regex"></i></div>
           <h3>Regex Tester</h3>
           <p>Test regular expressions against a string with match highlighting.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/word-counter/">
-          <div class="tool-icon">&#128221;</div>
+          <div class="tool-icon"><i data-lucide="type"></i></div>
           <h3>Word Counter</h3>
           <p>Count words, characters, sentences, paragraphs, and estimated reading time.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
@@ -173,28 +162,52 @@
       <h2 class="cat-head">Converters &amp; Decoders</h2>
       <div class="tools-grid">
         <a class="tool-card" href="/tools/colour-converter/">
-          <div class="tool-icon">&#9632;</div>
+          <div class="tool-icon"><i data-lucide="pipette"></i></div>
           <h3>Colour Converter</h3>
           <p>Convert between hex, RGB, and HSL colour formats with a live preview.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/base64/">
-          <div class="tool-icon">64</div>
+          <div class="tool-icon"><i data-lucide="binary"></i></div>
           <h3>Base64 Encoder / Decoder</h3>
           <p>Encode text or files to Base64, or decode Base64 back to text.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
         <a class="tool-card" href="/tools/jwt-decoder/">
-          <div class="tool-icon">&#128274;</div>
+          <div class="tool-icon"><i data-lucide="shield-check"></i></div>
           <h3>JWT Decoder</h3>
           <p>Decode a JSON Web Token to inspect its header and payload. Does not verify the signature.</p>
           <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">Untested</span></div>
         </a>
       </div>
 
+      <h2 class="cat-head wip-head">Under Construction</h2>
+      <div class="wip-banner">
+        <span>&#128679;</span>
+        <span><strong>These tools are not yet functional.</strong> They are works-in-progress and may be broken, incomplete, or change significantly before release.</span>
+      </div>
+      <div class="tools-grid">
+        <a class="tool-card wip" href="/tools/recipe-maker/">
+          <div class="tool-icon"><i data-lucide="chef-hat"></i></div>
+          <h3>Recipe Maker</h3>
+          <p>Record a recipe as you cook &mdash; time each step, photograph results, add tips, capture parallel processes. Saves as an open JSON format.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
+        </a>
+        <a class="tool-card wip" href="/tools/recipe-reader/">
+          <div class="tool-icon"><i data-lucide="book-open"></i></div>
+          <h3>Recipe Reader</h3>
+          <p>Load one or more recipe files and see a live timeline &mdash; timers, photos, tips, and parallel steps for single dishes or full service planning.</p>
+          <div class="tags"><span class="tag">JS</span><span class="tag tag-warning">WIP</span></div>
+        </a>
+      </div>
+
     </section>
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
-  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    lucide.createIcons();
+  </script>
 </body>
 </html>

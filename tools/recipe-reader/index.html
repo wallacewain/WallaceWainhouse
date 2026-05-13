@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Recipe Reader — load recipe files and see a live timeline with timers, photos, and parallel steps.">
+  <title>Recipe Reader &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/recipe-reader/">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .wip-card { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.25); border-radius: 12px; padding: 2.5rem 2rem; text-align: center; max-width: 520px; margin: 0 auto; }
+    .wip-card .wip-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .wip-card h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.75rem; color: #fbbf24; }
+    .wip-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .wip-back { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--accent); font-weight: 500; font-size: 0.9rem; }
+    .wip-back:hover { color: var(--accent-hover); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><svg viewBox="-46.0 -46.0 1492.0 332.0" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="#d4d4d8"><polygon points="-40,0 40,0 180,240 100,240"/><polygon points="100,240 180,240 320,0 240,0"/><polygon points="240,0 320,0 460,240 380,240"/><polygon points="380,240 460,240 600,0 520,0"/><polygon points="520,0 600,0 740,240 660,240"/><polygon points="660,240 740,240 880,0 800,0"/><polygon points="800,0 880,0 1020,240 940,240"/><polygon points="940,240 1020,240 1160,0 1080,0"/><polygon points="1080,0 1160,0 1300,240 1220,240"/><polygon points="1220,240 1300,240 1440,0 1360,0"/></svg></a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <h1>Recipe Reader</h1>
+      <p>Load recipe files and follow a live timeline with timers, photos, and parallel steps.</p>
+    </section>
+    <section class="section">
+      <div class="wip-card">
+        <div class="wip-icon">&#128679;</div>
+        <h2>Under Construction</h2>
+        <p>Recipe Reader is not yet functional. It's being built alongside Recipe Maker and will be released when ready.</p>
+        <a href="/tools/" class="wip-back">&#8592; Back to all tools</a>
+      </div>
+    </section>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
