@@ -30,15 +30,15 @@
   }
   </script>
   <style>
-    html { background: #0e0e10; }
-    body { background: transparent; }
     #galaxy-bg {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      z-index: -1;
+      z-index: 0;
       pointer-events: none;
+      background: #0e0e10;
     }
+    header, main, footer { position: relative; z-index: 1; }
     .hero {
       min-height: calc(100vh - 60px);
       display: flex;
@@ -69,42 +69,43 @@
   <footer>
     <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
   </footer>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.min.js"></script>
   <script>
   (function () {
     const canvas = document.getElementById('galaxy-bg');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
+    const ctx    = canvas.getContext('2d');
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 3.5, 8);
-    camera.lookAt(0, 0, 0);
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
 
+    // ── Star sprite (glow dot on offscreen canvas) ───────────────────────
+    const SPRITE_SIZE = 64;
+    const sprite = document.createElement('canvas');
+    sprite.width = sprite.height = SPRITE_SIZE;
+    const sc = sprite.getContext('2d');
+    const sg = sc.createRadialGradient(32, 32, 0, 32, 32, 32);
+    sg.addColorStop(0,    'rgba(255,255,255,1)');
+    sg.addColorStop(0.15, 'rgba(255,255,255,0.8)');
+    sg.addColorStop(0.5,  'rgba(200,210,255,0.3)');
+    sg.addColorStop(1,    'rgba(0,0,0,0)');
+    sc.fillStyle = sg;
+    sc.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+
+    // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
-    const COUNT    = isMobile ? 5000 : 12000;
-    const BRANCHES = 3;
-    const SPIN     = 1.8;
-    const RND_PWR  = 3;
-    const GAL_R    = 6;
+    const COUNT    = isMobile ? 3000 : 7000;
+    const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3, GAL_R = 1;
 
-    const positions = new Float32Array(COUNT * 3);
-    const colors    = new Float32Array(COUNT * 3);
-    const sizes     = new Float32Array(COUNT);
-
-    const cCore  = new THREE.Color(0.85, 0.88, 1.00);
-    const cMid   = new THREE.Color(0.55, 0.65, 1.00);
-    const cOuter = new THREE.Color(0.40, 0.55, 0.95);
-
+    const stars = [];
     for (let i = 0; i < COUNT; i++) {
-      const i3   = i * 3;
       const halo = i < COUNT * 0.08;
       let x, y, z;
 
       if (halo) {
-        const r     = Math.random() * GAL_R * 1.8;
+        const r     = (0.5 + Math.random()) * GAL_R;
         const theta = Math.random() * Math.PI * 2;
         const phi   = Math.acos(2 * Math.random() - 1);
         x = r * Math.sin(phi) * Math.cos(theta);
@@ -113,123 +114,110 @@
       } else {
         const r      = Math.pow(Math.random(), 0.6) * GAL_R;
         const branch = (i % BRANCHES) / BRANCHES * Math.PI * 2;
-        const spin   = r * SPIN;
+        const spin   = r * SPIN * Math.PI;
         const rnd    = () => Math.pow(Math.random(), RND_PWR) * (Math.random() < 0.5 ? 1 : -1);
-        const sc     = r * 0.35;
-        x = Math.cos(branch + spin) * r + rnd() * sc;
-        y = rnd() * 0.35;
-        z = Math.sin(branch + spin) * r + rnd() * sc;
+        x = Math.cos(branch + spin) * r + rnd() * r * 0.35;
+        y = rnd() * 0.04;
+        z = Math.sin(branch + spin) * r + rnd() * r * 0.35;
       }
 
-      positions[i3] = x; positions[i3+1] = y; positions[i3+2] = z;
+      // t = 0 (core) → 1 (edge), colour: blue-white core → indigo edge
+      const t = Math.min(Math.sqrt(x*x + z*z) / GAL_R, 1);
+      const cr = t < 0.3 ? (0.85 + (0.55 - 0.85) * t / 0.3) : (0.55 + (0.4  - 0.55) * (t - 0.3) / 0.7);
+      const cg = t < 0.3 ? (0.88 + (0.65 - 0.88) * t / 0.3) : (0.65 + (0.55 - 0.65) * (t - 0.3) / 0.7);
+      const cb = t < 0.3 ? 1.0                               : (1.0  + (0.95 - 1.0)  * (t - 0.3) / 0.7);
+      const dim = halo ? 0.35 : (0.4 + Math.random() * 0.6);
+      const sz  = halo ? (0.003 + Math.random() * 0.006) : (0.004 + Math.random() * 0.018) * (1 - t * 0.4);
 
-      const t   = Math.min(Math.sqrt(x*x + z*z) / GAL_R, 1);
-      const col = t < 0.3
-        ? cCore.clone().lerp(cMid,   t / 0.3)
-        : cMid.clone().lerp(cOuter, (t - 0.3) / 0.7);
-      if (halo) col.multiplyScalar(0.4);
-      colors[i3] = col.r; colors[i3+1] = col.g; colors[i3+2] = col.b;
-
-      sizes[i] = halo
-        ? 0.3 + Math.random() * 0.5
-        : (0.3 + Math.random() * 1.2) * (1 - t * 0.5);
+      stars.push({ x, y, z, cr, cg, cb, dim, sz });
     }
 
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
-    geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes,     1));
-
-    const mat = new THREE.ShaderMaterial({
-      vertexColors: true,
-      transparent:  true,
-      depthWrite:   false,
-      blending:     THREE.AdditiveBlending,
-      uniforms: {
-        uMouse:       { value: new THREE.Vector2(9999, 9999) },
-        uMouseRadius: { value: 0.38 },
-        uPixelRatio:  { value: renderer.getPixelRatio() },
-      },
-      vertexShader: `
-        attribute float aSize;
-        uniform vec2  uMouse;
-        uniform float uMouseRadius;
-        uniform float uPixelRatio;
-        varying vec3  vColor;
-        varying float vBrightness;
-
-        void main() {
-          vec4  mvPos = modelViewMatrix * vec4(position, 1.0);
-          vec4  clip  = projectionMatrix * mvPos;
-          vec2  ndc   = clip.xy / clip.w;
-          float dist  = length(ndc - uMouse);
-          float boost = 1.0 - smoothstep(0.0, uMouseRadius, dist);
-
-          vColor      = color;
-          vBrightness = 1.0 + boost * 4.5;
-
-          float sz = aSize * (1.0 + boost * 2.2) * uPixelRatio * (180.0 / -mvPos.z);
-          gl_PointSize = clamp(sz, 0.5, 18.0);
-          gl_Position  = clip;
-        }
-      `,
-      fragmentShader: `
-        varying vec3  vColor;
-        varying float vBrightness;
-
-        void main() {
-          vec2  uv  = gl_PointCoord - 0.5;
-          float d   = length(uv);
-          if (d > 0.5) discard;
-
-          float core = exp(-d * 9.0);
-          float glow = exp(-d * 3.5) * 0.35;
-          float str  = core + glow;
-
-          gl_FragColor = vec4(vColor * vBrightness, str * clamp(vBrightness * 0.65, 0.0, 1.0));
-        }
-      `,
-    });
-
-    const galaxy = new THREE.Points(geo, mat);
-    scene.add(galaxy);
-
-    let mouseNDC = new THREE.Vector2(9999, 9999);
-    let mpX = 0, mpY = 0, rotX = 0, rotY = 0;
+    // ── Mouse & rotation state ────────────────────────────────────────────
+    let msx = -9999, msy = -9999, mpX = 0, mpY = 0;
+    let rotX = 0.25, rotY = 0, tgtX = 0.25, tgtY = 0, autoY = 0;
+    let last = 0;
 
     window.addEventListener('mousemove', e => {
-      mouseNDC.set(
-         (e.clientX / window.innerWidth)  * 2 - 1,
-        -(e.clientY / window.innerHeight) * 2 + 1
-      );
-      mpX = e.clientX / window.innerWidth  - 0.5;
-      mpY = e.clientY / window.innerHeight - 0.5;
+      msx = e.clientX; msy = e.clientY;
+      mpX =  e.clientX / window.innerWidth  - 0.5;
+      mpY =  e.clientY / window.innerHeight - 0.5;
     });
+    window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; });
 
-    window.addEventListener('mouseleave', () => mouseNDC.set(9999, 9999));
+    // ── Render loop ───────────────────────────────────────────────────────
+    function frame(ts) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(ts - last, 50); last = ts;
 
-    window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      mat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
-    });
+      autoY  += 0.00008 * dt;
+      tgtX   += (-mpY * 0.28 - (tgtX - 0.25)) * 0.04;
+      tgtY   += ( mpX * 0.35 - tgtY) * 0.04;
+      rotX   += (tgtX - rotX) * 0.07;
+      rotY   += (autoY + tgtY - rotY) * 0.07;
 
-    const clock = new THREE.Clock();
+      const W = canvas.width, H = canvas.height;
+      const cx = W * 0.5, cy = H * 0.5;
+      const fov = Math.min(W, H) * 1.1;
+      const camZ = 2.2;
 
-    (function animate() {
-      requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      const sinX = Math.sin(rotX), cosX = Math.cos(rotX);
+      const sinY = Math.sin(rotY), cosY = Math.cos(rotY);
 
-      rotX += (-mpY * 0.28 - rotX) * 0.035;
-      rotY += ( mpX * 0.35 - rotY) * 0.035;
+      // Project stars into screen space
+      const proj = [];
+      for (const s of stars) {
+        // Rotate Y then X
+        const x1 =  s.x * cosY + s.z * sinY;
+        const z1 = -s.x * sinY + s.z * cosY;
+        const y2 =  s.y * cosX - z1 * sinX;
+        const z2 =  s.y * sinX + z1 * cosX;
+        const dz = camZ + z2;
+        if (dz < 0.01) continue;
+        const sc2 = fov / dz;
+        proj.push({ sx: x1 * sc2 + cx, sy: y2 * sc2 + cy, sc: sc2, z: z2, s });
+      }
+      proj.sort((a, b) => a.z - b.z); // back to front
 
-      galaxy.rotation.x = rotX;
-      galaxy.rotation.y = t * 0.012 + rotY;
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
 
-      mat.uniforms.uMouse.value.copy(mouseNDC);
-      renderer.render(scene, camera);
-    })();
+      const mRad = Math.min(W, H) * 0.28;
+
+      for (const p of proj) {
+        const { sx, sy, sc: scale, s } = p;
+        const r = s.sz * scale;
+        if (r < 0.15) continue;
+        if (sx < -r || sx > W + r || sy < -r || sy > H + r) continue;
+
+        const dx = sx - msx, dy = sy - msy;
+        const boost = msx < 0 ? 0 : Math.max(0, 1 - Math.sqrt(dx*dx + dy*dy) / mRad);
+        const bright = s.dim * (1 + boost * 4);
+        const draw_r = r * (1 + boost * 1.5);
+
+        ctx.globalAlpha = Math.min(1, bright);
+        // Tint via compositing trick — draw white sprite then tint
+        // Actually just draw with a colored gradient each time for large stars,
+        // or use the white sprite + multiply. For simplicity: set fillStyle per star.
+        const ri = Math.round(Math.min(255, s.cr * bright * 255));
+        const gi = Math.round(Math.min(255, s.cg * bright * 255));
+        const bi = Math.round(Math.min(255, s.cb * bright * 255));
+
+        if (draw_r < 1.2) {
+          // Tiny star: single pixel rect, fast
+          ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
+          ctx.fillRect(sx - 0.5, sy - 0.5, 1, 1);
+        } else {
+          // Larger star: sprite scaled + tinted via globalAlpha on a colored canvas
+          const d = draw_r * 2;
+          ctx.drawImage(sprite, sx - draw_r, sy - draw_r, d, d);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    requestAnimationFrame(frame);
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
