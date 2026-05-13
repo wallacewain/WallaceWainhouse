@@ -29,8 +29,27 @@
     "description": "Free tools that run entirely in your browser. No ads, no tracking, nothing uploaded."
   }
   </script>
+  <style>
+    #galaxy-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    header, main, footer { position: relative; z-index: 1; }
+    .hero {
+      min-height: calc(100vh - 60px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-bottom: 4rem;
+    }
+    .hero h1 { margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
+  <canvas id="galaxy-bg"></canvas>
   <header>
     <nav>
       <a href="/" class="logo"><svg viewBox="-46.0 -46.0 1492.0 332.0" height="26" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="#d4d4d8"><polygon points="-40,0 40,0 180,240 100,240"/><polygon points="100,240 180,240 320,0 240,0"/><polygon points="240,0 320,0 460,240 380,240"/><polygon points="380,240 460,240 600,0 520,0"/><polygon points="520,0 600,0 740,240 660,240"/><polygon points="660,240 740,240 880,0 800,0"/><polygon points="800,0 880,0 1020,240 940,240"/><polygon points="940,240 1020,240 1160,0 1080,0"/><polygon points="1080,0 1160,0 1300,240 1220,240"/><polygon points="1220,240 1300,240 1440,0 1360,0"/></svg></a>
@@ -43,11 +62,176 @@
   <main>
     <section class="hero">
       <h1>Wallace Wainhouse</h1>
+      <p><a href="/tools/" class="btn">Browse tools</a></p>
     </section>
   </main>
   <footer>
     <p>&copy; <span id="yr"></span> Wallace Wainhouse</p>
   </footer>
-  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  <script src="https://unpkg.com/three@0.163.0/build/three.min.js"></script>
+  <script>
+  (function () {
+    const canvas = document.getElementById('galaxy-bg');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x0e0e10, 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 3.5, 8);
+    camera.lookAt(0, 0, 0);
+
+    const isMobile = window.innerWidth < 768;
+    const COUNT    = isMobile ? 5000 : 12000;
+    const BRANCHES = 3;
+    const SPIN     = 1.8;
+    const RND_PWR  = 3;
+    const GAL_R    = 6;
+
+    const positions = new Float32Array(COUNT * 3);
+    const colors    = new Float32Array(COUNT * 3);
+    const sizes     = new Float32Array(COUNT);
+
+    const cCore  = new THREE.Color(0.85, 0.88, 1.00);
+    const cMid   = new THREE.Color(0.55, 0.65, 1.00);
+    const cOuter = new THREE.Color(0.40, 0.55, 0.95);
+
+    for (let i = 0; i < COUNT; i++) {
+      const i3   = i * 3;
+      const halo = i < COUNT * 0.08;
+      let x, y, z;
+
+      if (halo) {
+        const r     = Math.random() * GAL_R * 1.8;
+        const theta = Math.random() * Math.PI * 2;
+        const phi   = Math.acos(2 * Math.random() - 1);
+        x = r * Math.sin(phi) * Math.cos(theta);
+        y = r * Math.cos(phi) * 0.12;
+        z = r * Math.sin(phi) * Math.sin(theta);
+      } else {
+        const r      = Math.pow(Math.random(), 0.6) * GAL_R;
+        const branch = (i % BRANCHES) / BRANCHES * Math.PI * 2;
+        const spin   = r * SPIN;
+        const rnd    = () => Math.pow(Math.random(), RND_PWR) * (Math.random() < 0.5 ? 1 : -1);
+        const sc     = r * 0.35;
+        x = Math.cos(branch + spin) * r + rnd() * sc;
+        y = rnd() * 0.35;
+        z = Math.sin(branch + spin) * r + rnd() * sc;
+      }
+
+      positions[i3] = x; positions[i3+1] = y; positions[i3+2] = z;
+
+      const t   = Math.min(Math.sqrt(x*x + z*z) / GAL_R, 1);
+      const col = t < 0.3
+        ? cCore.clone().lerp(cMid,   t / 0.3)
+        : cMid.clone().lerp(cOuter, (t - 0.3) / 0.7);
+      if (halo) col.multiplyScalar(0.4);
+      colors[i3] = col.r; colors[i3+1] = col.g; colors[i3+2] = col.b;
+
+      sizes[i] = halo
+        ? 0.3 + Math.random() * 0.5
+        : (0.3 + Math.random() * 1.2) * (1 - t * 0.5);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
+    geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes,     1));
+
+    const mat = new THREE.ShaderMaterial({
+      vertexColors: true,
+      transparent:  true,
+      depthWrite:   false,
+      blending:     THREE.AdditiveBlending,
+      uniforms: {
+        uMouse:       { value: new THREE.Vector2(9999, 9999) },
+        uMouseRadius: { value: 0.38 },
+        uPixelRatio:  { value: renderer.getPixelRatio() },
+      },
+      vertexShader: `
+        attribute float aSize;
+        uniform vec2  uMouse;
+        uniform float uMouseRadius;
+        uniform float uPixelRatio;
+        varying vec3  vColor;
+        varying float vBrightness;
+
+        void main() {
+          vec4  mvPos = modelViewMatrix * vec4(position, 1.0);
+          vec4  clip  = projectionMatrix * mvPos;
+          vec2  ndc   = clip.xy / clip.w;
+          float dist  = length(ndc - uMouse);
+          float boost = 1.0 - smoothstep(0.0, uMouseRadius, dist);
+
+          vColor      = color;
+          vBrightness = 1.0 + boost * 4.5;
+
+          float sz = aSize * (1.0 + boost * 2.2) * uPixelRatio * (180.0 / -mvPos.z);
+          gl_PointSize = clamp(sz, 0.5, 18.0);
+          gl_Position  = clip;
+        }
+      `,
+      fragmentShader: `
+        varying vec3  vColor;
+        varying float vBrightness;
+
+        void main() {
+          vec2  uv  = gl_PointCoord - 0.5;
+          float d   = length(uv);
+          if (d > 0.5) discard;
+
+          float core = exp(-d * 9.0);
+          float glow = exp(-d * 3.5) * 0.35;
+          float str  = core + glow;
+
+          gl_FragColor = vec4(vColor * vBrightness, str * clamp(vBrightness * 0.65, 0.0, 1.0));
+        }
+      `,
+    });
+
+    const galaxy = new THREE.Points(geo, mat);
+    scene.add(galaxy);
+
+    let mouseNDC = new THREE.Vector2(9999, 9999);
+    let mpX = 0, mpY = 0, rotX = 0, rotY = 0;
+
+    window.addEventListener('mousemove', e => {
+      mouseNDC.set(
+         (e.clientX / window.innerWidth)  * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1
+      );
+      mpX = e.clientX / window.innerWidth  - 0.5;
+      mpY = e.clientY / window.innerHeight - 0.5;
+    });
+
+    window.addEventListener('mouseleave', () => mouseNDC.set(9999, 9999));
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      mat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+    });
+
+    const clock = new THREE.Clock();
+
+    (function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      rotX += (-mpY * 0.28 - rotX) * 0.035;
+      rotY += ( mpX * 0.35 - rotY) * 0.035;
+
+      galaxy.rotation.x = rotX;
+      galaxy.rotation.y = t * 0.012 + rotY;
+
+      mat.uniforms.uMouse.value.copy(mouseNDC);
+      renderer.render(scene, camera);
+    })();
+  })();
+
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
