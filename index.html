@@ -81,135 +81,150 @@
     resize();
     window.addEventListener('resize', resize);
 
-    // ── Star sprite (glow dot on offscreen canvas) ───────────────────────
-    const SPRITE_SIZE = 64;
-    const sprite = document.createElement('canvas');
-    sprite.width = sprite.height = SPRITE_SIZE;
-    const sc = sprite.getContext('2d');
-    const sg = sc.createRadialGradient(32, 32, 0, 32, 32, 32);
-    sg.addColorStop(0,    'rgba(255,255,255,1)');
-    sg.addColorStop(0.15, 'rgba(255,255,255,0.8)');
-    sg.addColorStop(0.5,  'rgba(200,210,255,0.3)');
-    sg.addColorStop(1,    'rgba(0,0,0,0)');
-    sc.fillStyle = sg;
-    sc.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
-
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
     const COUNT    = isMobile ? 3000 : 7000;
-    const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3, GAL_R = 1;
+    const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3;
 
     const stars = [];
     for (let i = 0; i < COUNT; i++) {
-      const halo = i < COUNT * 0.08;
+      const halo = i < COUNT * 0.07;
       let x, y, z;
 
       if (halo) {
-        const r     = (0.5 + Math.random()) * GAL_R;
+        const r     = 0.6 + Math.random() * 0.9;
         const theta = Math.random() * Math.PI * 2;
         const phi   = Math.acos(2 * Math.random() - 1);
         x = r * Math.sin(phi) * Math.cos(theta);
-        y = r * Math.cos(phi) * 0.12;
+        y = r * Math.cos(phi) * 0.1;
         z = r * Math.sin(phi) * Math.sin(theta);
       } else {
-        const r      = Math.pow(Math.random(), 0.6) * GAL_R;
+        const r      = Math.pow(Math.random(), 0.55);
         const branch = (i % BRANCHES) / BRANCHES * Math.PI * 2;
         const spin   = r * SPIN * Math.PI;
         const rnd    = () => Math.pow(Math.random(), RND_PWR) * (Math.random() < 0.5 ? 1 : -1);
-        x = Math.cos(branch + spin) * r + rnd() * r * 0.35;
-        y = rnd() * 0.04;
-        z = Math.sin(branch + spin) * r + rnd() * r * 0.35;
+        x = Math.cos(branch + spin) * r + rnd() * r * 0.32;
+        y = rnd() * 0.032;
+        z = Math.sin(branch + spin) * r + rnd() * r * 0.32;
       }
 
-      // t = 0 (core) → 1 (edge), colour: blue-white core → indigo edge
-      const t = Math.min(Math.sqrt(x*x + z*z) / GAL_R, 1);
-      const cr = t < 0.3 ? (0.85 + (0.55 - 0.85) * t / 0.3) : (0.55 + (0.4  - 0.55) * (t - 0.3) / 0.7);
-      const cg = t < 0.3 ? (0.88 + (0.65 - 0.88) * t / 0.3) : (0.65 + (0.55 - 0.65) * (t - 0.3) / 0.7);
-      const cb = t < 0.3 ? 1.0                               : (1.0  + (0.95 - 1.0)  * (t - 0.3) / 0.7);
-      const dim = halo ? 0.35 : (0.4 + Math.random() * 0.6);
-      const sz  = halo ? (0.003 + Math.random() * 0.006) : (0.004 + Math.random() * 0.018) * (1 - t * 0.4);
+      const t = Math.min(Math.sqrt(x*x + z*z), 1);
+
+      // Galaxy-realistic colours: warm orange core → white → blue arms → deep blue outer
+      let cr, cg, cb;
+      if (t < 0.12) {
+        cr = 1.0; cg = 0.82 + Math.random() * 0.1; cb = 0.38 + Math.random() * 0.18;
+      } else if (t < 0.32) {
+        const f = (t - 0.12) / 0.20;
+        cr = 1.0; cg = 0.82 + (1.0 - 0.82) * f; cb = 0.38 + (1.0 - 0.38) * f;
+      } else if (t < 0.65) {
+        cr = 0.62 + Math.random() * 0.28; cg = 0.72 + Math.random() * 0.22; cb = 1.0;
+      } else {
+        cr = 0.28 + Math.random() * 0.22; cg = 0.38 + Math.random() * 0.22; cb = 0.80 + Math.random() * 0.18;
+      }
+      if (halo) { cr *= 0.6; cg *= 0.6; cb *= 0.6; }
+
+      const dim = halo ? (0.18 + Math.random() * 0.25) : (0.28 + Math.random() * 0.58);
+      // Much smaller stars
+      const sz  = halo
+        ? (0.0006 + Math.random() * 0.0012)
+        : (0.0004 + Math.random() * 0.0018) * (1 - t * 0.35);
 
       stars.push({ x, y, z, cr, cg, cb, dim, sz });
     }
 
-    // ── Mouse & rotation state ────────────────────────────────────────────
-    let msx = -9999, msy = -9999, mpX = 0, mpY = 0;
-    let rotX = 0.25, rotY = 0, tgtX = 0.25, tgtY = 0, autoY = 0;
-    let last = 0;
+    // ── Interaction state — orientation only via click-drag ───────────────
+    let msx = -9999, msy = -9999;
+    let dragging = false, ldx = 0, ldy = 0;
+    let dragRX = 0.28, dragRY = 0;
+    let rotX = 0.28, rotY = 0, autoY = 0, last = 0;
 
+    window.addEventListener('mousedown', e => { dragging = true;  ldx = e.clientX; ldy = e.clientY; });
+    window.addEventListener('mouseup',   () => { dragging = false; });
     window.addEventListener('mousemove', e => {
       msx = e.clientX; msy = e.clientY;
-      mpX =  e.clientX / window.innerWidth  - 0.5;
-      mpY =  e.clientY / window.innerHeight - 0.5;
+      if (!dragging) return;
+      dragRY += (e.clientX - ldx) / window.innerWidth  * Math.PI * 1.8;
+      dragRX += (e.clientY - ldy) / window.innerHeight * Math.PI * 0.8;
+      dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
+      ldx = e.clientX; ldy = e.clientY;
     });
-    window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; });
+    window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; dragging = false; });
+
+    window.addEventListener('touchstart', e => {
+      dragging = true; ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
+    }, { passive: true });
+    window.addEventListener('touchmove', e => {
+      dragRY += (e.touches[0].clientX - ldx) / window.innerWidth  * Math.PI * 1.8;
+      dragRX += (e.touches[0].clientY - ldy) / window.innerHeight * Math.PI * 0.8;
+      dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
+      ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
+    }, { passive: true });
+    window.addEventListener('touchend', () => { dragging = false; });
 
     // ── Render loop ───────────────────────────────────────────────────────
     function frame(ts) {
       requestAnimationFrame(frame);
       const dt = Math.min(ts - last, 50); last = ts;
 
-      autoY  += 0.00008 * dt;
-      tgtX   += (-mpY * 0.28 - (tgtX - 0.25)) * 0.04;
-      tgtY   += ( mpX * 0.35 - tgtY) * 0.04;
-      rotX   += (tgtX - rotX) * 0.07;
-      rotY   += (autoY + tgtY - rotY) * 0.07;
+      autoY += 0.00007 * dt;
+      rotX  += (dragRX - rotX) * 0.1;
+      rotY  += (autoY + dragRY - rotY) * 0.1;
 
       const W = canvas.width, H = canvas.height;
       const cx = W * 0.5, cy = H * 0.5;
-      const fov = Math.min(W, H) * 1.1;
-      const camZ = 2.2;
+      // Large fov + close camera = galaxy fills & bleeds past viewport
+      const fov  = Math.max(W, H) * 1.6;
+      const camZ = 1.4;
 
       const sinX = Math.sin(rotX), cosX = Math.cos(rotX);
       const sinY = Math.sin(rotY), cosY = Math.cos(rotY);
 
-      // Project stars into screen space
       const proj = [];
       for (const s of stars) {
-        // Rotate Y then X
         const x1 =  s.x * cosY + s.z * sinY;
         const z1 = -s.x * sinY + s.z * cosY;
         const y2 =  s.y * cosX - z1 * sinX;
         const z2 =  s.y * sinX + z1 * cosX;
         const dz = camZ + z2;
         if (dz < 0.01) continue;
-        const sc2 = fov / dz;
-        proj.push({ sx: x1 * sc2 + cx, sy: y2 * sc2 + cy, sc: sc2, z: z2, s });
+        const sc = fov / dz;
+        proj.push({ sx: x1 * sc + cx, sy: y2 * sc + cy, sc, z: z2, s });
       }
-      proj.sort((a, b) => a.z - b.z); // back to front
+      proj.sort((a, b) => a.z - b.z);
 
       ctx.clearRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
 
-      const mRad = Math.min(W, H) * 0.28;
+      // Very tight mouse radius — only nearest stars brighten, steep falloff
+      const mRad = Math.min(W, H) * 0.055;
 
       for (const p of proj) {
-        const { sx, sy, sc: scale, s } = p;
-        const r = s.sz * scale;
-        if (r < 0.15) continue;
-        if (sx < -r || sx > W + r || sy < -r || sy > H + r) continue;
+        const { sx, sy, sc, s } = p;
+        const baseR = s.sz * sc;
+        if (baseR < 0.07) continue;
+        if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
 
         const dx = sx - msx, dy = sy - msy;
-        const boost = msx < 0 ? 0 : Math.max(0, 1 - Math.sqrt(dx*dx + dy*dy) / mRad);
-        const bright = s.dim * (1 + boost * 4);
-        const draw_r = r * (1 + boost * 1.5);
+        const nd = Math.sqrt(dx*dx + dy*dy) / mRad;
+        // Quadratic: falls to zero sharply, no effect beyond mRad
+        const boost  = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
+        const bright = s.dim * (1 + boost * 6);
+        const drawR  = baseR * (1 + boost * 3);
 
-        ctx.globalAlpha = Math.min(1, bright);
-        // Tint via compositing trick — draw white sprite then tint
-        // Actually just draw with a colored gradient each time for large stars,
-        // or use the white sprite + multiply. For simplicity: set fillStyle per star.
-        const ri = Math.round(Math.min(255, s.cr * bright * 255));
-        const gi = Math.round(Math.min(255, s.cg * bright * 255));
-        const bi = Math.round(Math.min(255, s.cb * bright * 255));
+        const ri = Math.min(255, s.cr * bright * 255) | 0;
+        const gi = Math.min(255, s.cg * bright * 255) | 0;
+        const bi = Math.min(255, s.cb * bright * 255) | 0;
 
-        if (draw_r < 1.2) {
-          // Tiny star: single pixel rect, fast
-          ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
-          ctx.fillRect(sx - 0.5, sy - 0.5, 1, 1);
+        ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + boost * 0.75);
+        ctx.fillStyle   = `rgb(${ri},${gi},${bi})`;
+
+        if (drawR < 1.0) {
+          ctx.fillRect(sx | 0, sy | 0, 1, 1);
         } else {
-          // Larger star: sprite scaled + tinted via globalAlpha on a colored canvas
-          const d = draw_r * 2;
-          ctx.drawImage(sprite, sx - draw_r, sy - draw_r, d, d);
+          ctx.beginPath();
+          ctx.arc(sx, sy, drawR, 0, 6.2832);
+          ctx.fill();
         }
       }
 
