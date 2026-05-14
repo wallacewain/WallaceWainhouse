@@ -161,15 +161,30 @@
     window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; dragging = false; });
 
     window.addEventListener('touchstart', e => {
-      dragging = true; ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
-    }, { passive: true });
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        dragging = true;
+        ldx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        ldy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      } else {
+        msx = ldx = e.touches[0].clientX;
+        msy = ldy = e.touches[0].clientY;
+      }
+    }, { passive: false });
     window.addEventListener('touchmove', e => {
-      dragRY += (e.touches[0].clientX - ldx) / window.innerWidth  * Math.PI * 1.8;
-      dragRX += (e.touches[0].clientY - ldy) / window.innerHeight * Math.PI * 0.8;
-      dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
-      ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
-    }, { passive: true });
-    window.addEventListener('touchend', () => { dragging = false; });
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        dragRY += (cx - ldx) / window.innerWidth  * Math.PI * 1.8;
+        dragRX += (cy - ldy) / window.innerHeight * Math.PI * 0.8;
+        dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
+        ldx = cx; ldy = cy;
+      } else {
+        msx = e.touches[0].clientX; msy = e.touches[0].clientY;
+      }
+    }, { passive: false });
+    window.addEventListener('touchend', () => { dragging = false; msx = -9999; msy = -9999; });
 
     // ── Render loop ───────────────────────────────────────────────────────
     function frame(ts) {
