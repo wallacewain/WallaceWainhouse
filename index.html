@@ -163,9 +163,9 @@
 
     // ── Shooting stars (3D, mobile swipe) ────────────────────────────────
     const SS_MAX     = 3;
-    const SS_GRAVITY = 0.35;
+    const SS_GRAVITY = 0.18;   // weaker; 1/r falloff keeps arcs gradual
     const SS_SOFTEN  = 0.008;
-    const SS_LIFE_MS = 22000;
+    const SS_LIFE_MS = 12000;
     const SS_TRAIL   = 80;
     const shootingStars = [];
     let ssVsx = 0, ssVsy = 0, ssLX = 0, ssLY = 0, ssLT = 0, ssPending = null;
@@ -226,7 +226,7 @@
         const s = shootingStars[i];
         const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
         const r  = Math.sqrt(r2);
-        const a  = SS_GRAVITY / r2;
+        const a  = SS_GRAVITY / r;   // 1/r falloff — gentler than inverse square
         s.vX -= a * s.X / r * dts;
         s.vY -= a * s.Y / r * dts;
         s.vZ -= a * s.Z / r * dts;
