@@ -47,6 +47,7 @@
       padding-bottom: 4rem;
     }
     .hero h1 { margin-bottom: 1rem; }
+    .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
   </style>
 </head>
 <body>
@@ -128,9 +129,9 @@
       const sz  = halo
         ? (0.0006 + Math.random() * 0.0012)
         : (0.0004 + Math.random() * 0.0018) * (1 - t * 0.35);
-      const glitFactor  = Math.pow(Math.random(), 0.5);
+      const glitFactor  = Math.pow(Math.random(), 2.5); // sparse: most near 0, few bright sparklers
       const twinkPhase  = Math.random() * Math.PI * 2;
-      const twinkSpeed  = 0.4 + Math.random() * 2.2;
+      const twinkSpeed  = 2.0 + Math.random() * 5.0;   // faster cycles
       stars.push({ x, y, z, cr, cg, cb, dim, sz, glitFactor, twinkPhase, twinkSpeed });
     }
 
@@ -207,16 +208,16 @@
 
         const dx = sx - msx, dy = sy - msy;
         const nd = Math.sqrt(dx*dx + dy*dy) / mRad;
-        const falloff = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
-        const twinkle = Math.pow(Math.max(0, Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase)), 4);
-        const boost   = falloff * s.glitFactor * 7 + twinkle * s.glitFactor * 3;
-        const bright  = s.dim * (1 + boost);
+        const falloff  = msx < -100 ? 0 : Math.max(0, 1 - nd);        // linear — no hard centre
+        const twinkle  = 0.5 + 0.5 * Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase);
+        const spark    = falloff * s.glitFactor * 2.5 + twinkle * s.glitFactor * 0.6;
+        const bright   = s.dim * (1 + spark);
 
         const ri = Math.min(255, s.cr * bright * 255) | 0;
         const gi = Math.min(255, s.cg * bright * 255) | 0;
         const bi = Math.min(255, s.cb * bright * 255) | 0;
 
-        ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + (falloff * s.glitFactor + twinkle * s.glitFactor * 0.5) * 0.9);
+        ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + spark * 0.4);
         ctx.fillStyle   = `rgb(${ri},${gi},${bi})`;
 
         if (baseR < 1.0) {
