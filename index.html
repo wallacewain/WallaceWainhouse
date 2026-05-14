@@ -47,7 +47,7 @@
       padding-bottom: 4rem;
     }
     .hero h1 { margin-bottom: 1rem; }
-    .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; transition: opacity 3s ease; }
+    .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -399,7 +399,10 @@
       const wantFade = shootingStars.length > 0;
       if (wantFade !== heroFaded) {
         heroFaded = wantFade;
-        heroEls.forEach(el => el.style.opacity = wantFade ? '0' : '1');
+        heroEls.forEach(el => {
+          el.style.transition = wantFade ? 'opacity 6s ease' : 'opacity 3s ease';
+          el.style.opacity = wantFade ? '0' : '1';
+        });
       }
     }
 
