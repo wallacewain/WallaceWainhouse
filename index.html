@@ -212,7 +212,9 @@
       ctx.clearRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
 
-      const mRad = Math.min(W, H) * 0.28;
+      const shortSide  = Math.min(W, H);
+      const brightRad  = shortSide * 0.30;  // large soft brightening area
+      const sparkRad   = shortSide * 0.07;  // small tight sparkle zone
 
       for (const p of proj) {
         const { sx, sy, sc, s } = p;
@@ -220,10 +222,16 @@
         if (baseR < 0.07) continue;
         if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
 
-        // Cursor influence — quadratic falloff (hot centre, soft edge)
         const dx = sx - msx, dy = sy - msy;
-        const nd = Math.sqrt(dx*dx + dy*dy) / mRad;
-        const cursorF = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        // Large zone: (1-nd)² gives clear visible falloff gradient
+        const bn     = dist / brightRad;
+        const brightF = msx < -100 ? 0 : Math.pow(Math.max(0, 1 - bn), 2);
+
+        // Small zone: sparkles + trail, tight radius
+        const sn      = dist / sparkRad;
+        const cursorSF = msx < -100 ? 0 : Math.max(0, 1 - sn * sn);
 
         let trailF = 0;
         for (let ti = 0; ti < TRAIL; ti++) {
@@ -231,16 +239,16 @@
           const age = ts - trailT[ti];
           if (age > 1200) continue;
           const fade = 1 - age / 1200;
-          const tn = Math.sqrt((sx - trailX[ti]) ** 2 + (sy - trailY[ti]) ** 2) / mRad;
+          const tn = Math.sqrt((sx - trailX[ti]) ** 2 + (sy - trailY[ti]) ** 2) / sparkRad;
           const tf = Math.max(0, 1 - tn * tn) * fade;
           if (tf > trailF) trailF = tf;
         }
 
-        const influence = Math.max(cursorF, trailF);
+        const sparkInfluence = Math.max(cursorSF, trailF);
         const twinkle   = 0.5 + 0.5 * Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase);
-        const wandFlash = Math.pow(Math.max(0, Math.sin(ts * 0.005 * s.twinkSpeed + s.twinkPhase * 2.3)), 2);
-        const wand      = influence * s.glitFactor * wandFlash * 8;
-        const spark     = wand + twinkle * s.glitFactor * 0.6;
+        const wandFlash = Math.pow(Math.max(0, Math.sin(ts * 0.002 * s.twinkSpeed + s.twinkPhase * 2.3)), 3);
+        const wand      = sparkInfluence * s.glitFactor * wandFlash * 9;
+        const spark     = brightF * 1.8 + wand + twinkle * s.glitFactor * 0.6;
         const bright     = s.dim * (1 + spark);
 
         const ri = Math.min(255, s.cr * bright * 255) | 0;
