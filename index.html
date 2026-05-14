@@ -246,7 +246,7 @@
         const twinkle   = 0.5 + 0.5 * Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase);
         const wandFlash = Math.pow(Math.max(0, Math.sin(ts * 0.002 * s.twinkSpeed + s.twinkPhase * 2.3)), 3);
         const wand      = sparkInfluence * s.glitFactor * wandFlash * 9;
-        const spark     = brightF * 1.8 + wand + twinkle * s.glitFactor * 0.6;
+        const spark     = brightF * 0.7 + wand + twinkle * s.glitFactor * 0.6;
         const bright     = s.dim * (1 + spark);
 
         const ri = Math.min(255, s.cr * bright * 255) | 0;
