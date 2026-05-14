@@ -8,6 +8,7 @@
   --accent-hover: #818cf8;
   --radius: 8px;
   --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Libre Baskerville', Georgia, serif;
   --mono: 'Courier New', monospace;
 }
 
@@ -52,7 +53,8 @@ footer { border-top: 1px solid var(--border); text-align: center; padding: 1.5re
 
 /* Hero */
 .hero { padding: 6rem 0 4rem; }
-.hero h1 { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+h1, h2 { font-family: var(--font-display); }
+.hero h1 { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; margin-bottom: 1.25rem; }
 .hero h1 span { background: linear-gradient(135deg, var(--accent), var(--accent-hover)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .hero p { font-size: 1.2rem; color: var(--muted); max-width: 540px; margin-bottom: 2.5rem; }
 
