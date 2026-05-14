@@ -141,6 +141,13 @@
     let dragRX = 0.28, dragRY = 0;
     let rotX = 0.28, rotY = 0, autoY = 0, last = 0;
 
+    // ── Mouse trail ───────────────────────────────────────────────────────
+    const TRAIL = 16;
+    const trailX = new Float32Array(TRAIL);
+    const trailY = new Float32Array(TRAIL);
+    const trailT = new Float32Array(TRAIL);
+    let trailHead = 0, lastSample = 0;
+
     window.addEventListener('mousedown', e => { dragging = true;  ldx = e.clientX; ldy = e.clientY; });
     window.addEventListener('mouseup',   () => { dragging = false; });
     window.addEventListener('mousemove', e => {
@@ -195,10 +202,17 @@
       }
       proj.sort((a, b) => a.z - b.z);
 
+      // Sample trail
+      if (msx > -100 && ts - lastSample > 50) {
+        trailX[trailHead] = msx; trailY[trailHead] = msy; trailT[trailHead] = ts;
+        trailHead = (trailHead + 1) % TRAIL;
+        lastSample = ts;
+      }
+
       ctx.clearRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
 
-      const mRad = Math.min(W, H) * 0.32;
+      const mRad = Math.min(W, H) * 0.28;
 
       for (const p of proj) {
         const { sx, sy, sc, s } = p;
@@ -206,13 +220,28 @@
         if (baseR < 0.07) continue;
         if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
 
+        // Cursor influence — quadratic falloff (hot centre, soft edge)
         const dx = sx - msx, dy = sy - msy;
         const nd = Math.sqrt(dx*dx + dy*dy) / mRad;
-        const falloff    = msx < -100 ? 0 : Math.max(0, 1 - nd);
-        const twinkle    = 0.5 + 0.5 * Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase);
-        const wandFlash  = Math.pow(Math.max(0, Math.sin(ts * 0.006 * s.twinkSpeed + s.twinkPhase * 2.3)), 2);
-        const wand       = falloff * s.glitFactor * wandFlash * 16;
-        const spark      = wand + twinkle * s.glitFactor * 0.6;
+        const cursorF = msx < -100 ? 0 : Math.max(0, 1 - nd * nd);
+
+        // Trail influence — each point decays over 1.2 s
+        let trailF = 0;
+        for (let ti = 0; ti < TRAIL; ti++) {
+          if (!trailT[ti]) continue;
+          const age = ts - trailT[ti];
+          if (age > 1200) continue;
+          const fade = 1 - age / 1200;
+          const tn = Math.sqrt((sx - trailX[ti]) ** 2 + (sy - trailY[ti]) ** 2) / mRad;
+          const tf = Math.max(0, 1 - tn * tn) * fade;
+          if (tf > trailF) trailF = tf;
+        }
+
+        const influence = Math.max(cursorF, trailF);
+        const twinkle   = 0.5 + 0.5 * Math.sin(ts * 0.001 * s.twinkSpeed + s.twinkPhase);
+        const wandFlash = Math.pow(Math.max(0, Math.sin(ts * 0.005 * s.twinkSpeed + s.twinkPhase * 2.3)), 2);
+        const wand      = influence * s.glitFactor * wandFlash * 8;
+        const spark     = wand + twinkle * s.glitFactor * 0.6;
         const bright     = s.dim * (1 + spark);
 
         const ri = Math.min(255, s.cr * bright * 255) | 0;
