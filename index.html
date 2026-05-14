@@ -214,16 +214,13 @@
         const ri = Math.min(255, s.cr * bright * 255) | 0;
         const gi = Math.min(255, s.cg * bright * 255) | 0;
         const bi = Math.min(255, s.cb * bright * 255) | 0;
+        const color = `rgb(${ri},${gi},${bi})`;
 
-        // Glow halo — faint, wide
-        ctx.globalAlpha = Math.min(0.35, s.dim * 0.1 * (1 + boost * 2));
-        ctx.fillStyle   = `rgb(${ri},${gi},${bi})`;
-        ctx.beginPath();
-        ctx.arc(sx, sy, baseR * 4, 0, 6.2832);
-        ctx.fill();
-
-        // Core — small, bright
+        ctx.shadowBlur  = Math.max(2.5, baseR * 5);
+        ctx.shadowColor = color;
         ctx.globalAlpha = Math.min(0.95, s.dim * 0.85 + boost * 0.4);
+        ctx.fillStyle   = color;
+
         if (baseR < 1.0) {
           ctx.fillRect(sx | 0, sy | 0, 1, 1);
         } else {
@@ -232,6 +229,7 @@
           ctx.fill();
         }
       }
+      ctx.shadowBlur = 0;
 
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
