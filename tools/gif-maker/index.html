@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser — nothing is uploaded.">
+  <title>Animated GIF Maker &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/gif-maker/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/gif-maker/">
+  <meta property="og:title" content="Animated GIF Maker &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Animated GIF Maker &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    .mode-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .mode-tab { flex: 1; padding: 0.55rem 1rem; text-align: center; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-right: 1px solid var(--border); transition: background 0.15s, color 0.15s; font-family: var(--font); }
+    .mode-tab:last-child { border-right: none; }
+    .mode-tab.active { background: var(--surface); color: var(--text); }
+    .mode-tab:hover:not(.active) { color: var(--text); }
+
+    .frames-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; margin-top: 1rem; }
+    .frame-thumb { position: relative; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 1; }
+    .frame-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .frame-n { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.55); font-size: 0.6rem; color: #fff; text-align: center; padding: 1px 0; }
+    .rm-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.65); border: none; color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.1s; line-height: 1; padding: 0; }
+    .frame-thumb:hover .rm-btn { opacity: 1; }
+
+    .prog { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
+
+    video#vid { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; margin-top: 1rem; }
+    #gif-img { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
+    canvas { display: none; }
+
+    .tool-wrap { max-width: 660px; display: flex; flex-direction: column; gap: 1.25rem; padding-bottom: 4rem; }
+    .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .out-area { display: none; flex-direction: column; gap: 0.75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><svg viewBox="-323 -28 2446 296" height="18" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-279.60,-4.00 -298.80,10.40 -123.60,244.00 -104.40,229.60"/><polygon points="-54.00,229.60 -34.80,244.00 140.40,10.40 121.20,-4.00"/><polygon points="210.00,-4.00 190.80,10.40 366.00,244.00 385.20,229.60"/><polygon points="435.60,229.60 454.80,244.00 630.00,10.40 610.80,-4.00"/><polygon points="699.60,-4.00 680.40,10.40 855.60,244.00 874.80,229.60"/><polygon points="925.20,229.60 944.40,244.00 1119.60,10.40 1100.40,-4.00"/><polygon points="1189.20,-4.00 1170.00,10.40 1345.20,244.00 1364.40,229.60"/><polygon points="1414.80,229.60 1434.00,244.00 1609.20,10.40 1590.00,-4.00"/><polygon points="1678.80,-4.00 1659.60,10.40 1834.80,244.00 1854.00,229.60"/><polygon points="1904.40,229.60 1923.60,244.00 2098.80,10.40 2079.60,-4.00"/></svg></a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1.5rem">
+      <h1>Animated GIF Maker</h1>
+      <p>Create animated GIFs from a video clip or image sequence. Everything runs in your browser &mdash; nothing is uploaded.</p>
+    </section>
+
+    <div class="tool-wrap">
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-video" onclick="setMode('video')">Video clip</button>
+        <button class="mode-tab" id="tab-imgs" onclick="setMode('images')">Image sequence</button>
+      </div>
+
+      <!-- Video pane -->
+      <div id="pane-video">
+        <div class="drop-zone" id="vdrop">
+          <input type="file" id="vfile" accept="video/*">
+          <strong>Drop a video file here</strong>
+          <p>MP4, WebM, MOV &mdash; processed locally</p>
+        </div>
+        <video id="vid" controls preload="metadata"></video>
+        <div id="vtime" style="display:none; margin-top:1rem">
+          <div class="row">
+            <div class="field"><label>Start (s)</label><input type="number" id="v-start" value="0" min="0" step="0.1"></div>
+            <div class="field"><label>End (s)</label><input type="number" id="v-end" value="3" min="0" step="0.1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Images pane -->
+      <div id="pane-imgs" style="display:none">
+        <div class="drop-zone" id="idrop">
+          <input type="file" id="ifiles" accept="image/*" multiple>
+          <strong>Drop images here</strong>
+          <p>JPG, PNG, WebP &mdash; sorted by filename, so name them in order</p>
+        </div>
+        <div class="frames-grid" id="fgrid"></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="settings-panel">
+        <div class="row">
+          <div class="field">
+            <label>FPS &mdash; <span id="fps-lbl">12</span></label>
+            <input type="range" id="fps" min="1" max="25" value="12" oninput="fpsLbl.textContent=this.value;updateEst()">
+          </div>
+          <div class="field">
+            <label>Width</label>
+            <select id="wsel" onchange="updateEst()">
+              <option value="240">240 px</option>
+              <option value="320" selected>320 px</option>
+              <option value="480">480 px</option>
+              <option value="640">640 px</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Quality</label>
+            <select id="qsel">
+              <option value="2">High (slower)</option>
+              <option value="6" selected>Medium</option>
+              <option value="15">Low (faster)</option>
+            </select>
+          </div>
+          <div class="field" style="flex-direction:row; align-items:center; gap:0.5rem; padding-top:1.4rem; justify-content:flex-start">
+            <input type="checkbox" id="loop-cb" checked>
+            <label for="loop-cb" style="color:var(--text); font-size:0.9rem; font-weight:400">Loop forever</label>
+          </div>
+        </div>
+        <p id="est" style="font-size:0.8rem; color:var(--muted); margin:0; min-height:1em"></p>
+      </div>
+
+      <button class="btn" id="gen-btn" onclick="generate()" disabled>Generate GIF</button>
+
+      <!-- Output -->
+      <div class="out-area" id="out-area">
+        <div class="prog"><div class="prog-fill" id="pfill"></div></div>
+        <p id="status-msg" style="font-size:0.875rem; color:var(--muted); margin:0"></p>
+        <img id="gif-img" alt="Generated GIF">
+        <p id="out-meta" style="font-size:0.85rem; color:var(--muted); margin:0"></p>
+        <a class="btn" id="dl-btn" download="animation.gif" style="display:none; align-self:flex-start">&#8595; Download GIF</a>
+      </div>
+
+    </div>
+    <canvas id="cap"></canvas>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+
+  <script src="https://unpkg.com/gif.js@0.2.0/dist/gif.js"></script>
+  <script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  const fpsLbl = document.getElementById('fps-lbl');
+
+  let mode = 'video';
+  let imgFrames = [];
+  let gifWorkerUrl = null;
+  let busy = false;
+
+  const vid = document.getElementById('vid');
+
+  // ── Mode ──────────────────────────────────────────────────────────────
+  function setMode(m) {
+    mode = m;
+    document.getElementById('tab-video').classList.toggle('active', m === 'video');
+    document.getElementById('tab-imgs').classList.toggle('active', m === 'images');
+    document.getElementById('pane-video').style.display = m === 'video' ? '' : 'none';
+    document.getElementById('pane-imgs').style.display = m === 'images' ? '' : 'none';
+    updateEst(); checkReady();
+  }
+
+  // ── Video input ───────────────────────────────────────────────────────
+  const vdrop = document.getElementById('vdrop');
+  document.getElementById('vfile').addEventListener('change', e => loadVideo(e.target.files[0]));
+  vdrop.addEventListener('dragover', e => { e.preventDefault(); vdrop.classList.add('drag-over'); });
+  vdrop.addEventListener('dragleave', () => vdrop.classList.remove('drag-over'));
+  vdrop.addEventListener('drop', e => {
+    e.preventDefault(); vdrop.classList.remove('drag-over');
+    const f = [...e.dataTransfer.files].find(f => f.type.startsWith('video/'));
+    if (f) loadVideo(f);
+  });
+
+  function loadVideo(file) {
+    vid.src = URL.createObjectURL(file);
+    vid.style.display = 'block';
+    vid.onloadedmetadata = () => {
+      const dur = vid.duration;
+      const endEl = document.getElementById('v-end');
+      endEl.value = Math.min(dur, 4).toFixed(1);
+      endEl.max = dur.toFixed(1);
+      document.getElementById('v-start').max = dur.toFixed(1);
+      document.getElementById('vtime').style.display = '';
+      updateEst(); checkReady();
+    };
+  }
+
+  ['v-start', 'v-end'].forEach(id =>
+    document.getElementById(id).addEventListener('input', () => { updateEst(); checkReady(); }));
+
+  // ── Image sequence input ──────────────────────────────────────────────
+  const idrop = document.getElementById('idrop');
+  document.getElementById('ifiles').addEventListener('change', e => addImages([...e.target.files]));
+  idrop.addEventListener('dragover', e => { e.preventDefault(); idrop.classList.add('drag-over'); });
+  idrop.addEventListener('dragleave', () => idrop.classList.remove('drag-over'));
+  idrop.addEventListener('drop', e => {
+    e.preventDefault(); idrop.classList.remove('drag-over');
+    addImages([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+  });
+
+  function addImages(files) {
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    files.forEach(f => {
+      const url = URL.createObjectURL(f);
+      const el = new Image(); el.src = url;
+      imgFrames.push({ url, el });
+    });
+    renderGrid(); updateEst(); checkReady();
+  }
+
+  function renderGrid() {
+    const g = document.getElementById('fgrid');
+    g.innerHTML = '';
+    imgFrames.forEach((fr, i) => {
+      const d = document.createElement('div');
+      d.className = 'frame-thumb';
+      d.innerHTML = `<img src="${fr.url}"><span class="frame-n">${i + 1}</span><button class="rm-btn" onclick="rmFrame(${i})">&#215;</button>`;
+      g.appendChild(d);
+    });
+  }
+
+  function rmFrame(i) {
+    URL.revokeObjectURL(imgFrames[i].url);
+    imgFrames.splice(i, 1);
+    renderGrid(); updateEst(); checkReady();
+  }
+
+  // ── Estimate ──────────────────────────────────────────────────────────
+  function updateEst() {
+    const fps = parseInt(document.getElementById('fps').value);
+    const w   = parseInt(document.getElementById('wsel').value);
+    const est = document.getElementById('est');
+    if (mode === 'video' && vid.duration > 0) {
+      const dur = parseFloat(document.getElementById('v-end').value) - parseFloat(document.getElementById('v-start').value);
+      if (dur > 0) {
+        const n = Math.floor(dur * fps);
+        est.textContent = `≈ ${n} frame${n !== 1 ? 's' : ''} at ${w} px wide`;
+        if (n > 150) est.textContent += ' — try a shorter clip or lower FPS (max 150)';
+      }
+    } else if (mode === 'images' && imgFrames.length) {
+      est.textContent = `${imgFrames.length} frames · ${Math.round(1000 / fps)} ms each · ${w} px wide`;
+    } else {
+      est.textContent = '';
+    }
+  }
+
+  function checkReady() {
+    const ok = mode === 'video'
+      ? (vid.src && vid.duration > 0 &&
+         parseFloat(document.getElementById('v-end').value) > parseFloat(document.getElementById('v-start').value))
+      : imgFrames.length >= 2;
+    document.getElementById('gen-btn').disabled = !ok || busy;
+  }
+
+  // ── gif.js worker via blob (avoids same-origin restriction) ──────────
+  async function getWorkerUrl() {
+    if (gifWorkerUrl) return gifWorkerUrl;
+    const r = await fetch('https://unpkg.com/gif.js@0.2.0/dist/gif.worker.js');
+    if (!r.ok) throw new Error('Could not load GIF encoder worker');
+    const txt = await r.text();
+    gifWorkerUrl = URL.createObjectURL(new Blob([txt], { type: 'application/javascript' }));
+    return gifWorkerUrl;
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────────────
+  function setStatus(msg, pct) {
+    const area = document.getElementById('out-area');
+    area.style.display = 'flex';
+    document.getElementById('status-msg').textContent = msg;
+    if (pct != null) document.getElementById('pfill').style.width = (pct * 100) + '%';
+  }
+
+  // ── Generate ──────────────────────────────────────────────────────────
+  async function generate() {
+    if (busy) return;
+    busy = true;
+    document.getElementById('gen-btn').disabled = true;
+    document.getElementById('gif-img').style.display = 'none';
+    document.getElementById('dl-btn').style.display = 'none';
+    document.getElementById('out-meta').textContent = '';
+
+    const fps   = parseInt(document.getElementById('fps').value);
+    const w     = parseInt(document.getElementById('wsel').value);
+    const qual  = parseInt(document.getElementById('qsel').value);
+    const loop  = document.getElementById('loop-cb').checked;
+    const delay = Math.round(1000 / fps);
+    const cap   = document.getElementById('cap');
+    const ctx   = cap.getContext('2d');
+
+    try {
+      let frames = [];
+
+      if (mode === 'video') {
+        const t0  = parseFloat(document.getElementById('v-start').value) || 0;
+        const t1  = parseFloat(document.getElementById('v-end').value);
+        const dur = t1 - t0;
+        if (dur <= 0) throw new Error('End time must be after start time');
+        const nf = Math.floor(dur * fps);
+        if (nf > 150) throw new Error(`${nf} frames exceeds the 150-frame limit — shorten the clip or reduce FPS`);
+
+        cap.width  = w;
+        cap.height = Math.round(vid.videoHeight / vid.videoWidth * w);
+        setStatus(`Extracting ${nf} frames…`, 0);
+
+        for (let i = 0; i < nf; i++) {
+          vid.currentTime = t0 + i / fps;
+          await new Promise(res => vid.addEventListener('seeked', res, { once: true }));
+          ctx.drawImage(vid, 0, 0, cap.width, cap.height);
+          frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
+          setStatus(`Extracting frame ${i + 1} / ${nf}…`, (i + 1) / nf * 0.6);
+        }
+
+      } else {
+        await Promise.all(imgFrames.map(f =>
+          f.el.complete ? Promise.resolve()
+                        : new Promise(res => { f.el.onload = res; f.el.onerror = res; })));
+
+        const ref = imgFrames[0].el;
+        cap.width  = w;
+        cap.height = Math.round(ref.naturalHeight / ref.naturalWidth * w);
+        setStatus(`Processing ${imgFrames.length} frames…`, 0);
+
+        for (let i = 0; i < imgFrames.length; i++) {
+          ctx.clearRect(0, 0, cap.width, cap.height);
+          ctx.drawImage(imgFrames[i].el, 0, 0, cap.width, cap.height);
+          frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
+          setStatus(`Processing frame ${i + 1} / ${imgFrames.length}…`, (i + 1) / imgFrames.length * 0.6);
+        }
+      }
+
+      setStatus('Loading encoder…', 0.62);
+      const wurl = await getWorkerUrl();
+
+      const gif = new GIF({
+        workers: 2, quality: qual,
+        width: cap.width, height: cap.height,
+        workerScript: wurl, repeat: loop ? 0 : -1
+      });
+
+      for (const frame of frames) {
+        const tmp = document.createElement('canvas');
+        tmp.width = cap.width; tmp.height = cap.height;
+        tmp.getContext('2d').putImageData(frame, 0, 0);
+        gif.addFrame(tmp, { delay, copy: true });
+      }
+
+      gif.on('progress', p => setStatus('Encoding…', 0.65 + p * 0.35));
+
+      gif.on('finished', blob => {
+        const url = URL.createObjectURL(blob);
+        const img = document.getElementById('gif-img');
+        img.onload = () => { img.style.display = 'block'; };
+        img.src = url;
+        document.getElementById('out-meta').textContent =
+          `${cap.width} × ${cap.height} px · ${frames.length} frames · ${(blob.size / 1024).toFixed(0)} KB`;
+        const dl = document.getElementById('dl-btn');
+        dl.href = url; dl.style.display = 'inline-flex';
+        setStatus('Done!', 1);
+        busy = false; checkReady();
+      });
+
+      gif.render();
+
+    } catch (err) {
+      setStatus('Error: ' + err.message, null);
+      busy = false; checkReady();
+    }
+  }
+  </script>
+</body>
+</html>
