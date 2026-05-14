@@ -161,15 +161,63 @@
     });
     window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; dragging = false; });
 
+    // ── Shooting stars (mobile swipe) ────────────────────────────────────────
+    const SS_MAX     = 3;
+    const SS_GRAVITY = 2000000;
+    const SS_SOFTEN  = 8000;
+    const SS_LIFE_MS = 7000;
+    const SS_TRAIL   = 50;
+    const shootingStars = [];
+    let ssVX = 0, ssVY = 0, ssLX = 0, ssLY = 0, ssLT = 0, ssPending = null;
+
+    function ssSpawn(x, y, vx, vy) {
+      if (shootingStars.length >= SS_MAX) shootingStars[0].dying = true;
+      shootingStars.push({ x, y, vx, vy, life: 1, trail: [], dying: false });
+    }
+
+    function ssDraw(dt) {
+      const gx = canvas.width * 0.5, gy = canvas.height * 0.5;
+      const s2 = dt * 0.001;
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = shootingStars.length - 1; i >= 0; i--) {
+        const s = shootingStars[i];
+        const dx = gx - s.x, dy = gy - s.y;
+        const r2 = dx*dx + dy*dy + SS_SOFTEN;
+        const r  = Math.sqrt(r2);
+        s.vx += SS_GRAVITY / r2 * dx / r * s2;
+        s.vy += SS_GRAVITY / r2 * dy / r * s2;
+        s.trail.push({ x: s.x, y: s.y });
+        if (s.trail.length > SS_TRAIL) s.trail.shift();
+        s.x += s.vx * s2;
+        s.y += s.vy * s2;
+        s.life -= dt * (s.dying ? 3 : 1) / SS_LIFE_MS;
+        if (s.life <= 0) { shootingStars.splice(i, 1); continue; }
+        const tl = s.trail.length;
+        for (let j = 1; j < tl; j++) {
+          const f = j / tl;
+          ctx.globalAlpha = f * f * s.life * 0.85;
+          ctx.fillStyle = f > 0.55 ? '#fff0a0' : '#ff9020';
+          const sz = Math.max(1, f * 3);
+          ctx.fillRect(s.trail[j].x - sz * 0.5, s.trail[j].y - sz * 0.5, sz, sz);
+        }
+        ctx.globalAlpha = s.life;
+        ctx.fillStyle = '#fffce8';
+        ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 6.2832); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
     window.addEventListener('touchstart', e => {
-      e.preventDefault();
       if (e.touches.length === 2) {
+        e.preventDefault();
         dragging = true;
         ldx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         ldy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       } else {
-        msx = ldx = e.touches[0].clientX;
-        msy = ldy = e.touches[0].clientY;
+        msx = ldx = ssLX = e.touches[0].clientX;
+        msy = ldy = ssLY = e.touches[0].clientY;
+        ssVX = 0; ssVY = 0; ssLT = performance.now();
       }
     }, { passive: false });
     window.addEventListener('touchmove', e => {
@@ -182,10 +230,25 @@
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = cx; ldy = cy;
       } else {
-        msx = e.touches[0].clientX; msy = e.touches[0].clientY;
+        const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
+        const nt = performance.now(), dt2 = Math.max(1, nt - ssLT);
+        ssVX = (nx - ssLX) / dt2 * 1000;
+        ssVY = (ny - ssLY) / dt2 * 1000;
+        ssLX = nx; ssLY = ny; ssLT = nt;
+        msx = nx; msy = ny;
       }
     }, { passive: false });
-    window.addEventListener('touchend', () => { dragging = false; msx = -9999; msy = -9999; });
+    window.addEventListener('touchend', e => {
+      if (e.touches.length === 0) {
+        dragging = false; msx = -9999; msy = -9999;
+        const spd = Math.sqrt(ssVX * ssVX + ssVY * ssVY);
+        if (spd > 80) {
+          const lx = ssLX, ly = ssLY, vx = ssVX * 0.2, vy = ssVY * 0.2;
+          clearTimeout(ssPending);
+          ssPending = setTimeout(() => ssSpawn(lx, ly, vx, vy), 350);
+        }
+      }
+    });
 
     // ── Render loop ───────────────────────────────────────────────────────
     function frame(ts) {
@@ -282,6 +345,7 @@
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
+      if (shootingStars.length) ssDraw(dt);
     }
 
     requestAnimationFrame(frame);

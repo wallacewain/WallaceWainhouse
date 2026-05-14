@@ -92,8 +92,8 @@ h1, h2 { font-family: var(--font-display); }
 .tool-card p { font-size: 0.9rem; color: var(--muted); flex: 1; }
 
 /* Tags */
-.tag { display: inline-block; font-size: 0.75rem; font-weight: 500; padding: 0.2rem 0.55rem; border-radius: 4px; background: rgba(99,102,241,0.15); color: var(--accent-hover); border: 1px solid rgba(99,102,241,0.3); }
-.tag-warning { background: rgba(234,179,8,0.12); color: #fbbf24; border-color: rgba(234,179,8,0.3); }
+.tag { display: inline-block; font-size: 0.75rem; font-weight: 500; padding: 0.2rem 0.55rem; border-radius: 4px; background: rgba(180,150,100,0.1); color: #a08860; border: 1px solid rgba(180,150,100,0.25); }
+.tag-warning { background: rgba(160,130,80,0.12); color: #907040; border-color: rgba(160,130,80,0.28); }
 .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .tool-link { font-size: 0.875rem; font-weight: 500; color: var(--accent); }
 .tool-link:hover { color: var(--accent-hover); }
