@@ -136,9 +136,10 @@
       stars.push({ x, y, z, cr, cg, cb, dim, sz, glitFactor, twinkPhase, twinkSpeed });
     }
 
-    // ── Interaction state — orientation only via click-drag ───────────────
+    // ── Interaction state ─────────────────────────────────────────────────
     let msx = -9999, msy = -9999;
     let dragging = false, ldx = 0, ldy = 0;
+    let lDragging = false, mDragging = false;
     const heroEls = document.querySelectorAll('.hero h1, .hero p');
     let heroFaded = false;
     let dragRX = 0.28, dragRY = 0;
@@ -151,17 +152,47 @@
     const trailT = new Float32Array(TRAIL);
     let trailHead = 0, lastSample = 0;
 
-    window.addEventListener('mousedown', e => { dragging = true;  ldx = e.clientX; ldy = e.clientY; });
-    window.addEventListener('mouseup',   () => { dragging = false; });
+    window.addEventListener('mousedown', e => {
+      if (e.button === 0) {
+        lDragging = true;
+        ssLX = e.clientX; ssLY = e.clientY;
+        ssVsx = 0; ssVsy = 0; ssLT = performance.now();
+        e.preventDefault();
+      } else if (e.button === 1) {
+        mDragging = true;
+        ldx = e.clientX; ldy = e.clientY;
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('mouseup', e => {
+      if (e.button === 0 && lDragging) {
+        lDragging = false;
+        const spd = Math.sqrt(ssVsx * ssVsx + ssVsy * ssVsy);
+        if (spd > 80) {
+          const lx = ssLX, ly = ssLY, vsx = ssVsx, vsy = ssVsy;
+          clearTimeout(ssPending);
+          ssPending = setTimeout(() => ssSpawn(lx, ly, vsx, vsy), 350);
+        }
+      } else if (e.button === 1) {
+        mDragging = false;
+      }
+    });
     window.addEventListener('mousemove', e => {
       msx = e.clientX; msy = e.clientY;
-      if (!dragging) return;
-      dragRY += (e.clientX - ldx) / window.innerWidth  * Math.PI * 1.8;
-      dragRX += (e.clientY - ldy) / window.innerHeight * Math.PI * 0.8;
-      dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
-      ldx = e.clientX; ldy = e.clientY;
+      if (mDragging) {
+        dragRY += (e.clientX - ldx) / window.innerWidth  * Math.PI * 1.8;
+        dragRX += (e.clientY - ldy) / window.innerHeight * Math.PI * 0.8;
+        dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
+        ldx = e.clientX; ldy = e.clientY;
+      } else if (lDragging) {
+        const nx = e.clientX, ny = e.clientY;
+        const nt = performance.now(), dt2 = Math.max(1, nt - ssLT);
+        ssVsx = (nx - ssLX) / dt2 * 1000;
+        ssVsy = (ny - ssLY) / dt2 * 1000;
+        ssLX = nx; ssLY = ny; ssLT = nt;
+      }
     });
-    window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; dragging = false; });
+    window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; lDragging = false; mDragging = false; });
 
     // ── Shooting stars (3D, mobile swipe) ────────────────────────────────
     const SS_MAX     = 3;
