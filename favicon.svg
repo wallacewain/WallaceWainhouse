@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
-  <rect width="500" height="500" fill="#0e0e10"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-25 0 550 550">
+  <rect x="-25" y="0" width="550" height="550" fill="#0e0e10"/>
   <polyline
     fill="none"
     stroke="#d4d4d8"
     stroke-width="58"
-    stroke-linejoin="miter"
+    stroke-linejoin="round"
     stroke-linecap="round"
-    points="65,65 250,435 435,65"
+    points="0,85 50,465 100,85 150,465 200,85 250,465 300,85 350,465 400,85 450,465 500,85"
   />
 </svg>
