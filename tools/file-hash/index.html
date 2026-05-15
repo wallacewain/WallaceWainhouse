@@ -51,5 +51,6 @@
     async function process(file){currentFile=file;fileNameEl.textContent='— '+file.name;hashOutput.textContent='Computing…';resultField.style.display='';verifyField.style.display='';expected.value='';matchResult.textContent='';const buf=await file.arrayBuffer();const hashBuf=await crypto.subtle.digest(algoEl.value,buf);hashOutput.textContent=Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
     expected.addEventListener('input',()=>{const exp=expected.value.trim().toLowerCase(),got=hashOutput.textContent.toLowerCase();if(!exp){matchResult.textContent='';return;}matchResult.textContent=exp===got?'✓ Match':'✗ No match';matchResult.className=exp===got?'match-ok':'match-fail';});
   </script>
+<script src="/js/logo.js"></script>
 </body>
 </html>
