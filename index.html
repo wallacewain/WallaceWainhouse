@@ -85,7 +85,8 @@
 
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
-    const COUNT    = isMobile ? 3000 : 7000;
+    const COUNT    = isMobile ? 3000 : 14000;
+    const szScale  = isMobile ? 1.0 : 0.5;
     const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3;
 
     const stars = [];
@@ -127,9 +128,9 @@
       if (halo) { cr *= 0.6; cg *= 0.6; cb *= 0.6; }
 
       const dim = halo ? (0.18 + Math.random() * 0.25) : (0.28 + Math.random() * 0.58);
-      const sz  = halo
+      const sz  = szScale * (halo
         ? (0.0006 + Math.random() * 0.0012)
-        : (0.0004 + Math.random() * 0.0018) * (1 - t * 0.35);
+        : (0.0004 + Math.random() * 0.0018) * (1 - t * 0.35));
       const glitFactor  = Math.pow(Math.random(), 2.5);
       const twinkPhase  = Math.random() * Math.PI * 2;
       const twinkSpeed  = 2.0 + Math.random() * 5.0;
@@ -189,7 +190,7 @@
     const SS_GRAVITY = 0.10;   // weaker; 1/r falloff keeps arcs gradual
     const SS_SOFTEN  = 0.008;
     const SS_LIFE_MS = 12000;
-    const SS_TRAIL   = 80;
+    const SS_TRAIL   = isMobile ? 80 : 160;
     const shootingStars = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
 
@@ -260,7 +261,7 @@
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
       }
 
-      const ssR = Math.max(2.5, Math.max(W, H) * 0.003);
+      const ssR = (isMobile ? 1 : 0.5) * Math.max(2.5, Math.max(W, H) * 0.003);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
