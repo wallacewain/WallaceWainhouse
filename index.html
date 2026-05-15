@@ -85,7 +85,7 @@
 
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
-    const COUNT    = isMobile ? 3000 : 14000;
+    const COUNT    = isMobile ? 3000 : 7000;
     const szScale  = isMobile ? 1.0 : 0.5;
     const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3;
 
@@ -190,7 +190,7 @@
     const SS_GRAVITY = 0.10;   // weaker; 1/r falloff keeps arcs gradual
     const SS_SOFTEN  = 0.008;
     const SS_LIFE_MS = 12000;
-    const SS_TRAIL   = isMobile ? 80 : 160;
+    const SS_TRAIL   = 80;
     const shootingStars = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
 
