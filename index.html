@@ -261,7 +261,7 @@
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
       }
 
-      const ssR = (isMobile ? 1 : 0.5) * Math.max(2.5, Math.max(W, H) * 0.003);
+      const ssR = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
