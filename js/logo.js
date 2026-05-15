@@ -2,7 +2,6 @@
   var logoA = document.querySelector('header .logo');
   if (!logoA) return;
 
-  // Replace whatever logo variant is on this page with the animated squiggle
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', '-323 -28 2446 296');
@@ -11,38 +10,54 @@
   var pl = document.createElementNS(NS, 'polyline');
   pl.setAttribute('fill', 'none');
   pl.setAttribute('stroke', 'currentColor');
-  pl.setAttribute('stroke-width', '24');
   pl.setAttribute('stroke-linejoin', 'miter');
   pl.setAttribute('stroke-linecap', 'butt');
   svg.appendChild(pl);
   while (logoA.firstChild) logoA.removeChild(logoA.firstChild);
   logoA.appendChild(svg);
 
-  // 11 zigzag nodes, symmetric around x = 900
-  // Original positions: tops at YT, bottoms at YB
-  var YT = 3.2, YB = 236.8;
-  var OX = [-289.2, -79.2, 165.6, 410.4, 655.2, 900, 1144.8, 1389.6, 1634.4, 1879.2, 2089.2];
-  var OY = [YT, YB, YT, YB, YT, YB, YT, YB, YT, YB, YT];
-  var N = 11;
+  var CX = 900;       // axis of WMW mirror symmetry
+  var DURATION = 30;  // seconds per morph
 
-  // x drift range per node (endpoints tighter so they don't clip viewBox)
-  var XR = [20, 80, 80, 80, 80, 0, 80, 80, 80, 80, 20];
-  var YR = 25;
-  var DURATION = 30; // seconds for one complete morph
+  function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // Generate a symmetric shape: nodes 0-5 are random, 6-10 mirror 4-0 around x=900
+  // Each shape is generated so that:
+  //  - The whole WMW is left-right symmetric around CX
+  //  - Each W is internally symmetric around its own centre peak (N[2] / N[8])
+  //  - The M (2-stroke caret) is symmetric around CX
+  // Free parameters: left-W geometry, three y bands, stroke width.
   function makeShape() {
-    var s = [];
-    for (var i = 0; i <= 5; i++) {
-      s.push({
-        x: OX[i] + (Math.random() * 2 - 1) * XR[i],
-        y: OY[i] + (Math.random() * 2 - 1) * YR
-      });
-    }
-    for (var j = 4; j >= 0; j--) {
-      s.push({ x: 1800 - s[j].x, y: s[j].y });
-    }
-    return s;
+    // --- x geometry of the left W ---
+    var n0x  = rnd(-319, -259);          // left outer endpoint x
+    var n4x  = rnd(575,  735);           // right outer x of W = left outer x of M
+    var n2x  = (n0x + n4x) * 0.5;       // W centre peak — derived, ensures W symmetry
+    var n1dx = (n4x - n0x) * rnd(0.20, 0.35); // valley half-gap (symmetric around n2x)
+
+    // --- y positions (three independent bands) ---
+    var oty  = rnd(-15,  50);   // all outer top nodes:  N[0,4,6,10]
+    var ity  = rnd(-15,  50);   // inner W top nodes:    N[2,8]
+    var wby  = rnd(150, 252);   // W valley bottoms:     N[1,3,7,9]
+    var mby  = rnd(110, 252);   // M centre bottom:      N[5]  (may differ from wby)
+
+    // --- stroke width ---
+    var sw = rnd(16, 38);
+
+    return {
+      sw: sw,
+      n: [
+        { x: n0x,                y: oty },  // N[0]  left outer W top
+        { x: n2x - n1dx,         y: wby },  // N[1]  left W valley
+        { x: n2x,                y: ity },  // N[2]  W centre peak
+        { x: n2x + n1dx,         y: wby },  // N[3]  right W valley
+        { x: n4x,                y: oty },  // N[4]  right outer W top = left M top
+        { x: CX,                 y: mby },  // N[5]  M centre bottom
+        { x: 2*CX - n4x,         y: oty },  // N[6]  right M top  (mirror N[4])
+        { x: 2*CX - n2x - n1dx,  y: wby },  // N[7]  right-W left valley  (mirror N[3])
+        { x: 2*CX - n2x,         y: ity },  // N[8]  right-W centre peak  (mirror N[2])
+        { x: 2*CX - n2x + n1dx,  y: wby },  // N[9]  right-W right valley (mirror N[1])
+        { x: 2*CX - n0x,         y: oty },  // N[10] right outer W top    (mirror N[0])
+      ]
+    };
   }
 
   var from = makeShape(), to = makeShape(), progress = 0;
@@ -50,15 +65,15 @@
   function ease(t) { return t * t * (3 - 2 * t); }
 
   function render() {
-    var e = ease(progress);
-    var pts = [];
-    for (var i = 0; i < N; i++) {
+    var e = ease(progress), pts = [];
+    for (var i = 0; i < 11; i++) {
       pts.push(
-        (from[i].x + (to[i].x - from[i].x) * e).toFixed(1) + ',' +
-        (from[i].y + (to[i].y - from[i].y) * e).toFixed(1)
+        (from.n[i].x + (to.n[i].x - from.n[i].x) * e).toFixed(1) + ',' +
+        (from.n[i].y + (to.n[i].y - from.n[i].y) * e).toFixed(1)
       );
     }
     pl.setAttribute('points', pts.join(' '));
+    pl.setAttribute('stroke-width', (from.sw + (to.sw - from.sw) * e).toFixed(1));
   }
 
   var prev = 0;
@@ -66,11 +81,7 @@
     var dt = Math.min((ts - prev) * 0.001, 0.05);
     prev = ts;
     progress += dt / DURATION;
-    if (progress >= 1) {
-      from = to;
-      to = makeShape();
-      progress -= 1;
-    }
+    if (progress >= 1) { from = to; to = makeShape(); progress -= 1; }
     render();
     requestAnimationFrame(frame);
   }
