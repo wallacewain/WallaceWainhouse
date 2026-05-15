@@ -28,8 +28,8 @@
   // Free parameters: left-W geometry, three y bands, stroke width.
   function makeShape() {
     // --- x geometry of the left W ---
-    var n0x  = rnd(-319, -259);          // left outer endpoint x
-    var n4x  = rnd(575,  735);           // right outer x of W = left outer x of M
+    var n0x  = rnd(-319, 100);           // left outer endpoint x (inward = more compact)
+    var n4x  = rnd(350,  750);           // right outer x of W = left outer x of M
     var n2x  = (n0x + n4x) * 0.5;       // W centre peak — derived, ensures W symmetry
     var n1dx = (n4x - n0x) * rnd(0.20, 0.35); // valley half-gap (symmetric around n2x)
 
@@ -40,7 +40,7 @@
     var mby  = rnd(110, 252);   // M centre bottom:      N[5]  (may differ from wby)
 
     // --- stroke width ---
-    var sw = rnd(16, 38);
+    var sw = rnd(16, 60);
 
     return {
       sw: sw,
