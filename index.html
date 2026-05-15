@@ -155,8 +155,7 @@
     window.addEventListener('mousedown', e => {
       if (e.button === 0) {
         lDragging = true;
-        ssLX = e.clientX; ssLY = e.clientY;
-        ssVelBuf = [];
+        ssBegin(e.clientX, e.clientY);
         e.preventDefault();
       } else if (e.button === 1) {
         mDragging = true;
@@ -167,7 +166,7 @@
     window.addEventListener('mouseup', e => {
       if (e.button === 0 && lDragging) {
         lDragging = false;
-        ssCommit();
+        ssEnd();
       } else if (e.button === 1) {
         mDragging = false;
       }
@@ -180,7 +179,7 @@
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = e.clientX; ldy = e.clientY;
       } else if (lDragging) {
-        ssTrack(e.clientX, e.clientY);
+        ssLX = e.clientX; ssLY = e.clientY;
       }
     });
     window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; lDragging = false; mDragging = false; });
@@ -192,7 +191,7 @@
     const SS_LIFE_MS = 12000;
     const SS_TRAIL   = 80;
     const shootingStars = [];
-    let ssLX = 0, ssLY = 0, ssPending = null, ssVelBuf = [];
+    let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
     function ssUnproject(sx, sy) {
@@ -224,25 +223,20 @@
     function ssSpawn(sx, sy, vsx, vsy) {
       const pos = ssUnproject(sx, sy);
       if (!pos) return;
-      const v = ss3DVel(vsx * 1.5, vsy * 1.5, pos.dz);
+      const v = ss3DVel(vsx, vsy, pos.dz);
       if (shootingStars.length >= SS_MAX) shootingStars[0].dying = true;
       shootingStars.push({ X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
     }
 
-    function ssTrack(x, y) {
-      const t = performance.now();
-      ssVelBuf.push({ x, y, t });
-      const cutoff = t - 250;
-      while (ssVelBuf.length > 1 && ssVelBuf[0].t < cutoff) ssVelBuf.shift();
-      ssLX = x; ssLY = y;
+    function ssBegin(x, y) {
+      ssStartX = ssLX = x;
+      ssStartY = ssLY = y;
+      ssStartT = performance.now();
     }
-    function ssCommit() {
-      const buf = ssVelBuf; ssVelBuf = [];
-      if (buf.length < 2) return;
-      const a = buf[0], b = buf[buf.length - 1];
-      const dt = Math.max(16, b.t - a.t);
-      const vsx = (b.x - a.x) / dt * 1000;
-      const vsy = (b.y - a.y) / dt * 1000;
+    function ssEnd() {
+      const dt = Math.max(100, performance.now() - ssStartT);
+      const vsx = (ssLX - ssStartX) / dt * 1000;
+      const vsy = (ssLY - ssStartY) / dt * 1000;
       if (Math.sqrt(vsx * vsx + vsy * vsy) > 80) {
         const lx = ssLX, ly = ssLY;
         clearTimeout(ssPending);
@@ -266,7 +260,7 @@
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
       }
 
-      const ssR = Math.max(5, Math.max(W, H) * 0.005);
+      const ssR = Math.max(2.5, Math.max(W, H) * 0.003);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
@@ -309,9 +303,9 @@
         ldx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         ldy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       } else {
-        msx = ldx = ssLX = e.touches[0].clientX;
-        msy = ldy = ssLY = e.touches[0].clientY;
-        ssVelBuf = [];
+        msx = ldx = e.touches[0].clientX;
+        msy = ldy = e.touches[0].clientY;
+        ssBegin(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: false });
     window.addEventListener('touchmove', e => {
@@ -325,14 +319,14 @@
         ldx = cx; ldy = cy;
       } else {
         const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
-        ssTrack(nx, ny);
+        ssLX = nx; ssLY = ny;
         msx = nx; msy = ny;
       }
     }, { passive: false });
     window.addEventListener('touchend', e => {
       if (e.touches.length === 0) {
         dragging = false; msx = -9999; msy = -9999;
-        ssCommit();
+        ssEnd();
       }
     });
 
