@@ -51,5 +51,6 @@
     copyBtn.addEventListener('click',()=>{if(!output.value)return;navigator.clipboard.writeText(output.value);copyBtn.textContent='Copied!';setTimeout(()=>copyBtn.textContent='Copy',1500);});
     document.getElementById('file-input').addEventListener('change',function(){const file=this.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>document.getElementById('file-output').value=e.target.result.split(',')[1];reader.readAsDataURL(file);});
   </script>
+<script src="/js/logo.js"></script>
 </body>
 </html>

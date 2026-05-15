@@ -53,5 +53,6 @@
     function compress(){const url=URL.createObjectURL(currentFile),img=new Image();img.onload=()=>{const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;canvas.getContext('2d').drawImage(img,0,0);URL.revokeObjectURL(url);canvas.toBlob(blob=>{currentBlob=blob;newSize.textContent=fmt(blob.size);const pct=Math.round((1-blob.size/currentFile.size)*100);savingEl.textContent=pct>0?'('+pct+'% smaller)':'';result.style.display='';},fmtEl.value,parseInt(qualityEl.value)/100);};img.src=url;}
     dlBtn.addEventListener('click',()=>{if(!currentBlob)return;const ext=fmtEl.value==='image/webp'?'.webp':'.jpg',base=currentFile.name.replace(/\.[^.]+$/,''),a=document.createElement('a');a.href=URL.createObjectURL(currentBlob);a.download=base+'-compressed'+ext;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),10000);});
   </script>
+<script src="/js/logo.js"></script>
 </body>
 </html>

@@ -61,5 +61,6 @@
     sizeSelect.addEventListener('change',generate);levelSelect.addEventListener('change',generate);
     downloadBtn.addEventListener('click',()=>{if(!input.value.trim())return;const a=document.createElement('a');a.download='qrcode.png';a.href=canvas.toDataURL('image/png');a.click();});
   </script>
+<script src="/js/logo.js"></script>
 </body>
 </html>
