@@ -156,7 +156,7 @@
       if (e.button === 0) {
         lDragging = true;
         ssLX = e.clientX; ssLY = e.clientY;
-        ssVsx = 0; ssVsy = 0; ssLT = performance.now();
+        ssVelBuf = [];
         e.preventDefault();
       } else if (e.button === 1) {
         mDragging = true;
@@ -167,12 +167,7 @@
     window.addEventListener('mouseup', e => {
       if (e.button === 0 && lDragging) {
         lDragging = false;
-        const spd = Math.sqrt(ssVsx * ssVsx + ssVsy * ssVsy);
-        if (spd > 80) {
-          const lx = ssLX, ly = ssLY, vsx = ssVsx, vsy = ssVsy;
-          clearTimeout(ssPending);
-          ssPending = setTimeout(() => ssSpawn(lx, ly, vsx, vsy), 350);
-        }
+        ssCommit();
       } else if (e.button === 1) {
         mDragging = false;
       }
@@ -185,11 +180,7 @@
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = e.clientX; ldy = e.clientY;
       } else if (lDragging) {
-        const nx = e.clientX, ny = e.clientY;
-        const nt = performance.now(), dt2 = Math.max(1, nt - ssLT);
-        ssVsx = (nx - ssLX) / dt2 * 1000;
-        ssVsy = (ny - ssLY) / dt2 * 1000;
-        ssLX = nx; ssLY = ny; ssLT = nt;
+        ssTrack(e.clientX, e.clientY);
       }
     });
     window.addEventListener('mouseleave', () => { msx = -9999; msy = -9999; lDragging = false; mDragging = false; });
@@ -201,7 +192,7 @@
     const SS_LIFE_MS = 12000;
     const SS_TRAIL   = 80;
     const shootingStars = [];
-    let ssVsx = 0, ssVsy = 0, ssLX = 0, ssLY = 0, ssLT = 0, ssPending = null;
+    let ssLX = 0, ssLY = 0, ssPending = null, ssVelBuf = [];
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
     function ssUnproject(sx, sy) {
@@ -233,9 +224,30 @@
     function ssSpawn(sx, sy, vsx, vsy) {
       const pos = ssUnproject(sx, sy);
       if (!pos) return;
-      const v = ss3DVel(vsx * 0.16, vsy * 0.16, pos.dz);
+      const v = ss3DVel(vsx * 1.5, vsy * 1.5, pos.dz);
       if (shootingStars.length >= SS_MAX) shootingStars[0].dying = true;
       shootingStars.push({ X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
+    }
+
+    function ssTrack(x, y) {
+      const t = performance.now();
+      ssVelBuf.push({ x, y, t });
+      const cutoff = t - 250;
+      while (ssVelBuf.length > 1 && ssVelBuf[0].t < cutoff) ssVelBuf.shift();
+      ssLX = x; ssLY = y;
+    }
+    function ssCommit() {
+      const buf = ssVelBuf; ssVelBuf = [];
+      if (buf.length < 2) return;
+      const a = buf[0], b = buf[buf.length - 1];
+      const dt = Math.max(16, b.t - a.t);
+      const vsx = (b.x - a.x) / dt * 1000;
+      const vsy = (b.y - a.y) / dt * 1000;
+      if (Math.sqrt(vsx * vsx + vsy * vsy) > 80) {
+        const lx = ssLX, ly = ssLY;
+        clearTimeout(ssPending);
+        ssPending = setTimeout(() => ssSpawn(lx, ly, vsx, vsy), 350);
+      }
     }
 
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
@@ -254,6 +266,7 @@
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
       }
 
+      const ssR = Math.max(5, Math.max(W, H) * 0.005);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
@@ -275,14 +288,14 @@
           if (!p) continue;
           ctx.globalAlpha = f * f * s.life * 0.9;
           ctx.fillStyle = f > 0.5 ? '#fff0a0' : '#ff8820';
-          const sz = Math.max(1, f * 2.5);
+          const sz = Math.max(ssR * 0.4, f * ssR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
           ctx.globalAlpha = s.life * 0.95;
           ctx.fillStyle = '#fffce8';
-          ctx.beginPath(); ctx.arc(head.sx, head.sy, 2.5, 0, 6.2832); ctx.fill();
+          ctx.beginPath(); ctx.arc(head.sx, head.sy, ssR, 0, 6.2832); ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
@@ -298,7 +311,7 @@
       } else {
         msx = ldx = ssLX = e.touches[0].clientX;
         msy = ldy = ssLY = e.touches[0].clientY;
-        ssVsx = 0; ssVsy = 0; ssLT = performance.now();
+        ssVelBuf = [];
       }
     }, { passive: false });
     window.addEventListener('touchmove', e => {
@@ -312,22 +325,14 @@
         ldx = cx; ldy = cy;
       } else {
         const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
-        const nt = performance.now(), dt2 = Math.max(1, nt - ssLT);
-        ssVsx = (nx - ssLX) / dt2 * 1000;
-        ssVsy = (ny - ssLY) / dt2 * 1000;
-        ssLX = nx; ssLY = ny; ssLT = nt;
+        ssTrack(nx, ny);
         msx = nx; msy = ny;
       }
     }, { passive: false });
     window.addEventListener('touchend', e => {
       if (e.touches.length === 0) {
         dragging = false; msx = -9999; msy = -9999;
-        const spd = Math.sqrt(ssVsx * ssVsx + ssVsy * ssVsy);
-        if (spd > 80) {
-          const lx = ssLX, ly = ssLY, vsx = ssVsx, vsy = ssVsy;
-          clearTimeout(ssPending);
-          ssPending = setTimeout(() => ssSpawn(lx, ly, vsx, vsy), 350);
-        }
+        ssCommit();
       }
     });
 
