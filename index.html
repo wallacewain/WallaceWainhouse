@@ -211,7 +211,7 @@
     const shootingStars = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
-    let heartPhase = 0, heartT = 0, rotMult = 1;
+    let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0;
     const HEART_FORM = 4000, HEART_HOLD = 3000, HEART_RETURN = 4000;
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
@@ -283,11 +283,10 @@
     function triggerHeart() {
       if (heartPhase !== 0) return;
       const spread = Math.min(canvas.width, canvas.height) * 0.085;
+      heartRot = 0;
       for (const s of stars) {
-        const ang = Math.random() * Math.PI * 2;
-        const rad = Math.sqrt(Math.random()) * spread;  // uniform density in disc
-        s.heartOffX = Math.cos(ang) * rad;
-        s.heartOffY = Math.sin(ang) * rad;
+        s.heartOffAng = Math.random() * Math.PI * 2;
+        s.heartOffR   = Math.sqrt(Math.random()) * spread;  // uniform density in disc
       }
       heartPhase = 1; heartT = 0;
     }
@@ -457,6 +456,7 @@
         rotMult = heartT;
         if (heartT >= 1) { heartT = 0; heartPhase = 0; rotMult = 1; }
       }
+      if (heartPhase > 0) heartRot += dt * 0.00028;  // ~half turn over 11s heart lifetime
       autoY += 0.00007 * dt * rotMult;
       rotX  += (dragRX - rotX) * 0.1;
       rotY  += (autoY + dragRY - rotY) * 0.1;
@@ -510,8 +510,10 @@
           const hx = 16 * Math.pow(Math.sin(th), 3);
           const hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
           const hs = Math.min(W, H) * 0.018;
-          sx += (cx + hx * hs + (s.heartOffX || 0) - sx) * ef;
-          sy += (cy + hy * hs + (s.heartOffY || 0) - sy) * ef;
+          const offX = Math.cos((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
+          const offY = Math.sin((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
+          sx += (cx + hx * hs + offX - sx) * ef;
+          sy += (cy + hy * hs + offY - sy) * ef;
         }
 
         const baseR = s.sz * sc;
