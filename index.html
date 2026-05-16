@@ -147,9 +147,9 @@
       while ((b === a || Math.hypot(b.x - a.x, b.z - a.z) < 0.08) && ++tries < 300);
       [a, b].forEach(s => {
         s.special = true; s.specialAlive = true;
-        s.sz  = Math.max(s.sz * 3, 0.003 / szScale); // large enough to always be visible
-        s.dim = Math.min(2.0, s.dim + 1.0);           // noticeably brighter than surroundings
-        s.cr = 1.0; s.cg = 0.96; s.cb = 0.72;        // warm white, stands out in orange core
+        s.sz  = Math.max(s.sz * 3, 0.003 / szScale);
+        s.dim = 0.9;  // bright but ≤1.0 so warm colour isn't blown to white
+        s.cr = 1.0; s.cg = 0.92; s.cb = 0.62;        // warm gold tint
       });
       specialStars.push({ s: a, hitBy: null }, { s: b, hitBy: null });
     }
@@ -282,10 +282,10 @@
     }
     function triggerHeart() {
       if (heartPhase !== 0) return;
-      const spread = Math.min(canvas.width, canvas.height) * 0.045;
+      const spread = Math.min(canvas.width, canvas.height) * 0.085;
       for (const s of stars) {
-        const ang = s.twinkPhase;
-        const rad = s.glitFactor * spread;
+        const ang = Math.random() * Math.PI * 2;
+        const rad = Math.sqrt(Math.random()) * spread;  // uniform density in disc
         s.heartOffX = Math.cos(ang) * rad;
         s.heartOffY = Math.sin(ang) * rad;
       }
@@ -308,18 +308,60 @@
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
       }
 
+      // Unproject a screen point to the Y=0 world plane (same logic as ssUnproject)
+      function unprojectHeart(scx, scy) {
+        const D = scy - gcy;
+        const denom = sinX * fov + D * cosX;
+        if (Math.abs(denom) < 1e-4) return null;
+        const z1 = -D * camZ / denom;
+        const dz = camZ + z1 * cosX;
+        if (dz < 0.05) return null;
+        const x1 = (scx - gcx) * dz / fov;
+        return { X: x1 * cosY - z1 * sinY, Y: 0, Z: x1 * sinY + z1 * cosY };
+      }
+
+      // Precompute heart curve sample points in 3D world space for this frame's camera
+      let heartTargets = null;
+      if (heartPhase > 0) {
+        const hs = Math.min(W, H) * 0.018;
+        heartTargets = [];
+        for (let k = 0; k < 64; k++) {
+          const th = (k / 64) * Math.PI * 2;
+          const hx = 16 * Math.pow(Math.sin(th), 3);
+          const hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
+          const pt = unprojectHeart(gcx + hx * hs, gcy + hy * hs);
+          if (pt) heartTargets.push(pt);
+        }
+      }
+
       const ssR   = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
       const hitR2 = Math.pow(Math.max(22, ssR * 6), 2);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
-        const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
-        const r  = Math.sqrt(r2);
         const gravScale = s.mini ? 0.15 : 1;
-        const a  = SS_GRAVITY * gravScale / r;
-        s.vX -= a * s.X / r * dts;
-        s.vY -= a * s.Y / r * dts;
-        s.vZ -= a * s.Z / r * dts;
+        if (heartPhase > 0 && heartTargets && heartTargets.length > 0) {
+          // Attract toward nearest point on heart curve
+          let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
+          for (const ht of heartTargets) {
+            const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
+            const d2 = ex*ex + ey*ey + ez*ez;
+            if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
+          }
+          const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
+          const r = Math.sqrt(bestD2 + SS_SOFTEN);
+          const a = SS_GRAVITY * gravScale / r;
+          s.vX -= a * ex / r * dts;
+          s.vY -= a * ey / r * dts;
+          s.vZ -= a * ez / r * dts;
+        } else {
+          const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
+          const r  = Math.sqrt(r2);
+          const a  = SS_GRAVITY * gravScale / r;
+          s.vX -= a * s.X / r * dts;
+          s.vY -= a * s.Y / r * dts;
+          s.vZ -= a * s.Z / r * dts;
+        }
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
@@ -521,13 +563,13 @@
         if (s.special && s.specialAlive) {
           // Soft pulsing halo
           const pulse = 0.8 + 0.2 * Math.sin(ts * 0.0025 + s.twinkPhase);
-          ctx.globalAlpha = 0.18 * pulse;
+          ctx.globalAlpha = 0.11 * pulse;
           ctx.beginPath();
-          ctx.arc(sx, sy, Math.max(10, baseR * 5), 0, 6.2832);
+          ctx.arc(sx, sy, Math.max(8, baseR * 4), 0, 6.2832);
           ctx.fill();
           // Diffraction spikes
-          const spike = Math.max(40, baseR * 28);
-          const a = Math.min(0.85, s.dim * 0.55 + 0.35) * pulse;
+          const spike = Math.max(28, baseR * 20);
+          const a = Math.min(0.52, s.dim * 0.34 + 0.22) * pulse;
           for (const [x1, y1, x2, y2] of [
             [sx - spike, sy, sx + spike, sy],
             [sx, sy - spike, sx, sy + spike]
