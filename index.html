@@ -373,9 +373,9 @@
           s.vY = s.orbitSign * orb * ty / tLen;
           s.vZ = s.orbitSign * orb * tz / tLen;
           const htC = HT[bestIdx];
-          s.X += (htC.X - s.X) * 0.25;
-          s.Y += (htC.Y - s.Y) * 0.25;
-          s.Z += (htC.Z - s.Z) * 0.25;
+          s.X += (htC.X - s.X) * 0.04;
+          s.Y += (htC.Y - s.Y) * 0.04;
+          s.Z += (htC.Z - s.Z) * 0.04;
         } else if (heartPhase > 0 && HT && HT.length > 0) {
           // Heart gravity; capture mini stars that draw close during phases 1–2
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -384,7 +384,7 @@
             const d2 = ex*ex + ey*ey + ez*ez;
             if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
           }
-          if (s.mini && heartPhase === 2 && bestD2 < 0.02) {
+          if (s.mini && heartPhase === 2 && bestD2 < 0.005) {
             s.locked = true;
             const curSpd = Math.sqrt(s.vX*s.vX + s.vY*s.vY + s.vZ*s.vZ);
             s.orbitSpeed = Math.max(0.35, curSpd);
