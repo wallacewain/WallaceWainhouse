@@ -540,10 +540,13 @@
       let heartBloomEf = 0;
       if (heartPhase > 0) {
         const TOTAL = HEART_FORM + HEART_HOLD + HEART_RETURN;
-        const absT = heartPhase === 1 ? heartT * HEART_FORM / TOTAL
-          : heartPhase === 2 ? (HEART_FORM + heartT * HEART_HOLD) / TOTAL
-          : (HEART_FORM + HEART_HOLD + heartT * HEART_RETURN) / TOTAL;
-        heartBloomEf = Math.sin(absT * Math.PI);
+        // Rise during phase 1, hold then fade during phase 2, gone before phase 3
+        if (heartPhase === 1) {
+          heartBloomEf = heartT * heartT * (3 - 2 * heartT);
+        } else if (heartPhase === 2) {
+          const t2 = heartT * 2;  // 0→2; peak=1, then fall
+          heartBloomEf = t2 < 1 ? 1 : 1 - (t2-1)*(t2-1)*(3-2*(t2-1));
+        }
       }
 
       for (const p of proj) {
@@ -642,19 +645,19 @@
         // Heart-line bloom: halo + diffraction for near-line stars during heart phases
         if (heartBloomEf > 0.01 && s.heartPull > 0.90) {
           const bStr = (s.heartPull - 0.90) / 0.10;
-          const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.006 + s.twinkPhase * 3.1)), 5);
+          const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.0022 + s.twinkPhase * 3.1)), 5);
           const bloom = heartBloomEf * bStr * (0.10 + 0.90 * glitter);
           // Soft halo for all near-line stars
           ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
-          ctx.globalAlpha = 0.09 * bloom;
+          ctx.globalAlpha = 0.045 * bloom;
           ctx.beginPath();
           ctx.arc(sx, sy, Math.max(3, baseR * (s.heartBloomR || 4)), 0, 6.2832);
           ctx.fill();
-          // Diffraction spikes for on-line / very-close stars only
-          if (s.heartPull > 0.97) {
-            const spikeStr = (s.heartPull - 0.97) / 0.03;
-            const spike = Math.max(12, baseR * 10) * bloom;
-            const a = Math.min(0.30, s.dim * 0.20 + 0.09) * bloom * spikeStr;
+          // Diffraction spikes — lower threshold so more stars get them
+          if (s.heartPull > 0.93) {
+            const spikeStr = (s.heartPull - 0.93) / 0.07;
+            const spike = Math.max(14, baseR * 12) * bloom;
+            const a = Math.min(0.52, s.dim * 0.35 + 0.15) * bloom * spikeStr;
             if (a > 0.02) {
               for (const [x1, y1, x2, y2] of [
                 [sx - spike, sy, sx + spike, sy],
