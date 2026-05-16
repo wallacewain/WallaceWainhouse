@@ -364,8 +364,14 @@
           const nxt = HT[(bestIdx + 1) % N], prv = HT[(bestIdx - 1 + N) % N];
           const tx = nxt.X - prv.X, ty = nxt.Y - prv.Y, tz = nxt.Z - prv.Z;
           const tLen = Math.sqrt(tx*tx + ty*ty + tz*tz) + 1e-8;
-          const spd = (s.vX*tx + s.vY*ty + s.vZ*tz) / tLen;
-          s.vX = spd * tx / tLen; s.vY = spd * ty / tLen; s.vZ = spd * tz / tLen;
+          if (!s.orbitSign) {
+            const proj = (s.vX*tx + s.vY*ty + s.vZ*tz) / tLen;
+            s.orbitSign = proj < 0 ? -1 : 1;
+          }
+          const orb = s.orbitSpeed || 0.35;
+          s.vX = s.orbitSign * orb * tx / tLen;
+          s.vY = s.orbitSign * orb * ty / tLen;
+          s.vZ = s.orbitSign * orb * tz / tLen;
           const htC = HT[bestIdx];
           s.X += (htC.X - s.X) * 0.25;
           s.Y += (htC.Y - s.Y) * 0.25;
@@ -380,6 +386,9 @@
           }
           if (s.mini && heartPhase === 2 && bestD2 < 0.02) {
             s.locked = true;
+            const curSpd = Math.sqrt(s.vX*s.vX + s.vY*s.vY + s.vZ*s.vZ);
+            s.orbitSpeed = Math.max(0.35, curSpd);
+            s.orbitSign  = 0;  // resolved on first locked frame
           } else {
             const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
             const r = Math.sqrt(bestD2 + SS_SOFTEN);
@@ -501,7 +510,7 @@
         dragRX = rotX = Math.PI / 2;
         heartT = Math.min(1, heartT + dt / HEART_HOLD);
         if (heartT >= 1) { heartT = 0; heartPhase = 3;
-          for (const s of shootingStars) { if (s.mini) s.locked = false; }
+          for (const s of shootingStars) { if (s.mini) { s.locked = false; s.orbitSign = 0; } }
         }
       } else if (heartPhase === 3) {
         heartT = Math.min(1, heartT + dt / HEART_RETURN);
