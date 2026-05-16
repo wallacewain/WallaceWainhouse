@@ -273,15 +273,14 @@
 
     function spawnMiniStars(wx, wy, wz) {
       for (let i = 0; i < 10; i++) {
-        const phi = Math.acos(2 * Math.random() - 1);
         const th  = Math.random() * Math.PI * 2;
         const spd = 0.04 + Math.random() * 0.08;
         shootingStars.push({
           id: ssIdCounter++, mini: true,
-          X: wx, Y: wy, Z: wz,
-          vX: spd * Math.sin(phi) * Math.cos(th),
-          vY: spd * Math.sin(phi) * Math.sin(th),
-          vZ: spd * Math.cos(phi),
+          X: wx, Y: wy, Z: 0,
+          vX: spd * Math.cos(th),
+          vY: (Math.random() - 0.5) * spd * 0.3,
+          vZ: 0,
           life: 0.85, trail: [], dying: false
         });
       }
@@ -448,10 +447,16 @@
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          if (s.mini) ctx.globalCompositeOperation = 'source-over';
+          if (s.mini) {
+            ctx.globalCompositeOperation = 'source-over';
+            // Dark halo so the star is visible against the bright white heart
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = '#000014';
+            ctx.beginPath(); ctx.arc(head.sx, head.sy, Math.max(3, starR * 3.5), 0, 6.2832); ctx.fill();
+          }
           ctx.globalAlpha = s.life * 0.95;
-          ctx.fillStyle = '#fffce8';
-          ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
+          ctx.fillStyle = s.mini ? '#ffd060' : '#fffce8';
+          ctx.beginPath(); ctx.arc(head.sx, head.sy, Math.max(1.5, starR), 0, 6.2832); ctx.fill();
           if (s.mini) ctx.globalCompositeOperation = 'lighter';
           const la = s.lockAge;
           const lockEf = la !== undefined ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
