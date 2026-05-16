@@ -352,9 +352,9 @@
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
-        const gravScale = s.mini ? 0.15 : 1;
         const HT = heartTargets;
-        if (heartPhase > 0 && HT && HT.length > 0) {
+        if (!s.mini && heartPhase > 0 && HT && HT.length > 0) {
+          // Non-mini shooting stars pulled toward heart curve during heart phases
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
           for (const ht of HT) {
             const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
@@ -363,21 +363,30 @@
           }
           const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
           const r = Math.sqrt(bestD2 + SS_SOFTEN);
-          const a = SS_GRAVITY * gravScale / r;
+          const a = SS_GRAVITY / r;
           s.vX -= a * ex / r * dts;
           s.vY -= a * ey / r * dts;
           s.vZ -= a * ez / r * dts;
-          if (s.mini && bestD2 < 0.02 && s.lockAge === undefined) {
-            s.lockAge = 0;
-            s.lockBloomR = 1.5 + Math.pow(Math.random(), 0.5) * 8;
-          }
         } else {
+          // Mini stars always use galactic gravity — keeps them orbiting naturally
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
           const r  = Math.sqrt(r2);
-          const a  = SS_GRAVITY * gravScale / r;
+          const a  = SS_GRAVITY / r;
           s.vX -= a * s.X / r * dts;
           s.vY -= a * s.Y / r * dts;
           s.vZ -= a * s.Z / r * dts;
+        }
+        // Proximity bloom: trigger glitter when mini star passes near heart path
+        if (s.mini && heartPhase > 0 && HT && HT.length > 0) {
+          let bestD2 = Infinity;
+          for (const ht of HT) {
+            const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
+            bestD2 = Math.min(bestD2, ex*ex + ey*ey + ez*ez);
+          }
+          if (bestD2 < 0.02 && s.lockAge === undefined) {
+            s.lockAge = 0;
+            s.lockBloomR = 1.5 + Math.pow(Math.random(), 0.5) * 8;
+          }
         }
         if (s.lockAge !== undefined) {
           s.lockAge += dt;
@@ -412,11 +421,9 @@
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          if (s.mini) ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = s.life * 0.95;
           ctx.fillStyle = '#fffce8';
           ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
-          if (s.mini) ctx.globalCompositeOperation = 'lighter';
           const la = s.lockAge;
           const lockEf = la !== undefined ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
           if (lockEf > 0.01) {
