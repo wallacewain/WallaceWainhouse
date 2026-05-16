@@ -215,7 +215,7 @@
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
-    const HEART_FORM = 4000, HEART_HOLD = 3000, HEART_RETURN = 4000;
+    const HEART_FORM = 4000, HEART_HOLD = 5000, HEART_RETURN = 4000;
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
     function ssUnproject(sx, sy) {
@@ -376,6 +376,7 @@
           s.X += (htC.X - s.X) * 0.04;
           s.Y += (htC.Y - s.Y) * 0.04;
           s.Z += (htC.Z - s.Z) * 0.04;
+          s.lockAge = (s.lockAge || 0) + dt;
         } else if (heartPhase > 0 && HT && HT.length > 0) {
           // Heart gravity; capture mini stars that draw close during phases 1–2
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -386,6 +387,8 @@
           }
           if (s.mini && heartPhase === 2 && bestD2 < 0.005) {
             s.locked = true;
+            s.lockAge = 0;
+            s.lockBloomR = 1.5 + Math.pow(Math.random(), 0.5) * 8;
             const curSpd = Math.sqrt(s.vX*s.vX + s.vY*s.vY + s.vZ*s.vZ);
             s.orbitSpeed = Math.max(0.02, curSpd);
             s.orbitSign  = 0;  // resolved on first locked frame
@@ -434,9 +437,37 @@
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          ctx.globalAlpha = s.life * 0.95;
+          const la = s.lockAge || 0;
+          const lockEf = s.locked ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
+          ctx.globalAlpha = Math.min(1, s.life * 0.95 * (1 + lockEf * 0.6));
           ctx.fillStyle = '#fffce8';
-          ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
+          ctx.beginPath(); ctx.arc(head.sx, head.sy, starR * (1 + lockEf * 0.5), 0, 6.2832); ctx.fill();
+          if (lockEf > 0.01) {
+            const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.0022 + s.id * 1.7)), 5);
+            const bloom = lockEf * (0.10 + 0.90 * glitter);
+            ctx.fillStyle = '#fffce8';
+            ctx.globalAlpha = 0.045 * bloom;
+            ctx.beginPath();
+            ctx.arc(head.sx, head.sy, Math.max(3, starR * (s.lockBloomR || 4)), 0, 6.2832);
+            ctx.fill();
+            const spike = Math.max(14, starR * 12) * bloom;
+            const a = Math.min(0.52, 0.35 * lockEf + 0.15) * bloom;
+            if (a > 0.02) {
+              for (const [x1, y1, x2, y2] of [
+                [head.sx - spike, head.sy, head.sx + spike, head.sy],
+                [head.sx, head.sy - spike, head.sx, head.sy + spike]
+              ]) {
+                const g = ctx.createLinearGradient(x1, y1, x2, y2);
+                g.addColorStop(0,   'rgba(255,252,232,0)');
+                g.addColorStop(0.5, `rgba(255,252,232,${a.toFixed(2)})`);
+                g.addColorStop(1,   'rgba(255,252,232,0)');
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = g;
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+              }
+            }
+          }
           if (!s.mini && !s.dying && heartPhase === 0) {
             for (const sp of specialStars) {
               if (!sp.s.specialAlive) continue;
