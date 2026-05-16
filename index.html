@@ -289,8 +289,13 @@
       heartRot = 0;
       for (const s of stars) {
         s.heartOffAng = Math.random() * Math.PI * 2;
-        s.heartOffR   = Math.pow(Math.random(), 2) * spread;
-        s.heartPull   = 1 - s.heartOffR / spread;  // close to line → full pull; far → unaffected
+        if (Math.random() < 0.03) {
+          s.heartOffR  = 0;   // ~3% sit exactly on the line
+          s.heartPull  = 1;
+        } else {
+          s.heartOffR  = Math.pow(Math.random(), 2) * spread;
+          s.heartPull  = 1 - s.heartOffR / spread;
+        }
       }
       heartPhase = 1; heartT = 0;
     }
@@ -481,7 +486,7 @@
           }
         }
       }
-      if (heartPhase > 0) heartRot += dt * 0.00028;  // ~half turn over 11s heart lifetime
+      if (heartPhase > 0) heartRot += dt * 0.00055;  // gentle orbit, ~one turn over 11s
       autoY += 0.00007 * dt * rotMult;
       rotX  += (dragRX - rotX) * 0.1;
       rotY  += (autoY + dragRY - rotY) * 0.1;
