@@ -552,7 +552,6 @@
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
           dragRX = rotX = heartStartRotX;
-          for (const s of shootingStars) { if (s.mini) s.dying = true; }
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
               sp.s.specialAlive = true;
