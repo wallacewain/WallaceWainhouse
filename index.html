@@ -285,11 +285,20 @@
     }
     function triggerHeart() {
       if (heartPhase !== 0) return;
-      const spread = Math.min(canvas.width, canvas.height) * 0.085;
+      const spread = Math.min(canvas.width, canvas.height) * 0.20;
       heartRot = 0;
       for (const s of stars) {
         s.heartOffAng = Math.random() * Math.PI * 2;
-        s.heartOffR   = Math.sqrt(Math.random()) * spread;  // uniform density in disc
+        const isClose = Math.random() < 0.18;
+        if (isClose) {
+          // ~18%: tight to the outline → gives the liney heart shape
+          s.heartOffR  = Math.random() * spread * 0.10;
+          s.heartPull  = 0.75 + Math.random() * 0.25;
+        } else {
+          // ~82%: wide spread with partial pull → galaxy cloud around the heart
+          s.heartOffR  = Math.sqrt(Math.random()) * spread;
+          s.heartPull  = 0.10 + Math.random() * 0.55;
+        }
       }
       heartPhase = 1; heartT = 0;
     }
@@ -536,8 +545,9 @@
           const hs = Math.min(W, H) * 0.018;
           const offX = Math.cos((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
           const offY = Math.sin((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
-          sx += (cx + hx * hs + offX - sx) * ef;
-          sy += (cy + hy * hs + offY - sy) * ef;
+          const pull = (s.heartPull !== undefined ? s.heartPull : 0.5) * ef;
+          sx += (cx + hx * hs + offX - sx) * pull;
+          sy += (cy + hy * hs + offY - sy) * pull;
         }
 
         const baseR = s.sz * sc;
