@@ -642,18 +642,18 @@
         if (heartBloomEf > 0.01 && s.heartPull > 0.90) {
           const bStr = (s.heartPull - 0.90) / 0.10;
           const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.006 + s.twinkPhase * 3.1)), 5);
-          const bloom = heartBloomEf * bStr * (0.65 + 0.35 * glitter);
+          const bloom = heartBloomEf * bStr * (0.10 + 0.90 * glitter);
           // Soft halo for all near-line stars
           ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
-          ctx.globalAlpha = 0.13 * bloom;
+          ctx.globalAlpha = 0.065 * bloom;
           ctx.beginPath();
-          ctx.arc(sx, sy, Math.max(5, baseR * 3.5), 0, 6.2832);
+          ctx.arc(sx, sy, Math.max(3, baseR * 2.0), 0, 6.2832);
           ctx.fill();
           // Diffraction spikes for on-line / very-close stars only
           if (s.heartPull > 0.97) {
             const spikeStr = (s.heartPull - 0.97) / 0.03;
-            const spike = Math.max(18, baseR * 16) * bloom;
-            const a = Math.min(0.60, s.dim * 0.4 + 0.18) * bloom * spikeStr;
+            const spike = Math.max(12, baseR * 10) * bloom;
+            const a = Math.min(0.30, s.dim * 0.20 + 0.09) * bloom * spikeStr;
             if (a > 0.02) {
               for (const [x1, y1, x2, y2] of [
                 [sx - spike, sy, sx + spike, sy],
