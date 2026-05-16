@@ -147,11 +147,14 @@
       while ((b === a || Math.hypot(b.x - a.x, b.z - a.z) < 0.08) && ++tries < 300);
       [a, b].forEach(s => {
         s.special = true; s.specialAlive = true;
-        s.sz  = Math.max(s.sz * 3, 0.003 / szScale);
-        s.dim = 0.9;  // bright but ≤1.0 so warm colour isn't blown to white
-        s.cr = 1.0; s.cg = 0.92; s.cb = 0.62;        // warm gold tint
+        s.sz  = Math.max(s.sz * 2, 0.0015 / szScale);
+        s.dim = 0.9;
+        s.cr = 1.0; s.cg = 0.92; s.cb = 0.62;
       });
-      specialStars.push({ s: a, hitBy: null }, { s: b, hitBy: null });
+      specialStars.push(
+        { s: a, hitBy: null, killedById: null, savedSz: a.sz, savedDim: a.dim },
+        { s: b, hitBy: null, killedById: null, savedSz: b.sz, savedDim: b.dim }
+      );
     }
 
     // ── Interaction state ─────────────────────────────────────────────────
@@ -365,7 +368,18 @@
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
         s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
-        if (s.life <= 0) { shootingStars.splice(i, 1); continue; }
+        if (s.life <= 0) {
+          if (heartPhase === 0) {
+            for (const sp of specialStars) {
+              if (sp.killedById === s.id) {
+                sp.s.specialAlive = true;
+                sp.s.sz = sp.savedSz; sp.s.dim = sp.savedDim;
+                sp.hitBy = null; sp.killedById = null;
+              }
+            }
+          }
+          shootingStars.splice(i, 1); continue;
+        }
         const starR = s.mini ? ssR * 0.45 : ssR;
         const tl = s.trail.length;
         for (let j = 1; j < tl; j++) {
@@ -392,6 +406,7 @@
                 sp.s.specialAlive = false;
                 sp.s.sz = 0; sp.s.dim = 0;
                 sp.hitBy = s.id;
+                sp.killedById = s.id;
                 spawnMiniStars(sp.s.x, sp.s.y, sp.s.z);
                 if (specialStars[0].hitBy !== null && specialStars[1].hitBy !== null &&
                     specialStars[0].hitBy === specialStars[1].hitBy) triggerHeart();
@@ -454,7 +469,16 @@
       } else if (heartPhase === 3) {
         heartT = Math.min(1, heartT + dt / HEART_RETURN);
         rotMult = heartT;
-        if (heartT >= 1) { heartT = 0; heartPhase = 0; rotMult = 1; }
+        if (heartT >= 1) {
+          heartT = 0; heartPhase = 0; rotMult = 1;
+          for (const sp of specialStars) {
+            if (!sp.s.specialAlive) {
+              sp.s.specialAlive = true;
+              sp.s.sz = sp.savedSz; sp.s.dim = sp.savedDim;
+              sp.hitBy = null; sp.killedById = null;
+            }
+          }
+        }
       }
       if (heartPhase > 0) heartRot += dt * 0.00028;  // ~half turn over 11s heart lifetime
       autoY += 0.00007 * dt * rotMult;
