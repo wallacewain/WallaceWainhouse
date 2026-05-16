@@ -411,7 +411,7 @@
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
-        s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
+        if (!s.mini || s.dying) s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
         if (s.life <= 0) {
           if (heartPhase === 0) {
             for (const sp of specialStars) {
