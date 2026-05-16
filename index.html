@@ -370,8 +370,9 @@
           if (!s.orbitDir) {
             const dot = s.vX*tx + s.vY*ty + s.vZ*tz;
             s.orbitDir = dot < 0 ? -1 : 1;
+            s.orbitSpd = 0.05 + Math.random() * 0.05;
           }
-          const spd = 0.05;
+          const spd = s.orbitSpd;
           s.vX += (s.orbitDir * spd * tx/tLen - s.vX) * 0.06;
           s.vY += (s.orbitDir * spd * ty/tLen - s.vY) * 0.06;
           s.vZ += (s.orbitDir * spd * tz/tLen - s.vZ) * 0.06;
