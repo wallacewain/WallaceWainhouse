@@ -289,7 +289,8 @@
       heartRot = 0;
       for (const s of stars) {
         s.heartOffAng = Math.random() * Math.PI * 2;
-        s.heartOffR   = Math.sqrt(Math.random()) * spread;  // density ∝ r: zero on the line, builds outward
+        s.heartOffR   = Math.sqrt(Math.random()) * spread;
+        s.heartPull   = 1 - s.heartOffR / spread;  // close to line → full pull; far → unaffected
       }
       heartPhase = 1; heartT = 0;
     }
@@ -536,8 +537,8 @@
           const hs = Math.min(W, H) * 0.018;
           const offX = Math.cos((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
           const offY = Math.sin((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
-          sx += (cx + hx * hs + offX - sx) * ef;
-          sy += (cy + hy * hs + offY - sy) * ef;
+          sx += (cx + hx * hs + offX - sx) * ef * (s.heartPull || 0);
+          sy += (cy + hy * hs + offY - sy) * ef * (s.heartPull || 0);
         }
 
         const baseR = s.sz * sc;
