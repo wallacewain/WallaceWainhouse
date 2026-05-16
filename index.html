@@ -352,7 +352,7 @@
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
-        const gravScale = s.mini ? 0.15 : 1;
+        const gravScale = 1;
         const HT = heartTargets;
         if (s.mini && s.locked && HT && HT.length > 0) {
           // Locked to heart curve — constrain velocity to tangent, snap position onto curve
