@@ -430,7 +430,7 @@
           const f = j / tl;
           const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
           if (!p) continue;
-          ctx.globalAlpha = f * f * s.life * 0.9;
+          ctx.globalAlpha = f * f * (s.mini && !s.dying ? 0.85 : s.life) * 0.9;
           ctx.fillStyle = f > 0.5 ? '#fff0a0' : '#ff8820';
           const sz = Math.max(starR * 0.4, f * starR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
@@ -439,7 +439,8 @@
         if (head) {
           const la = s.lockAge;
           const lockEf = la !== undefined ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
-          ctx.globalAlpha = Math.min(1, s.life * 0.95 * (1 + lockEf * 0.6));
+          const baseAlpha = s.mini && !s.dying ? 0.85 : s.life;
+          ctx.globalAlpha = Math.min(1, baseAlpha * 0.95 * (1 + lockEf * 0.6));
           ctx.fillStyle = '#fffce8';
           ctx.beginPath(); ctx.arc(head.sx, head.sy, starR * (1 + lockEf * 0.5), 0, 6.2832); ctx.fill();
           if (lockEf > 0.01) {
@@ -551,6 +552,7 @@
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
           dragRX = rotX = heartStartRotX;
+          for (const s of shootingStars) { if (s.mini) s.dying = true; }
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
               sp.s.specialAlive = true;
