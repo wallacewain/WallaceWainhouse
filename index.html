@@ -354,53 +354,22 @@
         const s = shootingStars[i];
         const gravScale = s.mini ? 0.15 : 1;
         const HT = heartTargets;
-        if (s.mini && s.locked && HT && HT.length > 0) {
-          // Locked to heart curve — constrain velocity to tangent, snap position onto curve
-          let bestD2 = Infinity, bestIdx = 0;
-          const N = HT.length;
-          for (let k = 0; k < N; k++) {
-            const ht = HT[k];
-            const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
-            const d2 = ex*ex + ey*ey + ez*ez;
-            if (d2 < bestD2) { bestD2 = d2; bestIdx = k; }
-          }
-          const nxt = HT[(bestIdx + 1) % N], prv = HT[(bestIdx - 1 + N) % N];
-          const tx = nxt.X - prv.X, ty = nxt.Y - prv.Y, tz = nxt.Z - prv.Z;
-          const tLen = Math.sqrt(tx*tx + ty*ty + tz*tz) + 1e-8;
-          if (!s.orbitSign) {
-            const proj = (s.vX*tx + s.vY*ty + s.vZ*tz) / tLen;
-            s.orbitSign = proj < 0 ? -1 : 1;
-          }
-          const orb = s.orbitSpeed || 0.02;
-          s.vX = s.orbitSign * orb * tx / tLen;
-          s.vY = s.orbitSign * orb * ty / tLen;
-          s.vZ = s.orbitSign * orb * tz / tLen;
-          const htC = HT[bestIdx];
-          s.X += (htC.X - s.X) * 0.04;
-          s.Y += (htC.Y - s.Y) * 0.04;
-          s.Z += (htC.Z - s.Z) * 0.04;
-        } else if (heartPhase > 0 && HT && HT.length > 0) {
-          // Heart gravity; capture mini stars that draw close during phases 1–2
+        if (heartPhase > 0 && HT && HT.length > 0) {
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
           for (const ht of HT) {
             const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
             const d2 = ex*ex + ey*ey + ez*ez;
             if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
           }
-          if (s.mini && heartPhase === 2 && bestD2 < 0.005) {
-            s.locked = true;
+          const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
+          const r = Math.sqrt(bestD2 + SS_SOFTEN);
+          const a = SS_GRAVITY * gravScale / r;
+          s.vX -= a * ex / r * dts;
+          s.vY -= a * ey / r * dts;
+          s.vZ -= a * ez / r * dts;
+          if (s.mini && bestD2 < 0.02 && s.lockAge === undefined) {
             s.lockAge = 0;
             s.lockBloomR = 1.5 + Math.pow(Math.random(), 0.5) * 8;
-            const curSpd = Math.sqrt(s.vX*s.vX + s.vY*s.vY + s.vZ*s.vZ);
-            s.orbitSpeed = Math.max(0.02, curSpd);
-            s.orbitSign  = 0;  // resolved on first locked frame
-          } else {
-            const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
-            const r = Math.sqrt(bestD2 + SS_SOFTEN);
-            const a = SS_GRAVITY * gravScale / r;
-            s.vX -= a * ex / r * dts;
-            s.vY -= a * ey / r * dts;
-            s.vZ -= a * ez / r * dts;
           }
         } else {
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
@@ -410,7 +379,10 @@
           s.vY -= a * s.Y / r * dts;
           s.vZ -= a * s.Z / r * dts;
         }
-        if (s.lockAge !== undefined) s.lockAge += dt;
+        if (s.lockAge !== undefined) {
+          s.lockAge += dt;
+          if (s.lockAge > 4000) s.lockAge = undefined;
+        }
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
