@@ -535,6 +535,16 @@
       const brightRad  = shortSide * 0.30;
       const sparkRad   = shortSide * 0.07;
 
+      // Bloom envelope: sin bell 0→1→0 over the full 11s heart sequence, peaking mid-hold
+      let heartBloomEf = 0;
+      if (heartPhase > 0) {
+        const TOTAL = HEART_FORM + HEART_HOLD + HEART_RETURN;
+        const absT = heartPhase === 1 ? heartT * HEART_FORM / TOTAL
+          : heartPhase === 2 ? (HEART_FORM + heartT * HEART_HOLD) / TOTAL
+          : (HEART_FORM + HEART_HOLD + heartT * HEART_RETURN) / TOTAL;
+        heartBloomEf = Math.sin(absT * Math.PI);
+      }
+
       for (const p of proj) {
         const { sc, s, si } = p;
         let sx = p.sx, sy = p.sy;
@@ -625,6 +635,40 @@
             ctx.beginPath();
             ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
             ctx.stroke();
+          }
+        }
+
+        // Heart-line bloom: halo + diffraction for near-line stars during heart phases
+        if (heartBloomEf > 0.01 && s.heartPull > 0.90) {
+          const bStr = (s.heartPull - 0.90) / 0.10;
+          const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.006 + s.twinkPhase * 3.1)), 5);
+          const bloom = heartBloomEf * bStr * (0.65 + 0.35 * glitter);
+          // Soft halo for all near-line stars
+          ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
+          ctx.globalAlpha = 0.13 * bloom;
+          ctx.beginPath();
+          ctx.arc(sx, sy, Math.max(5, baseR * 3.5), 0, 6.2832);
+          ctx.fill();
+          // Diffraction spikes for on-line / very-close stars only
+          if (s.heartPull > 0.97) {
+            const spikeStr = (s.heartPull - 0.97) / 0.03;
+            const spike = Math.max(18, baseR * 16) * bloom;
+            const a = Math.min(0.60, s.dim * 0.4 + 0.18) * bloom * spikeStr;
+            if (a > 0.02) {
+              for (const [x1, y1, x2, y2] of [
+                [sx - spike, sy, sx + spike, sy],
+                [sx, sy - spike, sx, sy + spike]
+              ]) {
+                const g = ctx.createLinearGradient(x1, y1, x2, y2);
+                g.addColorStop(0,   `rgba(${ri},${gi},${bi},0)`);
+                g.addColorStop(0.5, `rgba(${ri},${gi},${bi},${a.toFixed(2)})`);
+                g.addColorStop(1,   `rgba(${ri},${gi},${bi},0)`);
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = g;
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+              }
+            }
           }
         }
       }
