@@ -288,9 +288,10 @@
       const spread = Math.min(canvas.width, canvas.height) * 0.16;
       heartRot = 0;
       for (const s of stars) {
-        s.heartOffAng = Math.random() * Math.PI * 2;
+        s.heartOffAng  = Math.random() * Math.PI * 2;
+        s.heartBloomR  = 1.5 + Math.pow(Math.random(), 0.5) * 10;  // range ~1.5–11.5, skewed long
         if (Math.random() < 0.03) {
-          s.heartOffR  = 0;   // ~3% sit exactly on the line
+          s.heartOffR  = 0;
           s.heartPull  = 1;
         } else {
           s.heartOffR  = Math.pow(Math.random(), 2) * spread;
@@ -645,9 +646,9 @@
           const bloom = heartBloomEf * bStr * (0.10 + 0.90 * glitter);
           // Soft halo for all near-line stars
           ctx.fillStyle = `rgb(${ri},${gi},${bi})`;
-          ctx.globalAlpha = 0.065 * bloom;
+          ctx.globalAlpha = 0.09 * bloom;
           ctx.beginPath();
-          ctx.arc(sx, sy, Math.max(3, baseR * 2.0), 0, 6.2832);
+          ctx.arc(sx, sy, Math.max(3, baseR * (s.heartBloomR || 4)), 0, 6.2832);
           ctx.fill();
           // Diffraction spikes for on-line / very-close stars only
           if (s.heartPull > 0.97) {
