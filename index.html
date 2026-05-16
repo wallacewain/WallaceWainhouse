@@ -405,7 +405,7 @@
         } else {
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
           const r  = Math.sqrt(r2);
-          const a  = SS_GRAVITY * gravScale / r;
+          const a  = SS_GRAVITY / r;  // full strength for all stars — keeps mini stars near center at top-down
           s.vX -= a * s.X / r * dts;
           s.vY -= a * s.Y / r * dts;
           s.vZ -= a * s.Z / r * dts;
