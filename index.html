@@ -376,7 +376,6 @@
           s.X += (htC.X - s.X) * 0.04;
           s.Y += (htC.Y - s.Y) * 0.04;
           s.Z += (htC.Z - s.Z) * 0.04;
-          s.lockAge = (s.lockAge || 0) + dt;
         } else if (heartPhase > 0 && HT && HT.length > 0) {
           // Heart gravity; capture mini stars that draw close during phases 1–2
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -408,6 +407,7 @@
           s.vY -= a * s.Y / r * dts;
           s.vZ -= a * s.Z / r * dts;
         }
+        if (s.lockAge !== undefined) s.lockAge += dt;
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
@@ -437,8 +437,8 @@
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          const la = s.lockAge || 0;
-          const lockEf = s.locked ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
+          const la = s.lockAge;
+          const lockEf = la !== undefined ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
           ctx.globalAlpha = Math.min(1, s.life * 0.95 * (1 + lockEf * 0.6));
           ctx.fillStyle = '#fffce8';
           ctx.beginPath(); ctx.arc(head.sx, head.sy, starR * (1 + lockEf * 0.5), 0, 6.2832); ctx.fill();
