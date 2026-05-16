@@ -350,20 +350,44 @@
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
         const gravScale = s.mini ? 0.15 : 1;
-        if (heartPhase > 0 && heartTargets && heartTargets.length > 0) {
-          // Attract toward nearest point on heart curve
+        const HT = heartTargets;
+        if (s.mini && s.locked && HT && HT.length > 0) {
+          // Locked to heart curve — constrain velocity to tangent, snap position onto curve
+          let bestD2 = Infinity, bestIdx = 0;
+          const N = HT.length;
+          for (let k = 0; k < N; k++) {
+            const ht = HT[k];
+            const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
+            const d2 = ex*ex + ey*ey + ez*ez;
+            if (d2 < bestD2) { bestD2 = d2; bestIdx = k; }
+          }
+          const nxt = HT[(bestIdx + 1) % N], prv = HT[(bestIdx - 1 + N) % N];
+          const tx = nxt.X - prv.X, ty = nxt.Y - prv.Y, tz = nxt.Z - prv.Z;
+          const tLen = Math.sqrt(tx*tx + ty*ty + tz*tz) + 1e-8;
+          const spd = (s.vX*tx + s.vY*ty + s.vZ*tz) / tLen;
+          s.vX = spd * tx / tLen; s.vY = spd * ty / tLen; s.vZ = spd * tz / tLen;
+          const htC = HT[bestIdx];
+          s.X += (htC.X - s.X) * 0.25;
+          s.Y += (htC.Y - s.Y) * 0.25;
+          s.Z += (htC.Z - s.Z) * 0.25;
+        } else if (heartPhase > 0 && HT && HT.length > 0) {
+          // Heart gravity; capture mini stars that draw close during phases 1–2
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
-          for (const ht of heartTargets) {
+          for (const ht of HT) {
             const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
             const d2 = ex*ex + ey*ey + ez*ez;
             if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
           }
-          const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
-          const r = Math.sqrt(bestD2 + SS_SOFTEN);
-          const a = SS_GRAVITY * gravScale / r;
-          s.vX -= a * ex / r * dts;
-          s.vY -= a * ey / r * dts;
-          s.vZ -= a * ez / r * dts;
+          if (s.mini && heartPhase < 3 && bestD2 < 0.02) {
+            s.locked = true;
+          } else {
+            const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
+            const r = Math.sqrt(bestD2 + SS_SOFTEN);
+            const a = SS_GRAVITY * gravScale / r;
+            s.vX -= a * ex / r * dts;
+            s.vY -= a * ey / r * dts;
+            s.vZ -= a * ez / r * dts;
+          }
         } else {
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
           const r  = Math.sqrt(r2);
@@ -476,7 +500,9 @@
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
         heartT = Math.min(1, heartT + dt / HEART_HOLD);
-        if (heartT >= 1) { heartT = 0; heartPhase = 3; }
+        if (heartT >= 1) { heartT = 0; heartPhase = 3;
+          for (const s of shootingStars) { if (s.mini) s.locked = false; }
+        }
       } else if (heartPhase === 3) {
         heartT = Math.min(1, heartT + dt / HEART_RETURN);
         rotMult = heartT;
