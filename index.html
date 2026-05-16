@@ -85,7 +85,7 @@
 
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
-    const COUNT    = isMobile ? 3000 : 7000;
+    const COUNT    = isMobile ? 3000 : 5000;
     const szScale  = isMobile ? 1.0 : 0.5;
     const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3;
 
@@ -248,7 +248,10 @@
       const pos = ssUnproject(sx, sy);
       if (!pos) return;
       const v = ss3DVel(vsx, vsy, pos.dz);
-      if (shootingStars.length >= SS_MAX) shootingStars[0].dying = true;
+      if (shootingStars.filter(s => !s.mini).length >= SS_MAX) {
+        const oldest = shootingStars.find(s => !s.mini);
+        if (oldest) oldest.dying = true;
+      }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
     }
 
@@ -411,7 +414,7 @@
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
-        if (!s.mini || s.dying) s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
+        s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
         if (s.life <= 0) {
           if (heartPhase === 0) {
             for (const sp of specialStars) {
@@ -430,7 +433,7 @@
           const f = j / tl;
           const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
           if (!p) continue;
-          ctx.globalAlpha = f * f * (s.mini && !s.dying ? 0.85 : s.life) * 0.9;
+          ctx.globalAlpha = f * f * s.life * 0.9;
           ctx.fillStyle = f > 0.5 ? '#fff0a0' : '#ff8820';
           const sz = Math.max(starR * 0.4, f * starR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
@@ -439,10 +442,11 @@
         if (head) {
           const la = s.lockAge;
           const lockEf = la !== undefined ? (la < 2000 ? la / 2000 : Math.max(0, 1 - (la - 2000) / 2000)) : 0;
-          const baseAlpha = s.mini && !s.dying ? 0.85 : s.life;
-          ctx.globalAlpha = Math.min(1, baseAlpha * 0.95 * (1 + lockEf * 0.6));
+          if (s.mini) ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(1, s.life * 0.95 * (1 + lockEf * 0.6));
           ctx.fillStyle = '#fffce8';
           ctx.beginPath(); ctx.arc(head.sx, head.sy, starR * (1 + lockEf * 0.5), 0, 6.2832); ctx.fill();
+          if (s.mini) ctx.globalCompositeOperation = 'lighter';
           if (lockEf > 0.01) {
             const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.0022 + s.id * 1.7)), 5);
             const bloom = lockEf * (0.10 + 0.90 * glitter);
@@ -467,6 +471,8 @@
                 ctx.strokeStyle = g;
                 ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
               }
+            } else {
+              ctx.globalAlpha = 1;
             }
           }
           if (!s.mini && !s.dying && heartPhase === 0) {
@@ -639,22 +645,27 @@
         if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
 
         const dx = sx - msx, dy = sy - msy;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
-        const bn      = dist / brightRad;
-        const brightF = msx < -100 ? 0 : Math.pow(Math.max(0, 1 - bn), 2);
-
-        const sn       = dist / sparkRad;
-        const cursorSF = msx < -100 ? 0 : Math.max(0, 1 - sn * sn);
+        const d2 = dx*dx + dy*dy;
+        const brightR2 = brightRad * brightRad;
+        const sparkR2  = sparkRad  * sparkRad;
+        let brightF = 0, cursorSF = 0;
+        if (msx > -100) {
+          if (d2 < brightR2) {
+            const bn = Math.sqrt(d2) / brightRad;
+            brightF  = (1 - bn) * (1 - bn);
+          }
+          if (d2 < sparkR2) cursorSF = 1 - d2 / sparkR2;
+        }
 
         let trailF = 0;
         for (let ti = 0; ti < TRAIL; ti++) {
           if (!trailT[ti]) continue;
           const age = ts - trailT[ti];
           if (age > 1200) continue;
-          const fade = 1 - age / 1200;
-          const tn = Math.sqrt((sx - trailX[ti]) ** 2 + (sy - trailY[ti]) ** 2) / sparkRad;
-          const tf = Math.max(0, 1 - tn * tn) * fade;
+          const tdx = sx - trailX[ti], tdy = sy - trailY[ti];
+          const td2 = tdx*tdx + tdy*tdy;
+          if (td2 >= sparkR2) continue;
+          const tf = (1 - td2 / sparkR2) * (1 - age / 1200);
           if (tf > trailF) trailF = tf;
         }
 
@@ -710,8 +721,8 @@
         }
 
         // Heart-line bloom: halo + diffraction for near-line stars during heart phases
-        if (heartBloomEf > 0.01 && s.heartPull > 0.90) {
-          const bStr = (s.heartPull - 0.90) / 0.10;
+        if (heartBloomEf > 0.01 && s.heartPull > 0.94) {
+          const bStr = (s.heartPull - 0.94) / 0.06;
           const glitter = Math.pow(Math.max(0, Math.sin(ts * 0.0022 + s.twinkPhase * 3.1)), 5);
           const bloom = heartBloomEf * bStr * (0.10 + 0.90 * glitter);
           // Soft halo for all near-line stars
@@ -721,8 +732,8 @@
           ctx.arc(sx, sy, Math.max(3, baseR * (s.heartBloomR || 4)), 0, 6.2832);
           ctx.fill();
           // Diffraction spikes — lower threshold so more stars get them
-          if (s.heartPull > 0.93) {
-            const spikeStr = (s.heartPull - 0.93) / 0.07;
+          if (s.heartPull > 0.98) {
+            const spikeStr = (s.heartPull - 0.98) / 0.02;
             const spike = Math.max(14, baseR * 12) * bloom;
             const a = Math.min(0.52, s.dim * 0.35 + 0.15) * bloom * spikeStr;
             if (a > 0.02) {
