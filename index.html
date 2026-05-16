@@ -378,7 +378,7 @@
             const d2 = ex*ex + ey*ey + ez*ez;
             if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
           }
-          if (s.mini && heartPhase < 3 && bestD2 < 0.02) {
+          if (s.mini && heartPhase === 2 && bestD2 < 0.02) {
             s.locked = true;
           } else {
             const ex = s.X - bX, ey = s.Y - bY, ez = s.Z - bZ;
