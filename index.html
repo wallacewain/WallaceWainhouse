@@ -214,7 +214,7 @@
     const shootingStars = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
-    let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0;
+    let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
     const HEART_FORM = 4000, HEART_HOLD = 3000, HEART_RETURN = 4000;
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
@@ -297,6 +297,7 @@
           s.heartPull  = 1 - s.heartOffR / spread;
         }
       }
+      heartStartRotX = dragRX;
       heartPhase = 1; heartT = 0;
     }
 
@@ -467,16 +468,22 @@
       if (heartPhase === 1) {
         heartT = Math.min(1, heartT + dt / HEART_FORM);
         rotMult = 1 - heartT;
+        const ef1 = heartT * heartT * (3 - 2 * heartT);
+        dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
         if (heartT >= 1) { heartT = 0; heartPhase = 2; }
       } else if (heartPhase === 2) {
         rotMult = 0;
+        dragRX = rotX = Math.PI / 2;
         heartT = Math.min(1, heartT + dt / HEART_HOLD);
         if (heartT >= 1) { heartT = 0; heartPhase = 3; }
       } else if (heartPhase === 3) {
         heartT = Math.min(1, heartT + dt / HEART_RETURN);
         rotMult = heartT;
+        const ef3 = heartT * heartT * (3 - 2 * heartT);
+        dragRX = rotX = Math.PI / 2 + (heartStartRotX - Math.PI / 2) * ef3;
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
+          dragRX = rotX = heartStartRotX;
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
               sp.s.specialAlive = true;
