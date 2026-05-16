@@ -145,7 +145,12 @@
       let b, tries = 0;
       do { b = pool[Math.floor(Math.random() * pool.length)]; }
       while ((b === a || Math.hypot(b.x - a.x, b.z - a.z) < 0.08) && ++tries < 300);
-      [a, b].forEach(s => { s.special = true; s.specialAlive = true; });
+      [a, b].forEach(s => {
+        s.special = true; s.specialAlive = true;
+        s.sz  = Math.max(s.sz * 3, 0.003 / szScale); // large enough to always be visible
+        s.dim = Math.min(2.0, s.dim + 1.0);           // noticeably brighter than surroundings
+        s.cr = 1.0; s.cg = 0.96; s.cb = 0.72;        // warm white, stands out in orange core
+      });
       specialStars.push({ s: a, hitBy: null }, { s: b, hitBy: null });
     }
 
@@ -264,7 +269,7 @@
       for (let i = 0; i < 10; i++) {
         const phi = Math.acos(2 * Math.random() - 1);
         const th  = Math.random() * Math.PI * 2;
-        const spd = 0.5 + Math.random() * 1.0;
+        const spd = 0.04 + Math.random() * 0.08;
         shootingStars.push({
           id: ssIdCounter++, mini: true,
           X: wx, Y: wy, Z: wz,
@@ -277,6 +282,13 @@
     }
     function triggerHeart() {
       if (heartPhase !== 0) return;
+      const spread = Math.min(canvas.width, canvas.height) * 0.045;
+      for (const s of stars) {
+        const ang = s.twinkPhase;
+        const rad = s.glitFactor * spread;
+        s.heartOffX = Math.cos(ang) * rad;
+        s.heartOffY = Math.sin(ang) * rad;
+      }
       heartPhase = 1; heartT = 0;
     }
 
@@ -303,7 +315,8 @@
         const s = shootingStars[i];
         const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
         const r  = Math.sqrt(r2);
-        const a  = SS_GRAVITY / r;
+        const gravScale = s.mini ? 0.15 : 1;
+        const a  = SS_GRAVITY * gravScale / r;
         s.vX -= a * s.X / r * dts;
         s.vY -= a * s.Y / r * dts;
         s.vZ -= a * s.Z / r * dts;
@@ -336,6 +349,7 @@
               const ddx = head.sx - spP.sx, ddy = head.sy - spP.sy;
               if (ddx*ddx + ddy*ddy < hitR2) {
                 sp.s.specialAlive = false;
+                sp.s.sz = 0; sp.s.dim = 0;
                 sp.hitBy = s.id;
                 spawnMiniStars(sp.s.x, sp.s.y, sp.s.z);
                 if (specialStars[0].hitBy !== null && specialStars[1].hitBy !== null &&
@@ -454,8 +468,8 @@
           const hx = 16 * Math.pow(Math.sin(th), 3);
           const hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
           const hs = Math.min(W, H) * 0.018;
-          sx += (cx + hx * hs - sx) * ef;
-          sy += (cy + hy * hs - sy) * ef;
+          sx += (cx + hx * hs + (s.heartOffX || 0) - sx) * ef;
+          sy += (cy + hy * hs + (s.heartOffY || 0) - sy) * ef;
         }
 
         const baseR = s.sz * sc;
@@ -505,20 +519,27 @@
         }
 
         if (s.special && s.specialAlive) {
-          const spike = Math.max(22, baseR * 18);
-          const a = Math.min(0.55, s.dim * 1.2 + spark * 0.4);
+          // Soft pulsing halo
+          const pulse = 0.8 + 0.2 * Math.sin(ts * 0.0025 + s.twinkPhase);
+          ctx.globalAlpha = 0.18 * pulse;
+          ctx.beginPath();
+          ctx.arc(sx, sy, Math.max(10, baseR * 5), 0, 6.2832);
+          ctx.fill();
+          // Diffraction spikes
+          const spike = Math.max(40, baseR * 28);
+          const a = Math.min(0.85, s.dim * 0.55 + 0.35) * pulse;
           for (const [x1, y1, x2, y2] of [
             [sx - spike, sy, sx + spike, sy],
             [sx, sy - spike, sx, sy + spike]
           ]) {
             const g = ctx.createLinearGradient(x1, y1, x2, y2);
             g.addColorStop(0,    `rgba(${ri},${gi},${bi},0)`);
-            g.addColorStop(0.38, `rgba(${ri},${gi},${bi},${(a * 0.5).toFixed(2)})`);
+            g.addColorStop(0.35, `rgba(${ri},${gi},${bi},${(a * 0.45).toFixed(2)})`);
             g.addColorStop(0.5,  `rgba(${ri},${gi},${bi},${a.toFixed(2)})`);
-            g.addColorStop(0.62, `rgba(${ri},${gi},${bi},${(a * 0.5).toFixed(2)})`);
+            g.addColorStop(0.65, `rgba(${ri},${gi},${bi},${(a * 0.45).toFixed(2)})`);
             g.addColorStop(1,    `rgba(${ri},${gi},${bi},0)`);
             ctx.globalAlpha = 1;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             ctx.strokeStyle = g;
             ctx.beginPath();
             ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
