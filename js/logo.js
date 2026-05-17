@@ -21,38 +21,27 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // W y-sequence:  oty → wby → ity → wby → oty
-  // M full sequence (arms shared with W):  wby → oty → mby → oty → wby
-  // Reflection: mby = oty+wby-ity mirrors ity around (oty+wby)/2.
-  // ity is forced well above oty so both the W peak and M notch are always clearly visible.
+  // Equal horizontal spacing: every gap between consecutive nodes = sp = (CX - n0x) / 5.
+  // Node i is at x = n0x + i * sp.  All 10 intervals are identical, so W and M
+  // have exactly the same proportions and M is a true horizontal mirror of W.
+  //
+  // y-sequence:  oty wby ity wby oty | mby | oty wby ity wby oty
+  // M centre mby = oty + wby - ity  (W reflected around the (oty+wby)/2 axis).
+  // ity is forced above oty so both the W peak and M notch are always clearly visible.
   function makeShape() {
-    var n0x  = rnd(-319, 100);
-    var n4x  = rnd(350,  750);
-    var n2x  = (n0x + n4x) * 0.5;
-    var n1dx = (n4x - n0x) * rnd(0.20, 0.35);
+    var n0x = rnd(-319, 100);
+    var sp  = (CX - n0x) / 5;  // equal spacing — the single x degree of freedom
 
-    var oty  = rnd(20,  50);                      // outer tops
-    var ity  = Math.max(oty - rnd(25, 55), -25);  // W peak: always clearly above outer tops
-    var wby  = rnd(150, 225);                     // W valleys
-    var mby  = Math.min(oty + wby - ity, 258);    // M centre: W reflected, equal amplitude
+    var oty = rnd(20,  50);
+    var ity = Math.max(oty - rnd(25, 55), -25);  // peak clearly above outer tops
+    var wby = rnd(150, 225);
+    var mby = Math.min(oty + wby - ity, 258);    // W-reflected centre
+    var sw  = rnd(16, 60);
 
-    var sw   = rnd(16, 60);
-
+    var ys = [oty, wby, ity, wby, oty, mby, oty, wby, ity, wby, oty];
     return {
       sw: sw,
-      n: [
-        { x: n0x,                y: oty },  // N[0]  left outer W top
-        { x: n2x - n1dx,         y: wby },  // N[1]  left W valley
-        { x: n2x,                y: ity },  // N[2]  W centre peak
-        { x: n2x + n1dx,         y: wby },  // N[3]  right W valley  (= left M arm start)
-        { x: n4x,                y: oty },  // N[4]  right W top     (= left M arm end)
-        { x: CX,                 y: mby },  // N[5]  M centre — exact invert amplitude
-        { x: 2*CX - n4x,         y: oty },  // N[6]  left right-W top (= right M arm start)
-        { x: 2*CX - n2x - n1dx,  y: wby },  // N[7]  right-W left valley (= right M arm end)
-        { x: 2*CX - n2x,         y: ity },  // N[8]  right-W centre peak
-        { x: 2*CX - n2x + n1dx,  y: wby },  // N[9]  right-W right valley
-        { x: 2*CX - n0x,         y: oty },  // N[10] right outer right-W top
-      ]
+      n: ys.map(function(y, i) { return { x: n0x + i * sp, y: y }; })
     };
   }
 
