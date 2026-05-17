@@ -21,19 +21,20 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // Two y-levels, equal horizontal spacing, 10 gaps between 11 nodes.
-  // Every node sits at x = n0x + i*sp where sp = (CX-n0x)/5 (n[5] at the symmetry axis).
-  // Strictly alternating T,B,T,B,...,T — all 10 strokes are diagonal, same angle.
-  // Left W = N[0-4] (\/\/), M = N[4-8] (/\/\), Right W = N[6-10] (\/\/).
+  // Equal horizontal spacing, 10 gaps between 11 nodes, strictly alternating T/B.
+  // Shape is mirror-symmetric around N[5] (x = CX). Six independent y-values:
+  //   ta/tb/tc = three distinct peak heights (outer→inner)
+  //   va/vb/vc = three distinct valley depths (outer→inner)
+  // ys mirrors: [ta,va,tb,vb,tc,vc,tc,vb,tb,va,ta]
   function makeShape() {
     var n0x = rnd(-319, 100);
     var sp  = (CX - n0x) / 5;
-
-    var oty = rnd(-15, 50);
-    var wby = rnd(150, 252);
     var sw  = rnd(16, 60);
 
-    var ys = [oty, wby, oty, wby, oty, wby, oty, wby, oty, wby, oty];
+    var ta = rnd(-15, 50),  tb = rnd(-15, 50),  tc = rnd(-15, 50);
+    var va = rnd(150, 252), vb = rnd(150, 252), vc = rnd(150, 252);
+
+    var ys = [ta, va, tb, vb, tc, vc, tc, vb, tb, va, ta];
     return {
       sw: sw,
       n: ys.map(function(y, i) { return { x: n0x + i * sp, y: y }; })
