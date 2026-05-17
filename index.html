@@ -945,40 +945,17 @@
       e.hits++;
     };
 
-    window.cLogInstant = function(text) {
+    window.cLogInstant = function(text, pre) {
       const el = document.createElement('div');
       el.className = 'console-line';
+      if (pre) el.style.whiteSpace = 'pre';
       el.textContent = text;
       addLine(el);
     };
 
     window.cLogHeart = function() {
       const rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *'];
-      // Single container = one entry in lines[], so whole heart fades as a unit
-      const container = document.createElement('div');
-      container.className = 'console-line';
-      container.style.whiteSpace = 'pre';
-      const first = document.createElement('div');
-      first.textContent = rows[0];
-      container.appendChild(first);
-      setTimeout(() => addLine(container), 350);
-      rows.slice(1).forEach((r, i) => {
-        setTimeout(() => {
-          const prevH = container.offsetHeight;
-          const row = document.createElement('div');
-          row.textContent = r;
-          container.appendChild(row);
-          const dh = container.offsetHeight - prevH;
-          if (dh > 0) {
-            pane.style.transition = 'none';
-            pane.style.transform = `translateY(${dh}px)`;
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              pane.style.transition = 'transform 0.32s ease';
-              pane.style.transform = 'translateY(0)';
-            }));
-          }
-        }, 350 + (i + 1) * 600);
-      });
+      rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r, true), 350 + i * 600));
     };
 
     setTimeout(() => cLog('> hello.'), 700);
