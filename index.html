@@ -50,6 +50,7 @@
     .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
     .drag-hint {
       display: inline-flex;
+      align-self: center;
       margin-top: 2.5rem;
       cursor: grab;
       user-select: none;
@@ -59,14 +60,14 @@
     }
     .drag-hint svg { overflow: visible; animation: dh-pulse 3.2s ease-in-out infinite; }
     @keyframes dh-pulse {
-      0%,100% { opacity: 0.5;  filter: drop-shadow(0 0 5px rgba(255,240,160,0.15)); }
-      50%      { opacity: 0.88; filter: drop-shadow(0 0 16px rgba(255,240,160,0.5)); }
+      0%,100% { opacity: 0.38; filter: drop-shadow(0 0 4px rgba(255,255,255,0.1)); }
+      50%      { opacity: 0.7;  filter: drop-shadow(0 0 14px rgba(255,255,255,0.35)); }
     }
     .dh-ghost {
       position: fixed; pointer-events: none; z-index: 10;
       transform: translate(-50%,-50%);
     }
-    .dh-ghost svg { overflow: visible; filter: drop-shadow(0 0 18px rgba(255,240,160,0.65)); }
+    .dh-ghost svg { overflow: visible; filter: drop-shadow(0 0 16px rgba(255,255,255,0.5)); }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -87,12 +88,12 @@
       <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
       <div class="drag-hint" id="drag-hint">
         <svg viewBox="0 0 200 200" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-          <path d="M91.3,44 Q100,20 110.7,49.3 Q119.4,73.3 150.6,74.4 Q176.1,75.3 151.5,94.5 Q131.4,110.2 140,140.2 Q147,164.7 121.2,147.3 Q100,133 74.1,150.5 Q53,164.7 61.6,134.7 Q68.6,110.2 44,91 Q23.9,75.3 55.1,74.2 Q80.6,73.3 91.3,44Z"
-                fill="none" stroke="rgba(255,240,160,0.68)" stroke-width="3" stroke-linejoin="round"/>
-          <text text-anchor="middle" font-family="Inter,sans-serif" fill="rgba(255,240,160,0.78)"
-                font-weight="500" font-size="16" letter-spacing="3">
-            <tspan x="100" y="92">drag</tspan>
-            <tspan x="100" y="113">me</tspan>
+          <path d="M88.8,44.6 Q100,20 111.2,44.6 Q122.3,69.3 149.2,72.3 Q176.1,75.3 156.1,93.5 Q136.1,111.7 141.6,138.2 Q147,164.7 123.5,151.4 Q100,138 76.5,151.4 Q53,164.7 58.4,138.2 Q63.9,111.7 43.9,93.5 Q23.9,75.3 50.8,72.3 Q77.7,69.3 88.8,44.6Z"
+                fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2.5" stroke-linejoin="round"/>
+          <text text-anchor="middle" font-family="Inter,sans-serif" fill="rgba(255,255,255,0.48)"
+                font-weight="400" font-size="15" letter-spacing="3">
+            <tspan x="100" y="95">drag</tspan>
+            <tspan x="100" y="114">me</tspan>
           </text>
         </svg>
       </div>
@@ -566,10 +567,11 @@
         ssLX = cx; ssLY = cy;
         if (hGhost) {
           const g = hGhost; hGhost = null;
-          g.style.transition = 'transform 0.38s cubic-bezier(0.5,0,1,0.6), opacity 0.32s ease-in';
-          g.style.transform  = 'translate(-50%,-50%) scale(0)';
-          g.style.opacity    = '0';
-          setTimeout(() => g.remove(), 420);
+          g.style.transition = 'transform 0.5s ease-in, opacity 0.42s ease-in';
+          g.offsetHeight; // force reflow so transition fires
+          g.style.transform = 'translate(-50%,-50%) scale(0)';
+          g.style.opacity   = '0';
+          setTimeout(() => g.remove(), 550);
         }
         hintEl.style.display = 'none';
         // Spawn: always if dragged ≥ 6px, with minimum speed
@@ -582,6 +584,8 @@
           clearTimeout(ssPending);
           ssSpawn(cx, cy, vsx, vsy);
         }
+        // Reset so window touchend's ssEnd sees dx=0 → no second spawn
+        ssStartX = cx; ssStartY = cy; ssStartT = performance.now();
       }
 
       hintEl.addEventListener('mousedown', e => {
