@@ -10,8 +10,8 @@
   var pl = document.createElementNS(NS, 'polyline');
   pl.setAttribute('fill', 'none');
   pl.setAttribute('stroke', 'currentColor');
-  pl.setAttribute('stroke-linejoin', 'miter');
-  pl.setAttribute('stroke-linecap', 'butt');
+  pl.setAttribute('stroke-linejoin', 'round');
+  pl.setAttribute('stroke-linecap', 'round');
   svg.appendChild(pl);
   while (logoA.firstChild) logoA.removeChild(logoA.firstChild);
   logoA.appendChild(svg);
@@ -37,7 +37,7 @@
     var oty  = rnd(-15,  50);   // all outer top nodes:  N[0,4,6,10]
     var ity  = rnd(-15,  50);   // inner W top nodes:    N[2,8]
     var wby  = rnd(150, 252);   // W valley bottoms:     N[1,3,7,9]
-    var mby  = rnd(110, 252);   // M centre bottom:      N[5]  (may differ from wby)
+    var mby  = wby;             // M centre bottom: same depth as W valleys
 
     // --- stroke width ---
     var sw = rnd(16, 60);
