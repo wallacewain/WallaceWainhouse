@@ -293,7 +293,7 @@
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
-        setTimeout(() => window.cLog('> one shot. two ✦.'), 1500);
+        setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> hit both with one shot.'); }, 1500);
       }
     }
 
@@ -863,7 +863,7 @@
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
-  setInterval(() => { if (heartPhase === 0 && window.cLog) window.cLog('> one shot. two ✦.'); }, 28000);
+  setInterval(() => { if (heartPhase === 0 && window.cLog) window.cLog('> hit both ✦ stars with one shot.'); }, 28000);
 
   // Console typewriter
   {
