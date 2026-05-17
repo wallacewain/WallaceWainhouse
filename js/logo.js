@@ -21,9 +21,11 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // W y-sequence:  oty → wby → ity → wby → oty  (outer-top, valley, peak, valley, outer-top)
-  // M y-sequence:  oty → ity → wby → ity → oty  (exact invert: swap valley/peak in middle)
-  // M x-positions scaled proportionally to match W's valley-gap ratio.
+  // W y-sequence (own 5 nodes):  oty → wby → ity → wby → oty
+  // M y-sequence (shared arms + own center):
+  //   …wby(shared) → oty(shared) → mby → oty(shared) → wby(shared)…
+  // For M to be an exact invert of W, M's center dip must equal W's inner
+  // peak rise:  mby = oty + (wby - ity)
   function makeShape() {
     var n0x  = rnd(-319, 100);
     var n4x  = rnd(350,  750);
@@ -33,28 +35,24 @@
     var oty  = rnd(-15,  50);
     var ity  = rnd(-15,  50);
     var wby  = rnd(150, 252);
+    var mby  = Math.min(oty + (wby - ity), 260); // same amplitude as W's peak, clamped to viewbox
 
     var sw   = rnd(16, 60);
-
-    // M inner x-offset: same valley-gap ratio as W, scaled to M's half-span
-    var m1dx = n1dx * (CX - n4x) / ((n4x - n0x) * 0.5);
 
     return {
       sw: sw,
       n: [
-        { x: n0x,               y: oty },  // N[0]  left outer W top
-        { x: n2x - n1dx,        y: wby },  // N[1]  left W valley
-        { x: n2x,               y: ity },  // N[2]  W centre peak
-        { x: n2x + n1dx,        y: wby },  // N[3]  right W valley
-        { x: n4x,               y: oty },  // N[4]  right W top = left M outer
-        { x: CX - m1dx,         y: ity },  // N[5]  M left inner  (ity, not wby — inverted)
-        { x: CX,                y: wby },  // N[6]  M centre bottom
-        { x: CX + m1dx,         y: ity },  // N[7]  M right inner (mirror N[5])
-        { x: 2*CX - n4x,        y: oty },  // N[8]  right M outer = left right-W outer
-        { x: 2*CX - n2x - n1dx, y: wby },  // N[9]  right-W left valley  (mirror N[3])
-        { x: 2*CX - n2x,        y: ity },  // N[10] right-W centre peak  (mirror N[2])
-        { x: 2*CX - n2x + n1dx, y: wby },  // N[11] right-W right valley (mirror N[1])
-        { x: 2*CX - n0x,        y: oty },  // N[12] right outer right-W top (mirror N[0])
+        { x: n0x,                y: oty },  // N[0]  left outer W top
+        { x: n2x - n1dx,         y: wby },  // N[1]  left W valley
+        { x: n2x,                y: ity },  // N[2]  W centre peak
+        { x: n2x + n1dx,         y: wby },  // N[3]  right W valley  (= left M arm start)
+        { x: n4x,                y: oty },  // N[4]  right W top     (= left M arm end)
+        { x: CX,                 y: mby },  // N[5]  M centre — exact invert amplitude
+        { x: 2*CX - n4x,         y: oty },  // N[6]  left right-W top (= right M arm start)
+        { x: 2*CX - n2x - n1dx,  y: wby },  // N[7]  right-W left valley (= right M arm end)
+        { x: 2*CX - n2x,         y: ity },  // N[8]  right-W centre peak
+        { x: 2*CX - n2x + n1dx,  y: wby },  // N[9]  right-W right valley
+        { x: 2*CX - n0x,         y: oty },  // N[10] right outer right-W top
       ]
     };
   }
@@ -65,7 +63,7 @@
 
   function render() {
     var e = ease(progress), pts = [];
-    for (var i = 0; i < 13; i++) {
+    for (var i = 0; i < 11; i++) {
       pts.push(
         (from.n[i].x + (to.n[i].x - from.n[i].x) * e).toFixed(1) + ',' +
         (from.n[i].y + (to.n[i].y - from.n[i].y) * e).toFixed(1)
