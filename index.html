@@ -965,7 +965,7 @@
     setTimeout(() => cLog('> hello.'), 700);
     setTimeout(() => cLog('> 5,000 stars loaded.'), 2500);
     setTimeout(() => cLog('> drag ✦ to fire a shot.'), 4500);
-    setTimeout(() => { cLog('> 2 fingers to rotate the galaxy.'); setTimeout(() => cLog('> middle mouse on desktop.'), 1200); }, 10000);
+    setTimeout(() => { cLog(('ontouchstart' in window || navigator.maxTouchPoints > 0) ? '> 2 fingers to rotate the galaxy.' : '> middle mouse to rotate the galaxy.'); }, 10000);
   }
   </script>
 <script src="/js/logo.js"></script>
