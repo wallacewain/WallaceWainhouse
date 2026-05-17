@@ -342,7 +342,6 @@
       heartStartRotX = dragRX;
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
-      if (window.cLog) window.cLog('> ♥ pattern forming...');
     }
 
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
@@ -626,7 +625,7 @@
         rotMult = 1 - heartT;
         const ef1 = heartT * heartT * (3 - 2 * heartT);
         dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
-        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) window.cLog('> ♥ beautiful.'); }
+        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) window.cLog('> ♥ i compute you.'); }
       } else if (heartPhase === 2) {
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
