@@ -21,11 +21,9 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // W y-sequence:  oty → wby → ity → wby → oty  (peaks near top, valleys at bottom)
-  // M y-sequence (arms shared with W's outer strokes):
-  //   …wby → oty → mby → oty → wby…  (peaks at oty, centre notch at mid-height)
-  // mby = (oty+wby)/2 gives M its own letter shape — a mid-height notch — rather than
-  // treating M as a derivative of W.
+  // W y-sequence:  oty → wby → ity → wby → oty
+  // M full y-sequence (arms shared):  wby → oty → mby → oty → wby
+  // W reflected around (oty+wby)/2: swap oty↔wby and mirror ity → mby = oty+wby-ity
   function makeShape() {
     var n0x  = rnd(-319, 100);
     var n4x  = rnd(350,  750);
@@ -35,7 +33,7 @@
     var oty  = rnd(-15,  50);
     var ity  = rnd(-15,  50);
     var wby  = rnd(150, 252);
-    var mby  = (oty + wby) * 0.5;  // M centre at mid-height: distinct notch, not a W derivative
+    var mby  = Math.min(oty + wby - ity, 262); // W reflected: mirror W's ity around (oty+wby)/2
 
     var sw   = rnd(16, 60);
 
