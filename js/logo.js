@@ -4,7 +4,7 @@
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '-323 -28 2446 800');
+  svg.setAttribute('viewBox', '-30 -28 900 296');
   svg.setAttribute('height', '18');
   svg.setAttribute('aria-label', 'WMW');
   var pl = document.createElementNS(NS, 'polyline');
@@ -16,7 +16,7 @@
   while (logoA.firstChild) logoA.removeChild(logoA.firstChild);
   logoA.appendChild(svg);
 
-  var CX = 900;       // axis of WMW mirror symmetry
+  var CX = 420;       // axis of WMW mirror symmetry
   var DURATION = 30;  // seconds per morph
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
@@ -25,15 +25,15 @@
   // N[6] sits at CX: n0x + 2*sa + 3*sb = CX  →  sb = (CX - n0x - 2*sa) / 3.
   // Y: 1=5=7=11=oty  2=4=8=10=lowy  3=9=lowy-d (rise from valley)  6=oty+d (dip from top).
   function makeShape() {
-    var n0x  = rnd(-319, 100);
+    var n0x  = rnd(-20, 30);
     var r    = rnd(0.3, 2.5);               // sa/sb ratio — varies arm vs. body width
     var sb   = (CX - n0x) / (3 + 2 * r);
     var sa   = r * sb;
-    var sw   = rnd(43, 160);                             // scaled for 800-unit viewBox height
+    var sw   = rnd(16, 60);
 
-    var span = rnd(150, 760);                            // short to tall — 4:3 per letter at ~730
-    var oty  = rnd(-15, Math.min(50, 750 - span));       // top of letters
-    var lowy = oty + span;                               // bottom of letters
+    var span = rnd(100, 260);
+    var oty  = rnd(-15, Math.min(40, 250 - span));
+    var lowy = oty + span;
     var d    = rnd((lowy - oty) * 0.3, (lowy - oty) * 0.95); // inner W-peak rise / M-center dip
 
     var xs = [
