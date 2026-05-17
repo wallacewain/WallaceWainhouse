@@ -58,16 +58,27 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    .drag-hint svg { overflow: visible; animation: dh-pulse 3.2s ease-in-out infinite; }
+    .drag-hint svg { overflow: visible; animation: dh-pulse 2.4s ease-in-out infinite; }
     @keyframes dh-pulse {
-      0%,100% { opacity: 0.38; filter: drop-shadow(0 0 4px rgba(255,255,255,0.1)); }
-      50%      { opacity: 0.7;  filter: drop-shadow(0 0 14px rgba(255,255,255,0.35)); }
+      0%,100% { opacity: 0.45; filter: drop-shadow(0 0 3px rgba(255,255,255,0.25)); }
+      50%      { opacity: 1.0;  filter: drop-shadow(0 0 12px rgba(255,255,255,0.7)); }
     }
     .dh-ghost {
       position: fixed; pointer-events: none; z-index: 10;
       transform: translate(-50%,-50%);
     }
     .dh-ghost svg { overflow: visible; filter: drop-shadow(0 0 16px rgba(255,255,255,0.5)); }
+    .console-pane {
+      position: fixed; bottom: 1.4rem; right: 1.4rem;
+      width: min(260px, 42vw);
+      display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem;
+      pointer-events: none; z-index: 5;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.68rem; line-height: 1.65;
+    }
+    .console-line { color: rgba(140,255,170,0.9); white-space: nowrap; transition: opacity 0.6s ease; }
+    .console-cursor { animation: con-blink 0.85s step-end infinite; }
+    @keyframes con-blink { 0%,100%{opacity:1} 50%{opacity:0} }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -87,14 +98,8 @@
       <h1>Wallace Wainhouse</h1>
       <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
       <div class="drag-hint" id="drag-hint">
-        <svg viewBox="0 0 200 200" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
-          <path d="M88.8,44.6 Q100,20 111.2,44.6 Q122.3,69.3 149.2,72.3 Q176.1,75.3 156.1,93.5 Q136.1,111.7 141.6,138.2 Q147,164.7 123.5,151.4 Q100,138 76.5,151.4 Q53,164.7 58.4,138.2 Q63.9,111.7 43.9,93.5 Q23.9,75.3 50.8,72.3 Q77.7,69.3 88.8,44.6Z"
-                fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2.5" stroke-linejoin="round"/>
-          <text text-anchor="middle" font-family="Inter,sans-serif" fill="rgba(255,255,255,0.48)"
-                font-weight="400" font-size="15" letter-spacing="3">
-            <tspan x="100" y="95">drag</tspan>
-            <tspan x="100" y="114">me</tspan>
-          </text>
+        <svg viewBox="0 0 40 40" width="26" height="26" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20,2 Q21,19 38,20 Q21,21 20,38 Q19,21 2,20 Q19,19 20,2Z" fill="rgba(255,255,255,0.88)"/>
         </svg>
       </div>
     </section>
@@ -284,6 +289,10 @@
         if (oldest) oldest.dying = true;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
+      if (window.cLog) {
+        const r = ['> fired.','> stellar!','> nice shot.','> ✦ launched.','> woosh.','> boom.'];
+        window.cLog(r[Math.floor(Math.random() * r.length)]);
+      }
     }
 
     function ssBegin(x, y) {
@@ -335,6 +344,7 @@
       heartStartRotX = dragRX;
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
+      if (window.cLog) window.cLog('> ♥ pattern forming...');
     }
 
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
@@ -617,7 +627,7 @@
         rotMult = 1 - heartT;
         const ef1 = heartT * heartT * (3 - 2 * heartT);
         dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
-        if (heartT >= 1) { heartT = 0; heartPhase = 2; }
+        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) window.cLog('> ♥ beautiful.'); }
       } else if (heartPhase === 2) {
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
@@ -632,6 +642,7 @@
         dragRX = rotX = Math.PI / 2 + (heartStartRotX - Math.PI / 2) * ef3;
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
+          if (window.cLog) window.cLog('> galaxy restored.');
           dragRX = rotX = heartStartRotX;
           for (const s of shootingStars) {
             if (s.mini) { s.vY += (Math.random() - 0.5) * 0.04; s.dying = true; }
@@ -849,7 +860,61 @@
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // Console typewriter
+  {
+    const pane = document.getElementById('console-pane');
+    const MAX = 7;
+    const lines = [];
+    let busy = false;
+    const queue = [];
+
+    function updateOpacity() {
+      const n = lines.length;
+      lines.forEach((el, i) => {
+        el.style.opacity = Math.max(0.06, 1 - (n - 1 - i) * 0.2);
+      });
+      while (lines.length > MAX) lines.shift().remove();
+    }
+
+    function typeLine(text, cb) {
+      const el = document.createElement('div');
+      el.className = 'console-line';
+      const cur = document.createElement('span');
+      cur.className = 'console-cursor';
+      cur.textContent = '.';
+      el.appendChild(cur);
+      pane.appendChild(el);
+      lines.push(el);
+      updateOpacity();
+      let i = 0;
+      (function tick() {
+        if (i < text.length) {
+          el.insertBefore(document.createTextNode(text[i++]), cur);
+          setTimeout(tick, 36 + Math.random() * 30);
+        } else if (cb) {
+          setTimeout(cb, 1000);
+        }
+      })();
+    }
+
+    function processQueue() {
+      if (!queue.length) { busy = false; return; }
+      busy = true;
+      typeLine(queue.shift(), processQueue);
+    }
+
+    window.cLog = function(msg) {
+      queue.push(msg);
+      if (!busy) processQueue();
+    };
+
+    setTimeout(() => cLog('> hello.'), 700);
+    setTimeout(() => cLog('> 5,000 stars loaded.'), 2500);
+    setTimeout(() => cLog('> drag ✦ to fire a shot.'), 4500);
+  }
   </script>
+<div id="console-pane" class="console-pane"></div>
 <script src="/js/logo.js"></script>
 </body>
 </html>
