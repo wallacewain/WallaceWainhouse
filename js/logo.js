@@ -21,24 +21,19 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // Equal horizontal spacing: every gap between consecutive nodes = sp = (CX - n0x) / 5.
-  // Node i is at x = n0x + i * sp.  All 10 intervals are identical, so W and M
-  // have exactly the same proportions and M is a true horizontal mirror of W.
-  //
-  // y-sequence:  oty wby ity wby oty | mby | oty wby ity wby oty
-  // M centre mby = oty + wby - ity  (W reflected around the (oty+wby)/2 axis).
-  // ity is forced above oty so both the W peak and M notch are always clearly visible.
+  // Two y-levels, equal horizontal spacing.
+  // Every node sits at x = n0x + i*sp where sp = (CX-n0x)/5.
+  // Nodes at positions 0,3,6,9,10 → top (oty); nodes 1,2,4,5,7,8 → bottom (wby).
+  // With only two y-values every stroke is the same angle, and W and M are exact mirrors.
   function makeShape() {
     var n0x = rnd(-319, 100);
-    var sp  = (CX - n0x) / 5;  // equal spacing — the single x degree of freedom
+    var sp  = (CX - n0x) / 5;
 
-    var oty = rnd(20,  50);
-    var ity = Math.max(oty - rnd(25, 55), -25);  // peak clearly above outer tops
-    var wby = rnd(150, 225);
-    var mby = Math.min(oty + wby - ity, 258);    // W-reflected centre
+    var oty = rnd(-15, 50);
+    var wby = rnd(150, 252);
     var sw  = rnd(16, 60);
 
-    var ys = [oty, wby, ity, wby, oty, mby, oty, wby, ity, wby, oty];
+    var ys = [oty, wby, wby, oty, wby, wby, oty, wby, wby, oty, oty];
     return {
       sw: sw,
       n: ys.map(function(y, i) { return { x: n0x + i * sp, y: y }; })
