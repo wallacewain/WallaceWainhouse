@@ -342,6 +342,7 @@
       heartStartRotX = dragRX;
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
+      if (window.cLogHeart) window.cLogHeart();
     }
 
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
@@ -941,6 +942,18 @@
       if (!e || e.hits >= 2) return;
       e.stars[e.hits].style.opacity = '1';
       e.hits++;
+    };
+
+    window.cLogInstant = function(text) {
+      const el = document.createElement('div');
+      el.className = 'console-line';
+      el.textContent = text;
+      addLine(el);
+    };
+
+    window.cLogHeart = function() {
+      const rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *'];
+      rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r), 350 + i * 600));
     };
 
     setTimeout(() => cLog('> hello.'), 700);
