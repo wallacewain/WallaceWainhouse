@@ -31,8 +31,9 @@
     var sa   = r * sb;
     var sw   = rnd(16, 60);
 
-    var oty  = rnd(-15, 50);
-    var lowy = rnd(150, 252);
+    var span = rnd(130, 280);                           // short to tall — equal probability
+    var oty  = rnd(-25, Math.min(40, 255 - span));      // top of letters
+    var lowy = oty + span;                               // bottom of letters
     var d    = rnd((lowy - oty) * 0.3, (lowy - oty) * 0.95); // inner W-peak rise / M-center dip
 
     var xs = [
