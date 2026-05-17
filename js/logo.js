@@ -22,18 +22,19 @@
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
   // W y-sequence:  oty → wby → ity → wby → oty
-  // M full y-sequence (arms shared):  wby → oty → mby → oty → wby
-  // W reflected around (oty+wby)/2: swap oty↔wby and mirror ity → mby = oty+wby-ity
+  // M full sequence (arms shared with W):  wby → oty → mby → oty → wby
+  // Reflection: mby = oty+wby-ity mirrors ity around (oty+wby)/2.
+  // ity is forced well above oty so both the W peak and M notch are always clearly visible.
   function makeShape() {
     var n0x  = rnd(-319, 100);
     var n4x  = rnd(350,  750);
     var n2x  = (n0x + n4x) * 0.5;
     var n1dx = (n4x - n0x) * rnd(0.20, 0.35);
 
-    var oty  = rnd(-15,  50);
-    var ity  = rnd(-15,  50);
-    var wby  = rnd(150, 252);
-    var mby  = Math.min(oty + wby - ity, 262); // W reflected: mirror W's ity around (oty+wby)/2
+    var oty  = rnd(20,  50);                      // outer tops
+    var ity  = Math.max(oty - rnd(25, 55), -25);  // W peak: always clearly above outer tops
+    var wby  = rnd(150, 225);                     // W valleys
+    var mby  = Math.min(oty + wby - ity, 258);    // M centre: W reflected, equal amplitude
 
     var sw   = rnd(16, 60);
 
