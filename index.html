@@ -48,13 +48,9 @@
     }
     .hero h1 { margin-bottom: 1rem; }
     .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
-    .hero-text { position: relative; }
     .drag-hint {
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      margin-top: 0.4rem;
+      align-self: center;
+      margin-top: 0.8rem;
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
@@ -87,10 +83,9 @@
   </header>
   <main>
     <section class="hero">
-      <div class="hero-text">
-        <h1>Wallace Wainhouse</h1>
-        <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
-        <div class="drag-hint" id="drag-hint">
+      <h1>Wallace Wainhouse</h1>
+      <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
+      <div class="drag-hint" id="drag-hint">
         <svg viewBox="0 0 200 200" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
           <path d="M88.8,44.6 Q100,20 111.2,44.6 Q122.3,69.3 149.2,72.3 Q176.1,75.3 156.1,93.5 Q136.1,111.7 141.6,138.2 Q147,164.7 123.5,151.4 Q100,138 76.5,151.4 Q53,164.7 58.4,138.2 Q63.9,111.7 43.9,93.5 Q23.9,75.3 50.8,72.3 Q77.7,69.3 88.8,44.6Z"
                 fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2.5" stroke-linejoin="round"/>
@@ -100,7 +95,6 @@
             <tspan x="100" y="114">me</tspan>
           </text>
         </svg>
-        </div>
       </div>
     </section>
   </main>
