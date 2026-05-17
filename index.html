@@ -626,7 +626,7 @@
         rotMult = 1 - heartT;
         const ef1 = heartT * heartT * (3 - 2 * heartT);
         dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
-        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) window.cLog('> ♥ you had me at hello world.'); }
+        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) { window.cLog('> ♥ you had me at hello world.'); window.cLog('>'); } }
       } else if (heartPhase === 2) {
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
@@ -641,7 +641,7 @@
         dragRX = rotX = Math.PI / 2 + (heartStartRotX - Math.PI / 2) * ef3;
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
-          if (window.cLog) { window.cLog('> galaxy restored.'); window.cLog('> life\'s a drag. ✦ drag one into it.'); window.cLog('>'); }
+          if (window.cLog) { window.cLog('> galaxy restored.'); window.cLog('> life\'s a drag.'); window.cLog('> ✦ drag one into it.'); window.cLog('>'); }
           dragRX = rotX = heartStartRotX;
           for (const s of shootingStars) {
             if (s.mini) { s.vY += (Math.random() - 0.5) * 0.04; s.dying = true; }
