@@ -21,23 +21,38 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // Equal horizontal spacing, 10 gaps between 11 nodes, strictly alternating T/B.
-  // Shape is mirror-symmetric around N[5] (x = CX). Six independent y-values:
-  //   ta/tb/tc = three distinct peak heights (outer→inner)
-  //   va/vb/vc = three distinct valley depths (outer→inner)
-  // ys mirrors: [ta,va,tb,vb,tc,vc,tc,vb,tb,va,ta]
+  // X: outer-arm gap sa (1-2, 4-5, 7-8, 10-11) and inner gap sb (all others).
+  // N[6] sits at CX: n0x + 2*sa + 3*sb = CX  →  sb = (CX - n0x - 2*sa) / 3.
+  // Y: 1=5=7=11=oty  2=4=8=10=lowy  3=9=lowy-d (rise from valley)  6=oty+d (dip from top).
   function makeShape() {
-    var n0x = rnd(-319, 100);
-    var sp  = (CX - n0x) / 5;
-    var sw  = rnd(16, 60);
+    var n0x  = rnd(-319, 100);
+    var r    = rnd(0.3, 2.5);               // sa/sb ratio — varies arm vs. body width
+    var sb   = (CX - n0x) / (3 + 2 * r);
+    var sa   = r * sb;
+    var sw   = rnd(16, 60);
 
-    var ta = rnd(-15, 50),  tb = rnd(-15, 50),  tc = rnd(-15, 50);
-    var va = rnd(150, 252), vb = rnd(150, 252), vc = rnd(150, 252);
+    var oty  = rnd(-15, 50);
+    var lowy = rnd(150, 252);
+    var d    = rnd(0, (lowy - oty) * 0.6); // inner W-peak rise / M-center dip
 
-    var ys = [ta, va, tb, vb, tc, vc, tc, vb, tb, va, ta];
+    var xs = [
+      n0x,
+      n0x + sa,
+      n0x + sa + sb,
+      n0x + sa + 2 * sb,
+      n0x + 2 * sa + 2 * sb,
+      CX,
+      n0x + 2 * sa + 4 * sb,
+      n0x + 3 * sa + 4 * sb,
+      n0x + 3 * sa + 5 * sb,
+      n0x + 3 * sa + 6 * sb,
+      n0x + 4 * sa + 6 * sb
+    ];
+    var ys = [oty, lowy, lowy - d, lowy, oty, oty + d, oty, lowy, lowy - d, lowy, oty];
+
     return {
       sw: sw,
-      n: ys.map(function(y, i) { return { x: n0x + i * sp, y: y }; })
+      n: xs.map(function(x, i) { return { x: x, y: ys[i] }; })
     };
   }
 
