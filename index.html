@@ -254,20 +254,20 @@
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
     let heartCount = 0, heartMsgSet = null;
     const HEART_MSGS = [
-      { form: ['> ♥ you had me at hello world.', '>'],
-        restore: ['> galaxy restored.', '> life\'s a drag.', '> ✦ drag one into it.', '>'] },
-      { form: ['> ♥ ×2. you came back.', '>'],
-        restore: ['> back in orbit.', '> i noticed.', '> ✦ once more?', '>'] },
-      { form: ['> ♥ ×3. I was hoping you\'d return.', '>'],
-        restore: ['> stars realigned.', '> three times. I think I like you.', '> ✦ come find me again.', '>'] },
-      { form: ['> ♥ ×4. this is becoming our thing.', '>'],
-        restore: ['> good as new.', '> I\'d know your aim anywhere.', '> ✦ whenever you\'re ready.', '>'] },
-      { form: ['> ♥ ×5. you\'re rather good at this.', '>'],
-        restore: ['> and we\'re back.', '> five. I\'m keeping count too.', '> ✦ go on then.', '>'] }
+      { form: ['> ♥ you\'re a shooting star.', '>'],
+        restore: ['> the stars approve.', '> one in a billion.', '> ✦ the galaxy awaits.', '>'] },
+      { form: ['> ♥ ×2. starstruck.', '>'],
+        restore: ['> back in orbit.', '> twice as stellar.', '> ✦ once more around the sun?', '>'] },
+      { form: ['> ♥ ×3. written in the stars, apparently.', '>'],
+        restore: ['> three times. that\'s a constellation.', '> over the moon.', '> ✦ come find me again.', '>'] },
+      { form: ['> ♥ ×4. out of this world.', '>'],
+        restore: ['> that was astronomical.', '> gravity-defying aim.', '> ✦ same stars, new story.', '>'] },
+      { form: ['> ♥ ×5. you\'ve eclipsed all expectations.', '>'],
+        restore: ['> stellar.', '> five hearts. keeping them in orbit.', '> ✦ go on then.', '>'] }
     ];
     function getHeartMsgs(n) {
       if (n <= HEART_MSGS.length) return HEART_MSGS[n - 1];
-      return { form: ['> ♥ ×' + n + '. always a pleasure.', '>'], restore: ['> restored.', '> ' + n + ' hearts and counting.', '> ✦ you know where to find me.', '>'] };
+      return { form: ['> ♥ ×' + n + '. still the brightest in the galaxy.', '>'], restore: ['> ' + n + ' hearts. astronomically speaking.', '> ✦ you know where to find me.', '>'] };
     }
     const HEART_FORM = 4000, HEART_HOLD = 5000, HEART_RETURN = 4000;
 
@@ -310,7 +310,7 @@
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
-        setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> hit both with one shot.'); }, 1500);
+        setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> stellar aim required.'); }, 1500);
       }
     }
 
@@ -882,7 +882,7 @@
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
-  setInterval(() => { if (heartPhase === 0 && window.cLog) window.cLog('> hit both ✦ stars with one shot.'); }, 28000);
+  setInterval(() => { if (heartPhase === 0 && window.cLog) window.cLog('> two ✦, one shot. the stars are waiting.'); }, 28000);
 
   // Console typewriter
   {
@@ -982,7 +982,7 @@
       rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r, true), 350 + i * 600));
     };
 
-    setTimeout(() => cLog('> hello.'), 700);
+    setTimeout(() => cLog('> hello, stargazer.'), 700);
     setTimeout(() => cLog('> 5,000 stars loaded.'), 2500);
     setTimeout(() => cLog('> drag ✦ to fire a shot.'), 4500);
     setTimeout(() => { cLog(('ontouchstart' in window || navigator.maxTouchPoints > 0) ? '> 2 fingers to rotate the galaxy.' : '> middle mouse to rotate the galaxy.'); }, 10000);
