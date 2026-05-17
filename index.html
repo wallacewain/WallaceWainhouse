@@ -252,6 +252,23 @@
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
+    let heartCount = 0, heartMsgSet = null;
+    const HEART_MSGS = [
+      { form: ['> ♥ you had me at hello world.', '>'],
+        restore: ['> galaxy restored.', '> life\'s a drag.', '> ✦ drag one into it.', '>'] },
+      { form: ['> ♥ ×2. you came back.', '>'],
+        restore: ['> back in orbit.', '> i noticed.', '> ✦ once more?', '>'] },
+      { form: ['> ♥ ×3. I was hoping you\'d return.', '>'],
+        restore: ['> stars realigned.', '> three times. I think I like you.', '> ✦ come find me again.', '>'] },
+      { form: ['> ♥ ×4. this is becoming our thing.', '>'],
+        restore: ['> good as new.', '> I\'d know your aim anywhere.', '> ✦ whenever you\'re ready.', '>'] },
+      { form: ['> ♥ ×5. you\'re rather good at this.', '>'],
+        restore: ['> and we\'re back.', '> five. I\'m keeping count too.', '> ✦ go on then.', '>'] }
+    ];
+    function getHeartMsgs(n) {
+      if (n <= HEART_MSGS.length) return HEART_MSGS[n - 1];
+      return { form: ['> ♥ ×' + n + '. always a pleasure.', '>'], restore: ['> restored.', '> ' + n + ' hearts and counting.', '> ✦ you know where to find me.', '>'] };
+    }
     const HEART_FORM = 4000, HEART_HOLD = 5000, HEART_RETURN = 4000;
 
     // Unproject screen tap → world XZ plane (Y≈0, galaxy plane)
@@ -346,7 +363,9 @@
       heartStartRotX = dragRX;
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
-      if (window.cLogHeart) window.cLogHeart();
+      heartCount++;
+      heartMsgSet = getHeartMsgs(heartCount);
+      if (window.cLogHeart) window.cLogHeart(heartCount);
     }
 
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
@@ -630,7 +649,7 @@
         rotMult = 1 - heartT;
         const ef1 = heartT * heartT * (3 - 2 * heartT);
         dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
-        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog) { window.cLog('> ♥ you had me at hello world.'); window.cLog('>'); } }
+        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog && heartMsgSet) heartMsgSet.form.forEach(m => window.cLog(m)); }
       } else if (heartPhase === 2) {
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
@@ -645,7 +664,7 @@
         dragRX = rotX = Math.PI / 2 + (heartStartRotX - Math.PI / 2) * ef3;
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
-          if (window.cLog) { window.cLog('> galaxy restored.'); window.cLog('> life\'s a drag.'); window.cLog('> ✦ drag one into it.'); window.cLog('>'); }
+          if (window.cLog && heartMsgSet) heartMsgSet.restore.forEach(m => window.cLog(m));
           dragRX = rotX = heartStartRotX;
           for (const s of shootingStars) {
             if (s.mini) { s.vY += (Math.random() - 0.5) * 0.04; s.dying = true; }
@@ -957,8 +976,9 @@
       addLine(el);
     };
 
-    window.cLogHeart = function() {
-      const rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *'];
+    window.cLogHeart = function(count) {
+      const tag = count > 1 ? ' ×' + count : '';
+      const rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *' + tag];
       rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r, true), 350 + i * 600));
     };
 
