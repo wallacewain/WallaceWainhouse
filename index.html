@@ -572,7 +572,7 @@
           g.style.opacity   = '0';
           setTimeout(() => g.remove(), 550);
         }
-        hintEl.style.display = 'none';
+        hintEl.style.visibility = 'hidden';
         // Spawn: always if dragged ≥ 6px, with minimum speed
         const dx = cx - ssStartX, dy = cy - ssStartY;
         if (dx*dx + dy*dy >= 36) {
