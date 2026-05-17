@@ -33,7 +33,7 @@
 
     var oty  = rnd(-15, 50);
     var lowy = rnd(150, 252);
-    var d    = rnd(0, (lowy - oty) * 0.6); // inner W-peak rise / M-center dip
+    var d    = rnd((lowy - oty) * 0.3, (lowy - oty) * 0.95); // inner W-peak rise / M-center dip
 
     var xs = [
       n0x,
