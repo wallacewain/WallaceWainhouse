@@ -48,26 +48,6 @@
     }
     .hero h1 { margin-bottom: 1rem; }
     .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
-    .drag-hint {
-      display: inline-flex;
-      margin-top: 2.5rem;
-      cursor: grab;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-    }
-    .drag-hint svg { overflow: visible; animation: drag-hint-pulse 3.2s ease-in-out infinite; }
-    @keyframes drag-hint-pulse {
-      0%, 100% { opacity: 0.55; filter: drop-shadow(0 0 4px rgba(255,240,160,0.2)); }
-      50%       { opacity: 0.9;  filter: drop-shadow(0 0 12px rgba(255,240,160,0.55)); }
-    }
-    .drag-hint-ghost {
-      position: fixed;
-      pointer-events: none;
-      z-index: 10;
-      transform: translate(-50%, -50%) scale(1.15);
-    }
-    .drag-hint-ghost svg { overflow: visible; opacity: 0.95; filter: drop-shadow(0 0 14px rgba(255,240,160,0.7)); }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -86,15 +66,6 @@
     <section class="hero">
       <h1>Wallace Wainhouse</h1>
       <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
-      <div class="drag-hint" id="drag-hint">
-        <svg viewBox="0 0 100 100" width="110" height="110" xmlns="http://www.w3.org/2000/svg">
-          <path d="M50,10 L59.4,37.1 L88,37.6 L65.2,55 L73.5,82.4 L50,66 L26.5,82.4 L34.8,55 L12,37.6 L40.6,37.1 Z"
-                fill="none" stroke="rgba(255,240,160,0.72)" stroke-width="2" stroke-linejoin="round"/>
-          <text x="50" y="54" text-anchor="middle" dominant-baseline="middle"
-                fill="rgba(255,240,160,0.78)" font-family="Inter,sans-serif" font-size="10"
-                letter-spacing="1.5" font-weight="500">drag me</text>
-        </svg>
-      </div>
     </section>
   </main>
   <footer>
@@ -526,68 +497,6 @@
         ssEnd();
       }
     });
-
-    // ── Drag hint ─────────────────────────────────────────────────────────
-    {
-      const hintEl = document.getElementById('drag-hint');
-      let hintActive = false, hintGhost = null;
-
-      function hintStart(cx, cy) {
-        hintActive = true;
-        const r = hintEl.getBoundingClientRect();
-        const ox = r.left + r.width / 2, oy = r.top + r.height / 2;
-        const ghost = document.createElement('div');
-        ghost.className = 'drag-hint-ghost';
-        ghost.innerHTML = hintEl.innerHTML;
-        ghost.style.left = ox + 'px'; ghost.style.top = oy + 'px';
-        document.body.appendChild(ghost);
-        hintGhost = ghost;
-        hintEl.style.opacity = '0';
-        hintEl.style.pointerEvents = 'none';
-        ssBegin(ox, oy);
-      }
-
-      function hintMove(cx, cy) {
-        if (!hintActive || !hintGhost) return;
-        hintGhost.style.left = cx + 'px'; hintGhost.style.top = cy + 'px';
-        ssLX = cx; ssLY = cy;
-      }
-
-      function hintRelease(cx, cy) {
-        if (!hintActive) return;
-        hintActive = false;
-        ssLX = cx; ssLY = cy;
-        if (hintGhost) {
-          hintGhost.style.transition = 'transform 0.2s cubic-bezier(0.6,0,1,1), opacity 0.2s ease';
-          hintGhost.style.transform  = 'translate(-50%,-50%) scale(0)';
-          hintGhost.style.opacity    = '0';
-          const g = hintGhost; hintGhost = null;
-          setTimeout(() => g.remove(), 230);
-        }
-        hintEl.style.display = 'none';
-        ssEnd();
-      }
-
-      hintEl.addEventListener('mousedown', e => {
-        if (e.button !== 0) return;
-        e.stopPropagation(); e.preventDefault();
-        hintStart(e.clientX, e.clientY);
-      });
-      hintEl.addEventListener('touchstart', e => {
-        e.stopPropagation(); e.preventDefault();
-        hintStart(e.touches[0].clientX, e.touches[0].clientY);
-      }, { passive: false });
-      window.addEventListener('mousemove', e => { hintMove(e.clientX, e.clientY); });
-      window.addEventListener('mouseup',   e => { if (hintActive) hintRelease(e.clientX, e.clientY); });
-      window.addEventListener('touchmove', e => {
-        if (hintActive && e.touches.length) hintMove(e.touches[0].clientX, e.touches[0].clientY);
-      });
-      window.addEventListener('touchend', e => {
-        if (hintActive && e.changedTouches.length) {
-          const t = e.changedTouches[0]; hintRelease(t.clientX, t.clientY);
-        }
-      });
-    }
 
     // ── Render loop ───────────────────────────────────────────────────────
     function frame(ts) {
