@@ -48,6 +48,25 @@
     }
     .hero h1 { margin-bottom: 1rem; }
     .hero h1, .hero p { text-shadow: 0 0 40px #0e0e10, 0 0 80px #0e0e10; }
+    .drag-hint {
+      display: inline-flex;
+      margin-top: 2.5rem;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+    .drag-hint svg { overflow: visible; animation: dh-pulse 3.2s ease-in-out infinite; }
+    @keyframes dh-pulse {
+      0%,100% { opacity: 0.5;  filter: drop-shadow(0 0 5px rgba(255,240,160,0.15)); }
+      50%      { opacity: 0.88; filter: drop-shadow(0 0 16px rgba(255,240,160,0.5)); }
+    }
+    .dh-ghost {
+      position: fixed; pointer-events: none; z-index: 10;
+      transform: translate(-50%,-50%);
+    }
+    .dh-ghost svg { overflow: visible; filter: drop-shadow(0 0 18px rgba(255,240,160,0.65)); }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -66,6 +85,17 @@
     <section class="hero">
       <h1>Wallace Wainhouse</h1>
       <p>Tools, experiments, and other things that seemed like a good idea at the time.</p>
+      <div class="drag-hint" id="drag-hint">
+        <svg viewBox="0 0 200 200" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+          <path d="M91.3,44 Q100,20 110.7,49.3 Q119.4,73.3 150.6,74.4 Q176.1,75.3 151.5,94.5 Q131.4,110.2 140,140.2 Q147,164.7 121.2,147.3 Q100,133 74.1,150.5 Q53,164.7 61.6,134.7 Q68.6,110.2 44,91 Q23.9,75.3 55.1,74.2 Q80.6,73.3 91.3,44Z"
+                fill="none" stroke="rgba(255,240,160,0.68)" stroke-width="3" stroke-linejoin="round"/>
+          <text text-anchor="middle" font-family="Inter,sans-serif" fill="rgba(255,240,160,0.78)"
+                font-weight="500" font-size="16" letter-spacing="3">
+            <tspan x="100" y="92">drag</tspan>
+            <tspan x="100" y="113">me</tspan>
+          </text>
+        </svg>
+      </div>
     </section>
   </main>
   <footer>
@@ -261,14 +291,14 @@
       ssStartT = performance.now();
     }
     function ssEnd() {
-      const dt = Math.max(100, performance.now() - ssStartT);
-      const vsx = (ssLX - ssStartX) / dt * 1000;
-      const vsy = (ssLY - ssStartY) / dt * 1000;
-      if (Math.sqrt(vsx * vsx + vsy * vsy) > 80) {
-        const lx = ssLX, ly = ssLY;
-        clearTimeout(ssPending);
-        ssPending = setTimeout(() => ssSpawn(lx, ly, vsx, vsy), 350);
-      }
+      const dx = ssLX - ssStartX, dy = ssLY - ssStartY;
+      if (dx*dx + dy*dy < 144) return; // ignore taps under 12px
+      const dt = Math.max(50, performance.now() - ssStartT);
+      let vsx = dx / dt * 1000, vsy = dy / dt * 1000;
+      const spd = Math.sqrt(vsx*vsx + vsy*vsy);
+      if (spd < 80) { const f = 80 / Math.max(spd, 1); vsx *= f; vsy *= f; }
+      clearTimeout(ssPending);
+      ssSpawn(ssLX, ssLY, vsx, vsy);
     }
 
     function spawnMiniStars(wx, wy, wz) {
@@ -497,6 +527,83 @@
         ssEnd();
       }
     });
+
+    // ── Drag hint ─────────────────────────────────────────────────────────
+    {
+      const hintEl = document.getElementById('drag-hint');
+      let hActive = false, hGhost = null;
+
+      function hStart(cx, cy) {
+        if (hActive) return;
+        hActive = true;
+        const ghost = document.createElement('div');
+        ghost.className = 'dh-ghost';
+        ghost.innerHTML = hintEl.innerHTML;
+        ghost.style.cssText += `left:${cx}px;top:${cy}px;`;
+        // Start pressed (scale 0.88), spring to 1.0 on next frame
+        ghost.style.transform = 'translate(-50%,-50%) scale(0.88)';
+        document.body.appendChild(ghost);
+        hGhost = ghost;
+        requestAnimationFrame(() => {
+          ghost.style.transition = 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1)';
+          ghost.style.transform  = 'translate(-50%,-50%) scale(1.0)';
+        });
+        hintEl.style.opacity = '0';
+        hintEl.style.pointerEvents = 'none';
+        ssBegin(cx, cy);
+      }
+
+      function hMove(cx, cy) {
+        if (!hActive || !hGhost) return;
+        hGhost.style.transition = 'none';
+        hGhost.style.left = cx + 'px'; hGhost.style.top = cy + 'px';
+        ssLX = cx; ssLY = cy;
+      }
+
+      function hEnd(cx, cy) {
+        if (!hActive) return;
+        hActive = false;
+        ssLX = cx; ssLY = cy;
+        if (hGhost) {
+          const g = hGhost; hGhost = null;
+          g.style.transition = 'transform 0.38s cubic-bezier(0.5,0,1,0.6), opacity 0.32s ease-in';
+          g.style.transform  = 'translate(-50%,-50%) scale(0)';
+          g.style.opacity    = '0';
+          setTimeout(() => g.remove(), 420);
+        }
+        hintEl.style.display = 'none';
+        // Spawn: always if dragged ≥ 6px, with minimum speed
+        const dx = cx - ssStartX, dy = cy - ssStartY;
+        if (dx*dx + dy*dy >= 36) {
+          const dt = Math.max(50, performance.now() - ssStartT);
+          let vsx = dx/dt*1000, vsy = dy/dt*1000;
+          const spd = Math.sqrt(vsx*vsx + vsy*vsy);
+          if (spd < 60) { const f = 60/Math.max(spd,1); vsx *= f; vsy *= f; }
+          clearTimeout(ssPending);
+          ssSpawn(cx, cy, vsx, vsy);
+        }
+      }
+
+      hintEl.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        e.stopPropagation(); e.preventDefault();
+        hStart(e.clientX, e.clientY);
+      });
+      hintEl.addEventListener('touchstart', e => {
+        e.stopPropagation(); e.preventDefault();
+        hStart(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: false });
+      window.addEventListener('mousemove', e => { hMove(e.clientX, e.clientY); });
+      window.addEventListener('mouseup',   e => { if (hActive) hEnd(e.clientX, e.clientY); });
+      window.addEventListener('touchmove', e => {
+        if (hActive && e.touches.length) hMove(e.touches[0].clientX, e.touches[0].clientY);
+      });
+      window.addEventListener('touchend', e => {
+        if (hActive && e.changedTouches.length) {
+          const t = e.changedTouches[0]; hEnd(t.clientX, t.clientY);
+        }
+      });
+    }
 
     // ── Render loop ───────────────────────────────────────────────────────
     function frame(ts) {
