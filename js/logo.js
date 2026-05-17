@@ -31,8 +31,8 @@
     var sa   = r * sb;
     var sw   = rnd(16, 60);
 
-    var span = rnd(100, 260);
-    var oty  = rnd(-15, Math.min(40, 250 - span));
+    var span = rnd(100, 280);
+    var oty  = rnd(-15, Math.min(40, 265 - span));
     var lowy = oty + span;
     var d    = rnd((lowy - oty) * 0.3, (lowy - oty) * 0.95); // inner W-peak rise / M-center dip
 
