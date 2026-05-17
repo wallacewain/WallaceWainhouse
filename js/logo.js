@@ -21,11 +21,11 @@
 
   function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
 
-  // W y-sequence (own 5 nodes):  oty → wby → ity → wby → oty
-  // M y-sequence (shared arms + own center):
-  //   …wby(shared) → oty(shared) → mby → oty(shared) → wby(shared)…
-  // For M to be an exact invert of W, M's center dip must equal W's inner
-  // peak rise:  mby = oty + (wby - ity)
+  // W y-sequence:  oty → wby → ity → wby → oty  (peaks near top, valleys at bottom)
+  // M y-sequence (arms shared with W's outer strokes):
+  //   …wby → oty → mby → oty → wby…  (peaks at oty, centre notch at mid-height)
+  // mby = (oty+wby)/2 gives M its own letter shape — a mid-height notch — rather than
+  // treating M as a derivative of W.
   function makeShape() {
     var n0x  = rnd(-319, 100);
     var n4x  = rnd(350,  750);
@@ -35,7 +35,7 @@
     var oty  = rnd(-15,  50);
     var ity  = rnd(-15,  50);
     var wby  = rnd(150, 252);
-    var mby  = Math.min(oty + (wby - ity), 260); // same amplitude as W's peak, clamped to viewbox
+    var mby  = (oty + wby) * 0.5;  // M centre at mid-height: distinct notch, not a W derivative
 
     var sw   = rnd(16, 60);
 
