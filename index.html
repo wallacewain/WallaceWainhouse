@@ -289,10 +289,7 @@
         if (oldest) oldest.dying = true;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (window.cLog) {
-        const r = ['> fired.','> stellar!','> nice shot.','> ✦ launched.','> woosh.','> boom.'];
-        window.cLog(r[Math.floor(Math.random() * r.length)]);
-      }
+      if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
     }
 
     function ssBegin(x, y) {
@@ -493,6 +490,7 @@
                 sp.s.sz = 0; sp.s.dim = 0;
                 sp.hitBy = s.id;
                 sp.killedById = s.id;
+                if (window.cHit) window.cHit(s.id);
                 spawnMiniStars(sp.s.x, sp.s.y, sp.s.z);
                 if (specialStars[0].hitBy !== null && specialStars[1].hitBy !== null &&
                     specialStars[0].hitBy === specialStars[1].hitBy) triggerHeart();
@@ -907,6 +905,33 @@
     window.cLog = function(msg) {
       queue.push(msg);
       if (!busy) processQueue();
+    };
+
+    const ssHitMap = {};
+
+    window.cLogShot = function(id) {
+      const el = document.createElement('div');
+      el.className = 'console-line';
+      el.appendChild(document.createTextNode('> '));
+      const stars = [0, 1].map(() => {
+        const sp = document.createElement('span');
+        sp.textContent = '✦';
+        sp.style.cssText = 'opacity:0.35;transition:opacity 0.35s ease;';
+        el.appendChild(sp);
+        el.appendChild(document.createTextNode(' '));
+        return sp;
+      });
+      pane.appendChild(el);
+      lines.push(el);
+      ssHitMap[id] = { stars, hits: 0 };
+      updateOpacity();
+    };
+
+    window.cHit = function(shotId) {
+      const e = ssHitMap[shotId];
+      if (!e || e.hits >= 2) return;
+      e.stars[e.hits].style.opacity = '1';
+      e.hits++;
     };
 
     setTimeout(() => cLog('> hello.'), 700);
