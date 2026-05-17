@@ -640,7 +640,7 @@
         dragRX = rotX = Math.PI / 2 + (heartStartRotX - Math.PI / 2) * ef3;
         if (heartT >= 1) {
           heartT = 0; heartPhase = 0; rotMult = 1;
-          if (window.cLog) window.cLog('> galaxy restored.');
+          if (window.cLog) { window.cLog('> galaxy restored.'); window.cLog('> life\'s a drag. ✦ drag one into it.'); }
           dragRX = rotX = heartStartRotX;
           for (const s of shootingStars) {
             if (s.mini) { s.vY += (Math.random() - 0.5) * 0.04; s.dying = true; }
