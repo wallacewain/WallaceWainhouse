@@ -875,6 +875,19 @@
       while (lines.length > MAX) lines.shift().remove();
     }
 
+    function addLine(el) {
+      pane.appendChild(el);
+      const h = el.offsetHeight;
+      pane.style.transition = 'none';
+      pane.style.transform = `translateY(${h}px)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        pane.style.transition = 'transform 0.32s ease';
+        pane.style.transform = 'translateY(0)';
+      }));
+      lines.push(el);
+      updateOpacity();
+    }
+
     function typeLine(text, cb) {
       const el = document.createElement('div');
       el.className = 'console-line';
@@ -882,9 +895,7 @@
       cur.className = 'console-cursor';
       cur.textContent = '.';
       el.appendChild(cur);
-      pane.appendChild(el);
-      lines.push(el);
-      updateOpacity();
+      addLine(el);
       let i = 0;
       (function tick() {
         if (i < text.length) {
@@ -921,10 +932,8 @@
         el.appendChild(document.createTextNode(' '));
         return sp;
       });
-      pane.appendChild(el);
-      lines.push(el);
       ssHitMap[id] = { stars, hits: 0 };
-      updateOpacity();
+      addLine(el);
     };
 
     window.cHit = function(shotId) {
