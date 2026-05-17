@@ -291,6 +291,10 @@
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
+      if (!ssSpawn.hinted && window.cLog) {
+        ssSpawn.hinted = true;
+        setTimeout(() => window.cLog('> one shot. two ✦.'), 1500);
+      }
     }
 
     function ssBegin(x, y) {
