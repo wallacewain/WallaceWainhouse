@@ -4,7 +4,7 @@
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '-323 -28 2446 296');
+  svg.setAttribute('viewBox', '-323 -28 2446 800');
   svg.setAttribute('height', '18');
   svg.setAttribute('aria-label', 'WMW');
   var pl = document.createElementNS(NS, 'polyline');
@@ -29,10 +29,10 @@
     var r    = rnd(0.3, 2.5);               // sa/sb ratio — varies arm vs. body width
     var sb   = (CX - n0x) / (3 + 2 * r);
     var sa   = r * sb;
-    var sw   = rnd(16, 60);
+    var sw   = rnd(43, 160);                             // scaled for 800-unit viewBox height
 
-    var span = rnd(130, 280);                           // short to tall — equal probability
-    var oty  = rnd(-25, Math.min(40, 255 - span));      // top of letters
+    var span = rnd(150, 760);                            // short to tall — 4:3 per letter at ~730
+    var oty  = rnd(-15, Math.min(50, 750 - span));       // top of letters
     var lowy = oty + span;                               // bottom of letters
     var d    = rnd((lowy - oty) * 0.3, (lowy - oty) * 0.95); // inner W-peak rise / M-center dip
 
