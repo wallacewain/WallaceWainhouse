@@ -383,7 +383,7 @@
         // Second star — spawn the pair
         const vLen2 = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ) + 1e-8;
         const p1X = -v.vZ / vLen2, p1Z = v.vX / vLen2; // horiz perp to velocity
-        const pairR = 0.06;
+        const pairR = 0.10;
         const s1 = shootingStars[shootingStars.length - 1];
         // Invisible ghost: camera tracks this; both stars orbit around it
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ };
@@ -665,7 +665,7 @@
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
           if (isLeadStar) {
-            const glowR = Math.min(W, H) * 0.22;
+            const glowR = ssWorldR * head.sc * 12;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
             grd.addColorStop(0,    'rgba(255,252,220,1)');
             grd.addColorStop(0.08, 'rgba(255,220,120,0.9)');
@@ -675,7 +675,7 @@
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
           } else if (isPairStar) {
-            const glowR = Math.min(W, H) * 0.15;
+            const glowR = ssWorldR * head.sc * 9;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
             grd.addColorStop(0,    'rgba(180,255,255,1)');
             grd.addColorStop(0.08, 'rgba(0,200,255,0.9)');
