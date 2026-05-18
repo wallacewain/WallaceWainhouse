@@ -192,6 +192,7 @@
         { s: a, hitBy: null, killedById: null, savedSz: a.sz, savedDim: a.dim },
         { s: b, hitBy: null, killedById: null, savedSz: b.sz, savedDim: b.dim }
       );
+      a.sz = 0; a.dim = 0; b.sz = 0; b.dim = 0;
     }
 
     function rebuildSpecialStars(n) {
@@ -209,6 +210,7 @@
         s.sz = Math.max(s.sz * 2, 0.0015 / szScale);
         s.dim = 0.9; s.cr = 1.0; s.cg = 0.92; s.cb = 0.62;
         specialStars.push({ s, hitBy: null, killedById: null, savedSz: s.sz, savedDim: s.dim });
+        s.sz = 0; s.dim = 0;
       }
     }
 
@@ -584,7 +586,7 @@
             for (const sp of specialStars) {
               if (sp.killedById === s.id) {
                 sp.s.specialAlive = true;
-                sp.s.sz = sp.savedSz; sp.s.dim = sp.savedDim;
+                sp.s.sz = 0; sp.s.dim = 0;
                 sp.hitBy = null; sp.killedById = null;
               }
             }
@@ -853,6 +855,13 @@
       // Large fov + close camera = galaxy fills & bleeds past viewport
       const fov  = Math.max(W, H) * 1.6;
 
+      for (const sp of specialStars) {
+        if (sp.s.specialAlive) {
+          sp.s.sz  += (sp.savedSz  - sp.s.sz)  * 0.02;
+          sp.s.dim += (sp.savedDim - sp.s.dim) * 0.02;
+        }
+      }
+
       const sinX = Math.sin(rotX), cosX = Math.cos(rotX);
       const sinY = Math.sin(rotY), cosY = Math.cos(rotY);
 
@@ -980,15 +989,16 @@
         }
 
         if (s.special && s.specialAlive) {
+          const fadeT = s.dim / 0.9;
           // Soft pulsing halo
           const pulse = 0.8 + 0.2 * Math.sin(ts * 0.0025 + s.twinkPhase);
-          ctx.globalAlpha = 0.11 * pulse;
+          ctx.globalAlpha = 0.11 * pulse * fadeT;
           ctx.beginPath();
           ctx.arc(sx, sy, Math.max(8, baseR * 4), 0, 6.2832);
           ctx.fill();
           // Diffraction spikes
           const spike = Math.max(28, baseR * 20);
-          const a = Math.min(0.52, s.dim * 0.34 + 0.22) * pulse;
+          const a = Math.min(0.52, s.dim * 0.34 + 0.22) * pulse * fadeT;
           for (const [x1, y1, x2, y2] of [
             [sx - spike, sy, sx + spike, sy],
             [sx, sy - spike, sx, sy + spike]
