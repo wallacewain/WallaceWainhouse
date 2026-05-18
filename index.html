@@ -760,13 +760,19 @@
         // Playful choreography in camera space.
         // Signed radius: when it passes through 0 the stars kiss and cross sides.
         // Amplitude breathes (30–110px) for intimate/far moments.
-        // Angular velocity uses a beating pattern: product of two sinusoids at
-        // incommensurate frequencies → natural calm pauses (when either ≈0) and
-        // direction reversals (when either changes sign), with a small jitter term.
         const rAmp = 45 + 20 * Math.sin(g.t * 0.28 + 0.8);
         const r    = rAmp * Math.sin(g.t * 0.55 + 1.5);
-        const angVel = 4.0 * Math.sin(g.t * 0.52 + 0.3) * Math.sin(g.t * 1.45 + 0.7)
-                     + 0.25 * Math.sin(g.t * 3.8 + 0.4);
+        // Proximity: 1 when kissing, 0 when far apart
+        const prox = Math.max(0, 1 - Math.abs(r) / (rAmp * 0.4 + 1));
+        // Base beating pattern
+        const spin1 = Math.sin(g.t * 0.52 + 0.3);
+        const baseVel = 4.0 * spin1 * Math.sin(g.t * 1.45 + 0.7);
+        // Extra twirl when stars are close together
+        const closeTwirl = prox * prox * 8 * (spin1 >= 0 ? 1 : -1);
+        // Occasional 720° burst: sin^18 fires a narrow spike (~16 rad/s) every ~8-11s
+        const b1 =  Math.pow(Math.max(0,  Math.sin(g.t * 0.38 + 0.7)), 18) * 16;
+        const b2 =  Math.pow(Math.max(0, -Math.sin(g.t * 0.29 + 2.5)), 18) * -16;
+        const angVel = baseVel + closeTwirl + b1 + b2 + 0.25 * Math.sin(g.t * 3.8 + 0.4);
         g.angle += angVel * dts;
         const cA = Math.cos(g.angle), sA = Math.sin(g.angle);
         const dh = r * cA / gp.sc;
@@ -780,8 +786,8 @@
         // Accumulate trail points
         g.trail1.push({ X: s1X, Y: s1Y, Z: s1Z });
         g.trail2.push({ X: s2X, Y: s2Y, Z: s2Z });
-        if (g.trail1.length > 500) g.trail1.shift();
-        if (g.trail2.length > 500) g.trail2.shift();
+        if (g.trail1.length > 300) g.trail1.shift();
+        if (g.trail2.length > 300) g.trail2.shift();
         // Draw trails
         ctx.globalCompositeOperation = 'lighter';
         for (let side = 0; side < 2; side++) {
