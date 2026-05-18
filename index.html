@@ -762,17 +762,17 @@
         // Amplitude breathes (30–110px) for intimate/far moments.
         const rAmp = 45 + 20 * Math.sin(g.t * 0.28 + 0.8);
         // "Fucking" mode: periodic envelope that activates fast radial in-out
-        const fuckEnv = Math.max(0, Math.sin(g.t * 0.38 + 1.0));
+        const pulseEnv = Math.max(0, Math.sin(g.t * 0.38 + 1.0));
         const rSlow = rAmp * Math.sin(g.t * 0.55 + 1.5);
-        const rFast = fuckEnv * rAmp * 0.75 * Math.sin(g.t * 5.2); // fast thrust
+        const rFast = pulseEnv * rAmp * 0.75 * Math.sin(g.t * 5.2); // fast radial pulse
         // Twirl-cuddle: radius also pulses with orbit angle (in-out as they spin)
         const rPulse = 10 * Math.sin(g.angle * 2);
         const r = rSlow + rFast + rPulse;
         // Proximity: 1 when kissing, 0 when far apart
         const prox = Math.max(0, 1 - Math.abs(rSlow) / (rAmp * 0.4 + 1));
-        // Base beating pattern — suppressed during fucking mode so spin slows then
+        // Base beating pattern — spin suppressed during pulse mode
         const spin1 = Math.sin(g.t * 0.52 + 0.3);
-        const baseVel = 4.0 * spin1 * Math.sin(g.t * 1.45 + 0.7) * (1 - fuckEnv * 0.75);
+        const baseVel = 4.0 * spin1 * Math.sin(g.t * 1.45 + 0.7) * (1 - pulseEnv * 0.75);
         // Extra twirl cuddle when stars are close
         const closeTwirl = prox * prox * 8 * (spin1 >= 0 ? 1 : -1);
         // Occasional 720° burst
