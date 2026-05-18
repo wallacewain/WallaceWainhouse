@@ -496,7 +496,16 @@
       rebuildSpecialStars(10);
       ssSpawn.hinted = false;
     };
+    if (new URLSearchParams(location.search).get('e') !== null) setTimeout(window.cheatEngage, 200);
 
+    window.pairState = function() {
+      const p = starPairs[0];
+      return { eng: engagedMode, pairs: starPairs.length, ss: shootingStars.filter(s=>!s.mini).length,
+        s1: p?.s1 ? [p.s1.X.toFixed(2), p.s1.Y.toFixed(2), p.s1.Z.toFixed(2)] : null,
+        s2: p?.s2 ? [p.s2.X.toFixed(2), p.s2.Y.toFixed(2), p.s2.Z.toFixed(2)] : null,
+        ghost: p?.ghost ? [p.ghost.X.toFixed(2), p.ghost.Y.toFixed(2), p.ghost.Z.toFixed(2)] : null,
+        fG: !!followGhost, pT: p?.pairTime?.toFixed(1) };
+    };
 
     window.camState = function() {
       return { engagedMode, followStar: followStar ? { X: followStar.X, Y: followStar.Y, Z: followStar.Z, life: followStar.life } : null, camOX, camOY, camOZ };
