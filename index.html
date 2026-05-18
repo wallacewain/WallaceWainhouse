@@ -780,8 +780,8 @@
         // Accumulate trail points
         g.trail1.push({ X: s1X, Y: s1Y, Z: s1Z });
         g.trail2.push({ X: s2X, Y: s2Y, Z: s2Z });
-        if (g.trail1.length > 200) g.trail1.shift();
-        if (g.trail2.length > 200) g.trail2.shift();
+        if (g.trail1.length > 1000) g.trail1.shift();
+        if (g.trail2.length > 1000) g.trail2.shift();
         // Draw trails
         ctx.globalCompositeOperation = 'lighter';
         for (let side = 0; side < 2; side++) {
