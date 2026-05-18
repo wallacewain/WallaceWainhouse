@@ -804,13 +804,10 @@
           followStar = null;
         } else {
           camFollowT = Math.min(1, camFollowT + 0.05);
-          const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
-          const behind = 0.12;
-          const tX = followStar.X - followStar.vX/vLen * behind;
-          const tZ = followStar.Z - followStar.vZ/vLen * behind;
-          camOX += (tX - camOX) * camFollowT;
-          camOY += (followStar.Y - camOY) * camFollowT;
-          camOZ += (tZ - camOZ) * camFollowT;
+          const tail = followStar.trail.length > 0 ? followStar.trail[0] : followStar;
+          camOX += (tail.X - camOX) * camFollowT;
+          camOY += (tail.Y - camOY) * camFollowT;
+          camOZ += (tail.Z - camOZ) * camFollowT;
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
           let diff = tRY - rotY;
           diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
