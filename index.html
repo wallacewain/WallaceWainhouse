@@ -824,7 +824,7 @@
         } else {
           camFollowT += (1 - camFollowT) * 0.018;
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
-          const behind = 0.25;
+          const behind = 0.1;
           const tX = followStar.X - followStar.vX/vLen * behind;
           const tY = followStar.Y;
           const tZ = followStar.Z - followStar.vZ/vLen * behind;
@@ -839,7 +839,7 @@
           dragRY = rotY - autoY;
           dragRX += (0.12 - dragRX) * 0.017;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
-          camZ += (0.7 - camZ) * 0.018;
+          camZ += (0.37 - camZ) * 0.018;
         }
       } else {
         camOX *= 0.98; camOY *= 0.98; camOZ *= 0.98;
