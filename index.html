@@ -362,6 +362,8 @@
         if (oldest) oldest.dying = true;
       }
       if (engagedMode) {
+        // Scale velocity to match slo-mo gravity so stars stay gravitationally bound
+        v.vX *= 0.4; v.vY *= 0.4; v.vZ *= 0.4;
         // Strip outward radial component
         const r2 = Math.sqrt(pos.X*pos.X + pos.Z*pos.Z);
         if (r2 > 0.01) {
@@ -369,10 +371,6 @@
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        // Clamp to orbital velocity so stars can't reach escape velocity
-        const maxV = Math.sqrt(SS_GRAVITY * 0.15);
-        const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
-        if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
       if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
