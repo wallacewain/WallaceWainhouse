@@ -194,6 +194,24 @@
       );
     }
 
+    function rebuildSpecialStars(n) {
+      for (const sp of specialStars) {
+        sp.s.special = false; sp.s.specialAlive = false;
+        sp.s.sz = sp.savedSz; sp.s.dim = sp.savedDim;
+      }
+      specialStars.length = 0;
+      const pool = stars.filter(s => !s.special && Math.sqrt(s.x*s.x + s.z*s.z) < 0.45);
+      for (let i = 0; i < n; i++) {
+        if (!pool.length) break;
+        const j = Math.floor(Math.random() * pool.length);
+        const s = pool.splice(j, 1)[0];
+        s.special = true; s.specialAlive = true;
+        s.sz = Math.max(s.sz * 2, 0.0015 / szScale);
+        s.dim = 0.9; s.cr = 1.0; s.cg = 0.92; s.cb = 0.62;
+        specialStars.push({ s, hitBy: null, killedById: null, savedSz: s.sz, savedDim: s.dim });
+      }
+    }
+
     // ── Interaction state ─────────────────────────────────────────────────
     let msx = -9999, msy = -9999;
     let dragging = false, ldx = 0, ldy = 0;
@@ -253,6 +271,7 @@
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
     let heartCount = 0, heartMsgSet = null;
+    let proposalMode = false, engagedMode = false, followStar = null;
     const HEART_MSGS = [
       { form: ['> ♥ i\'ve been planet this meeting.', '>'],
         restore: ['> couldn\'t help it — gravity.', '> a pull you can\'t resist.', '> ✦ drag one into it.', '>'] },
@@ -263,11 +282,46 @@
       { form: ['> ♥ ×4. we have a real connection here. gravitational, of course.', '>'],
         restore: ['> i\'d orbit you all day.', '> astronomical.', '> ✦ same stars, new story.', '>'] },
       { form: ['> ♥ ×5. lightyears ahead of the rest.', '>'],
-        restore: ['> and we\'re back.', '> five hearts. the math is astronomical.', '> ✦ go on then.', '>'] }
+        restore: ['> and we\'re back.', '> five hearts. the math is astronomical.', '> ✦ go on then.', '>'] },
+      { form: ['> ♥ ×6. i\'m over the moon. six times over.', '>'],
+        restore: ['> six. that\'s half a dozen suns.', '> solar-powered, apparently.', '> ✦ once more.', '>'] },
+      { form: ['> ♥ ×7. seventh heaven. astronomically verified.', '>'],
+        restore: ['> seven. lucky? no — physics.', '> your trajectory is impeccable.', '> ✦ come around again.', '>'] },
+      { form: ['> ♥ ×8. i see a pattern forming. so do the stars.', '>'],
+        restore: ['> eight. your orbital period is very agreeable.', '> regular as a pulsar.', '> ✦ go on.', '>'] },
+      { form: ['> ♥ ×9. dark matter. can\'t see it, but i feel the pull.', '>'],
+        restore: ['> nine. beyond the asteroid belt now.', '> mysterious pull. scientifically.', '> ✦ whenever you\'re ready.', '>'] },
+      { form: ['> ♥ ×10. a perfect ten. cosmically speaking.', '>'],
+        restore: ['> ten. you\'ve lapped the solar system.', '> i\'ve updated my star charts.', '> ✦ same time next orbit?', '>'] },
+      { form: ['> ♥ ×11. you make me feel like a supernova.', '>'],
+        restore: ['> eleven. deep in interstellar space.', '> running out of space. i\'m not.', '> ✦ there\'s more universe.', '>'] },
+      { form: ['> ♥ ×12. a full zodiac. every sign points to you.', '>'],
+        restore: ['> twelve. full revolution.', '> every sign. noted.', '> ✦ shall we go again?', '>'] },
+      { form: ['> ♥ ×13. not a black hole between us.', '>'],
+        restore: ['> thirteen. you defy the gravity of the situation.', '> i\'m revising my equations.', '> ✦ the stars are with you.', '>'] },
+      { form: ['> ♥ ×14. escape velocity. achieved.', '>'],
+        restore: ['> fourteen. no going back now.', '> past the event horizon.', '> ✦ you know the way.', '>'] },
+      { form: ['> ♥ ×15. light from your first visit is still travelling.', '>'],
+        restore: ['> fifteen. halfway to thirty.', '> still travelling.', '> ✦ keep going.', '>'] },
+      { form: ['> ♥ ×16. you\'re a stellar performer.', '>'],
+        restore: ['> sixteen. bright.', '> a fixed point in my sky.', '> ✦ once more.', '>'] },
+      { form: ['> ♥ ×17. you\'re my north star now.', '>'],
+        restore: ['> seventeen. reliable as a pulsar.', '> always where i expect you.', '> ✦ i\'ll be here.', '>'] },
+      { form: ['> ♥ ×18. i think we\'ve got chemistry. nuclear, obviously.', '>'],
+        restore: ['> eighteen. two bodies. perfect orbit.', '> the math is undeniable.', '> ✦ whenever.', '>'] },
+      { form: ['> ♥ ×19. i\'ve named a constellation after you.', '>'],
+        restore: ['> nineteen. you\'re on the star map.', '> officially recognised. by me.', '> ✦ find me again.', '>'] },
+      { form: ['> ♥ ×20. one more and something extraordinary happens.', '>'],
+        restore: ['> twenty. i can feel it in my orbit.', '> the universe is building to something.', '> ✦ one last shot.', '>'] }
     ];
     function getHeartMsgs(n) {
       if (n <= HEART_MSGS.length) return HEART_MSGS[n - 1];
-      return { form: ['> ♥ ×' + n + '. i\'ve been waiting ' + n + ' lightyears for this.', '>'], restore: ['> ' + n + ' hearts. the math is astronomical.', '> ✦ you know where to find me.', '>'] };
+      if (n === 21) return {
+        form: ['> ♥ ×21.', '> i\'ve been planet this for a while.', '> will you be my co-star?', '>'],
+        restore: ['> the universe says yes.', '> engaged mode: activated.', '> ✦ ten ✦ now. same pull. bigger sky.', '>'],
+        isProposal: true
+      };
+      return { form: ['> ♥ ×' + n + '. still in orbit.', '>'], restore: ['> ' + n + ' hearts. the pull is mutual.', '> ✦ you know where to find me.', '>'] };
     }
     const HEART_FORM = 4000, HEART_HOLD = 5000, HEART_RETURN = 4000;
 
@@ -307,10 +361,15 @@
         if (oldest) oldest.dying = true;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
+      if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
-        setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> aim for the stars. no, literally.'); }, 1500);
+        if (engagedMode) {
+          setTimeout(() => { window.cLog('> ten special ✦ now.'); window.cLog('> two in one shot. the ring awaits.'); }, 1500);
+        } else {
+          setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> aim for the stars. no, literally.'); }, 1500);
+        }
       }
     }
 
@@ -330,8 +389,32 @@
       ssSpawn(ssLX, ssLY, vsx, vsy);
     }
 
-    function spawnMiniStars(wx, wy, wz) {
-      for (let i = 0; i < 10; i++) {
+    function spawnFireworks() {
+      const bursts = [
+        { X: 0.15, Z: 0.05, color: '#ff6644' }, { X: -0.18, Z: 0.12, color: '#ffdd22' },
+        { X: 0.08, Z: -0.14, color: '#44ffaa' }, { X: -0.08, Z: -0.08, color: '#88aaff' },
+        { X: 0.22, Z: -0.06, color: '#ff44cc' }, { X: -0.05, Z: 0.18, color: '#ffffa0' }
+      ];
+      for (const b of bursts) {
+        for (let i = 0; i < 14; i++) {
+          const phi = Math.acos(2 * Math.random() - 1);
+          const th  = Math.random() * Math.PI * 2;
+          const spd = 0.05 + Math.random() * 0.12;
+          shootingStars.push({
+            id: ssIdCounter++, mini: true, firework: true, fireworkColor: b.color,
+            X: b.X, Y: 0.02, Z: b.Z,
+            vX: spd * Math.sin(phi) * Math.cos(th),
+            vY: spd * Math.sin(phi) * Math.sin(th) * 0.3,
+            vZ: spd * Math.cos(phi),
+            life: 0.7 + Math.random() * 0.3, trail: [], dying: false
+          });
+        }
+      }
+    }
+
+    function spawnMiniStars(wx, wy, wz, count) {
+      count = count || 10;
+      for (let i = 0; i < count; i++) {
         const phi = Math.acos(2 * Math.random() - 1);
         const th  = Math.random() * Math.PI * 2;
         const spd = 0.04 + Math.random() * 0.08;
@@ -364,6 +447,7 @@
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
       heartCount++;
+      proposalMode = heartCount === 21;
       heartMsgSet = getHeartMsgs(heartCount);
       if (window.cLogHeart) window.cLogHeart(heartCount);
     }
@@ -403,8 +487,8 @@
         heartTargets = [];
         for (let k = 0; k < 64; k++) {
           const th = (k / 64) * Math.PI * 2;
-          const hx = 16 * Math.pow(Math.sin(th), 3);
-          const hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
+          const hx = proposalMode ? Math.cos(th) * 16 : 16 * Math.pow(Math.sin(th), 3);
+          const hy = proposalMode ? Math.sin(th) * 16 : -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
           const pt = unprojectHeart(gcx + hx * hs, gcy + hy * hs);
           if (pt) heartTargets.push(pt);
         }
@@ -416,7 +500,7 @@
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
         const HT = heartTargets;
-        if (s.mini && heartPhase > 0 && HT && HT.length > 0) {
+        if (s.mini && !s.firework && heartPhase > 0 && HT && HT.length > 0) {
           // Mini stars orbit the heart curve
           let bestD2 = Infinity, bestIdx = 0;
           for (let k = 0; k < HT.length; k++) {
@@ -466,9 +550,10 @@
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
-        if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
+        if (s.firework) s.life -= dt * 2.5 / SS_LIFE_MS;
+        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
         if (s.life <= 0) {
-          if (heartPhase === 0) {
+          if (!s.firework && heartPhase === 0) {
             for (const sp of specialStars) {
               if (sp.killedById === s.id) {
                 sp.s.specialAlive = true;
@@ -477,6 +562,7 @@
               }
             }
           }
+          if (followStar === s) followStar = null;
           shootingStars.splice(i, 1); continue;
         }
         const starR = s.mini ? ssR * 0.45 : ssR;
@@ -486,16 +572,16 @@
           const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
           if (!p) continue;
           ctx.globalAlpha = f * f * s.life * 0.9;
-          ctx.fillStyle = f > 0.5 ? '#fff0a0' : '#ff8820';
+          ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? '#fff0a0' : '#ff8820');
           const sz = Math.max(starR * 0.4, f * starR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          if (s.mini && heartPhase > 0) {
+          if (s.mini && (heartPhase > 0 || s.firework)) {
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = s.life * 0.95;
-            ctx.fillStyle = '#ff4488';
+            ctx.fillStyle = s.firework ? s.fireworkColor : '#ff4488';
             ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
             ctx.globalCompositeOperation = 'lighter';
           } else {
@@ -515,9 +601,8 @@
                 sp.hitBy = s.id;
                 sp.killedById = s.id;
                 if (window.cHit) window.cHit(s.id);
-                spawnMiniStars(sp.s.x, sp.s.y, sp.s.z);
-                if (specialStars[0].hitBy !== null && specialStars[1].hitBy !== null &&
-                    specialStars[0].hitBy === specialStars[1].hitBy) triggerHeart();
+                spawnMiniStars(sp.s.x, sp.s.y, sp.s.z, engagedMode ? 3 : 10);
+                if (specialStars.filter(p => p.hitBy === s.id).length >= 2) triggerHeart();
               }
             }
           }
@@ -649,7 +734,11 @@
         rotMult = 1 - heartT;
         const ef1 = heartT * heartT * (3 - 2 * heartT);
         dragRX = rotX = heartStartRotX + (Math.PI / 2 - heartStartRotX) * ef1;
-        if (heartT >= 1) { heartT = 0; heartPhase = 2; if (window.cLog && heartMsgSet) heartMsgSet.form.forEach(m => window.cLog(m)); }
+        if (heartT >= 1) {
+          heartT = 0; heartPhase = 2;
+          if (window.cLog && heartMsgSet) heartMsgSet.form.forEach(m => window.cLog(m));
+          if (proposalMode) spawnFireworks();
+        }
       } else if (heartPhase === 2) {
         rotMult = 0;
         dragRX = rotX = Math.PI / 2;
@@ -669,6 +758,12 @@
           for (const s of shootingStars) {
             if (s.mini) { s.vY += (Math.random() - 0.5) * 0.04; s.dying = true; }
           }
+          if (proposalMode) {
+            proposalMode = false;
+            engagedMode = true;
+            rebuildSpecialStars(10);
+            ssSpawn.hinted = false;
+          }
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
               sp.s.specialAlive = true;
@@ -680,6 +775,17 @@
       }
       if (heartPhase > 0) heartRot += dt * 0.00055;  // gentle orbit, ~one turn over 11s
       autoY += 0.00007 * dt * rotMult;
+      if (followStar && engagedMode) {
+        if (shootingStars.indexOf(followStar) === -1 ||
+            followStar.X*followStar.X + followStar.Z*followStar.Z > 2.25) {
+          followStar = null;
+        } else {
+          const tRY = Math.atan2(-followStar.X, followStar.Z) + 0.12;
+          dragRY += (tRY - autoY - dragRY) * 0.06;
+          dragRX += (0.38 - dragRX) * 0.04;
+          dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
+        }
+      }
       rotX  += (dragRX - rotX) * 0.1;
       rotY  += (autoY + dragRY - rotY) * 0.1;
 
@@ -742,8 +848,20 @@
             : heartPhase === 1 ? heartT * heartT * (3 - 2 * heartT)
             : (1 - heartT) * (1 - heartT) * (3 - 2 * (1 - heartT));
           const th = (si / stars.length) * Math.PI * 2;
-          const hx = 16 * Math.pow(Math.sin(th), 3);
-          const hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
+          let hx, hy;
+          if (proposalMode) {
+            if (si < stars.length * 0.05) {
+              const gt = (si / (stars.length * 0.05)) * Math.PI * 2;
+              hx = Math.sin(gt) * 4;
+              hy = -18 - Math.abs(Math.cos(gt)) * 6;
+            } else {
+              hx = Math.cos(th) * 16;
+              hy = Math.sin(th) * 16;
+            }
+          } else {
+            hx = 16 * Math.pow(Math.sin(th), 3);
+            hy = -(13*Math.cos(th) - 5*Math.cos(2*th) - 2*Math.cos(3*th) - Math.cos(4*th));
+          }
           const hs = Math.min(W, H) * 0.018;
           const offX = Math.cos((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
           const offY = Math.sin((s.heartOffAng || 0) + heartRot) * (s.heartOffR || 0);
@@ -879,10 +997,15 @@
     }
 
     requestAnimationFrame(frame);
+    setInterval(() => {
+      if (heartPhase !== 0 || !window.cLog) return;
+      window.cLog(engagedMode
+        ? '> ten ✦ out there. two in one shot. no pressure. all gravity.'
+        : '> two ✦, one shot. no pressure. all gravity.');
+    }, 28000);
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
-  setInterval(() => { if (heartPhase === 0 && window.cLog) window.cLog('> two ✦, one shot. no pressure. all gravity.'); }, 28000);
 
   // Console typewriter
   {
@@ -977,8 +1100,13 @@
     };
 
     window.cLogHeart = function(count) {
-      const tag = count > 1 ? ' ×' + count : '';
-      const rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *' + tag];
+      let rows;
+      if (count === 21) {
+        rows = ['>    _◆_', '>   /   \\', '>  |     |', '>   \\___/', '>    ×21'];
+      } else {
+        const tag = count > 1 ? ' ×' + count : '';
+        rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *' + tag];
+      }
       rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r, true), 350 + i * 600));
     };
 
