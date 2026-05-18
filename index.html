@@ -383,7 +383,7 @@
         // Second star — spawn the pair
         const vLen2 = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ) + 1e-8;
         const p1X = -v.vZ / vLen2, p1Z = v.vX / vLen2; // horiz perp to velocity
-        const pairR = 0.02;
+        const pairR = 0.06;
         const s1 = shootingStars[shootingStars.length - 1];
         // Invisible ghost: camera tracks this; both stars orbit around it
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ };
@@ -559,7 +559,7 @@
         pair.angle += pair.rotSpeed * dts;
         const { s1, s2, angle, r, p1X, p1Z } = pair;
         const ca = Math.cos(angle), sa = Math.sin(angle);
-        const offX = p1X * ca * r, offY = sa * r * 0.4, offZ = p1Z * ca * r;
+        const offX = p1X * ca * r, offY = sa * r, offZ = p1Z * ca * r;
         const k = 80 * dts;
         s1.vX += ((g.X + offX) - s1.X) * k; s1.vY += ((g.Y + offY) - s1.Y) * k; s1.vZ += ((g.Z + offZ) - s1.Z) * k;
         s2.vX += ((g.X - offX) - s2.X) * k; s2.vY += ((g.Y - offY) - s2.Y) * k; s2.vZ += ((g.Z - offZ) - s2.Z) * k;
