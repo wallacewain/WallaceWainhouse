@@ -220,6 +220,7 @@
     let heroFaded = false;
     let dragRX = 0.28, dragRY = 0;
     let rotX = 0.28, rotY = 0, autoY = 0, last = 0;
+    let camOX = 0, camOY = 0, camOZ = 0;
 
     // ── Mouse trail ───────────────────────────────────────────────────────
     const TRAIL = 16;
@@ -465,10 +466,11 @@
       const camZ = 1.4, dts = dt * 0.001;
 
       function proj3(X, Y, Z) {
-        const x1 =  X * cosY + Z * sinY;
-        const z1 = -X * sinY + Z * cosY;
-        const y2 =  Y * cosX - z1 * sinX;
-        const z2 =  Y * sinX + z1 * cosX;
+        const rx = X - camOX, ry = Y - camOY, rz = Z - camOZ;
+        const x1 =  rx * cosY + rz * sinY;
+        const z1 = -rx * sinY + rz * cosY;
+        const y2 =  ry * cosX - z1 * sinX;
+        const z2 =  ry * sinX + z1 * cosX;
         const dz = camZ + z2;
         if (dz < 0.01) return null;
         return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
@@ -786,12 +788,20 @@
             followStar.X*followStar.X + followStar.Z*followStar.Z > 2.25) {
           followStar = null;
         } else {
-          // Face direction of travel, not star's position
+          const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
+          // Translate origin to just behind the star in direction of travel
+          const behind = 0.05;
+          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.15;
+          camOY += (followStar.Y - camOY) * 0.15;
+          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.15;
+          // Rotate to face direction of travel
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
           dragRY += (tRY - autoY - dragRY) * 0.07;
-          dragRX += (0.18 - dragRX) * 0.05;
+          dragRX += (0.12 - dragRX) * 0.05;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
         }
+      } else {
+        camOX *= 0.94; camOY *= 0.94; camOZ *= 0.94;
       }
       rotX  += (dragRX - rotX) * 0.1;
       rotY  += (autoY + dragRY - rotY) * 0.1;
@@ -808,10 +818,11 @@
       const proj = [];
       for (let si = 0; si < stars.length; si++) {
         const s = stars[si];
-        const x1 =  s.x * cosY + s.z * sinY;
-        const z1 = -s.x * sinY + s.z * cosY;
-        const y2 =  s.y * cosX - z1 * sinX;
-        const z2 =  s.y * sinX + z1 * cosX;
+        const rx = s.x - camOX, ry = s.y - camOY, rz = s.z - camOZ;
+        const x1 =  rx * cosY + rz * sinY;
+        const z1 = -rx * sinY + rz * cosY;
+        const y2 =  ry * cosX - z1 * sinX;
+        const z2 =  ry * sinX + z1 * cosX;
         const dz = camZ + z2;
         if (dz < 0.01) continue;
         const sc = fov / dz;
