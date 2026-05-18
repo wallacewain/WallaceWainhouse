@@ -559,7 +559,7 @@
             const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z);
             if (rXZ > 0.01) {
               const tgX = -s.Z / rXZ, tgZ = s.X / rXZ;
-              const jitter = 0.5 + ((s.orbitSpd - 0.05) / 0.05) * 0.2;
+              const jitter = 0.2 + ((s.orbitSpd - 0.05) / 0.05) * 0.3;
               const orbV = Math.sqrt(SS_GRAVITY / rXZ) * jitter;
               const dir = (s.vX * tgX + s.vZ * tgZ) >= 0 ? 1 : -1;
               s.vX += (dir * tgX * orbV - s.vX) * heartT * heartT * 0.1;
