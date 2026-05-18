@@ -1126,12 +1126,14 @@
       if (engagedMode) {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = 'rgba(0,0,0,0.72)';
-        ctx.fillRect(8, 8, 240, 68);
+        ctx.fillStyle = 'rgba(0,0,0,0.82)';
+        ctx.fillRect(8, 8, 280, 90);
         ctx.fillStyle = '#00ff88';
         ctx.font = '13px monospace';
-        ctx.fillText('EM:' + (engagedMode?1:0) + '  FS:' + (followStar?1:0), 18, 30);
+        const nonMini = shootingStars.filter(s => !s.mini);
+        ctx.fillText('SS:' + nonMini.length + '  pairs:' + starPairs.length + '  FG:' + (followGhost?1:0), 18, 30);
         ctx.fillText('camX:' + camOX.toFixed(3) + '  fZ:' + camZ.toFixed(2), 18, 52);
+        ctx.fillText('s1Y:' + (nonMini[0]?nonMini[0].Y.toFixed(3):'--') + '  s2Y:' + (nonMini[1]?nonMini[1].Y.toFixed(3):'--'), 18, 74);
       }
       const wantFade = shootingStars.length > 0 || engagedMode;
       if (wantFade !== heroFaded) {
