@@ -665,7 +665,7 @@
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
           if (isLeadStar) {
-            const glowR = ssWorldR * head.sc * 12;
+            const glowR = Math.min(W, H) * 0.15;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
             grd.addColorStop(0,    'rgba(255,252,220,1)');
             grd.addColorStop(0.08, 'rgba(255,220,120,0.9)');
@@ -675,15 +675,17 @@
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
           } else if (isPairStar) {
-            const glowR = ssWorldR * head.sc * 9;
+            ctx.globalCompositeOperation = 'source-over';
+            const glowR = Math.min(W, H) * 0.12;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
-            grd.addColorStop(0,    'rgba(180,255,255,1)');
-            grd.addColorStop(0.08, 'rgba(0,200,255,0.9)');
-            grd.addColorStop(0.3,  'rgba(0,100,220,0.4)');
-            grd.addColorStop(1,    'rgba(0,40,160,0)');
+            grd.addColorStop(0,    'rgba(0,220,255,0.9)');
+            grd.addColorStop(0.15, 'rgba(0,160,255,0.7)');
+            grd.addColorStop(0.5,  'rgba(0,80,200,0.3)');
+            grd.addColorStop(1,    'rgba(0,20,120,0)');
             ctx.globalAlpha = s.life;
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
+            ctx.globalCompositeOperation = 'lighter';
           }
           if (s.mini && (heartPhase > 0 || s.firework)) {
             ctx.globalCompositeOperation = 'source-over';
@@ -692,10 +694,12 @@
             ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
             ctx.globalCompositeOperation = 'lighter';
           } else {
+            const headR = isPairStar ? Math.max(ssWorldR * head.sc, ssR) : starR;
+            if (!isLeadStar && isPairStar) ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = s.life * 0.95;
             ctx.fillStyle = s.headColor || '#fffce8';
-            const headR = isPairStar ? ssWorldR * head.sc : starR;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, headR, 0, 6.2832); ctx.fill();
+            if (!isLeadStar && isPairStar) ctx.globalCompositeOperation = 'lighter';
           }
           if (!s.mini && !s.dying && heartPhase === 0) {
             for (const sp of specialStars) {
