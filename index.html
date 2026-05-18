@@ -275,7 +275,7 @@
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
     let heartCount = 0, heartMsgSet = null;
-    let proposalMode = false, engagedMode = false, followStar = null, followGhost = null;
+    let proposalMode = false, engagedMode = new URLSearchParams(location.search).has('e'), followStar = null, followGhost = null;
     const HEART_MSGS = [
       { form: ['> ♥ i\'ve been planet this meeting.', '>'],
         restore: ['> couldn\'t help it — gravity.', '> a pull you can\'t resist.', '> ✦ drag one into it.', '>'] },
@@ -926,7 +926,7 @@
       autoY += 0.00007 * dt * rotMult;
       if (followGhost && !starPairs.some(p => p.ghost === followGhost)) followGhost = null;
       if (followStar && shootingStars.indexOf(followStar) === -1) followStar = null;
-      const ft = engagedMode && (followGhost || followStar);
+      const ft = followGhost || (engagedMode && followStar);
       if (ft) {
         camFollowT += (1 - camFollowT) * 0.005;
         const vLen = Math.sqrt(ft.vX*ft.vX + ft.vZ*ft.vZ) + 1e-8;
