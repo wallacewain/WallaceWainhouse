@@ -361,6 +361,12 @@
         const oldest = shootingStars.find(s => !s.mini);
         if (oldest) oldest.dying = true;
       }
+      if (engagedMode) {
+        // Tilt velocity ~45° out of the galaxy plane so the star cuts through it
+        const xzLen = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
+        v.vX *= 0.707; v.vZ *= 0.707;
+        v.vY = xzLen * 0.707 * (Math.random() < 0.5 ? 1 : -1);
+      }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
       if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
@@ -772,7 +778,7 @@
             rebuildSpecialStars(10);
             ssSpawn.hinted = false;
             const cp = document.getElementById('console-pane');
-            if (cp) cp.style.display = 'none';
+            if (cp) { cp.style.transition = 'opacity 2s ease'; cp.style.opacity = '0'; setTimeout(() => { cp.style.display = 'none'; }, 2000); }
           }
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
