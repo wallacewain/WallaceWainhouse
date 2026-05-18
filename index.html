@@ -220,7 +220,7 @@
     let heroFaded = false;
     let dragRX = 0.28, dragRY = 0;
     let rotX = 0.28, rotY = 0, autoY = 0, last = 0;
-    let camOX = 0, camOY = 0, camOZ = 0;
+    let camOX = 0, camOY = 0, camOZ = 0, camFollowT = 1;
 
     // ── Mouse trail ───────────────────────────────────────────────────────
     const TRAIL = 16;
@@ -376,7 +376,7 @@
         if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
+      if (engagedMode) { followStar = shootingStars[shootingStars.length - 1]; camFollowT = 0; }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
@@ -514,13 +514,6 @@
           const pt = unprojectHeart(gcx + hx * hs, gcy + hy * hs);
           if (pt) heartTargets.push(pt);
         }
-      }
-
-      // Snap camera directly to follow star before physics so star lands exactly at screen centre
-      if (followStar && engagedMode && shootingStars.indexOf(followStar) !== -1) {
-        camOX = followStar.X + followStar.vX * dts;
-        camOY = followStar.Y + followStar.vY * dts;
-        camOZ = followStar.Z + followStar.vZ * dts;
       }
 
       const ssR   = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
@@ -810,6 +803,10 @@
         if (shootingStars.indexOf(followStar) === -1) {
           followStar = null;
         } else {
+          camFollowT = Math.min(1, camFollowT + 0.05);
+          camOX += (followStar.X - camOX) * camFollowT;
+          camOY += (followStar.Y - camOY) * camFollowT;
+          camOZ += (followStar.Z - camOZ) * camFollowT;
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
           let diff = tRY - rotY;
           diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
