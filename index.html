@@ -822,19 +822,24 @@
         if (shootingStars.indexOf(followStar) === -1) {
           followStar = null;
         } else {
+          camFollowT += (1 - camFollowT) * 0.018;
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           const behind = 0.25;
-          camOX = followStar.X - followStar.vX/vLen * behind;
-          camOY = followStar.Y;
-          camOZ = followStar.Z - followStar.vZ/vLen * behind;
+          const tX = followStar.X - followStar.vX/vLen * behind;
+          const tY = followStar.Y;
+          const tZ = followStar.Z - followStar.vZ/vLen * behind;
+          const posRate = 0.03 + camFollowT * 0.97;
+          camOX += (tX - camOX) * posRate;
+          camOY += (tY - camOY) * posRate;
+          camOZ += (tZ - camOZ) * posRate;
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
           let diff = tRY - rotY;
           diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
-          rotY += diff * 0.15;
+          rotY += diff * (0.02 + camFollowT * 0.13);
           dragRY = rotY - autoY;
           dragRX += (0.12 - dragRX) * 0.017;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
-          camZ += (0.7 - camZ) * 0.06;
+          camZ += (0.7 - camZ) * 0.018;
         }
       } else {
         camOX *= 0.98; camOY *= 0.98; camOZ *= 0.98;
