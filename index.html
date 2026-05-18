@@ -753,18 +753,24 @@
         g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
-        g.angle += 2.5 * dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 6);
         if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
         const gp = proj(g.X, g.Y, g.Z);
         if (!gp) continue;
-        // Circular orbit in camera space.
-        // camera-right world vector: (cosY, 0, sinY)
-        // camera-down world vector:  (sinX*sinY, cosX, -sinX*cosY)   [+screen-Y direction]
-        const r = 100 + 30 * Math.sin(Math.PI * g.t * 0.4);
+        // Playful choreography in camera space.
+        // Signed radius: when it passes through 0 the stars kiss and cross sides.
+        // Amplitude breathes (30–110px) for intimate/far moments.
+        // Angular velocity uses a beating pattern: product of two sinusoids at
+        // incommensurate frequencies → natural calm pauses (when either ≈0) and
+        // direction reversals (when either changes sign), with a small jitter term.
+        const rAmp = 70 + 40 * Math.sin(g.t * 0.28 + 0.8);
+        const r    = rAmp * Math.sin(g.t * 0.55 + 1.5);
+        const angVel = 4.0 * Math.sin(g.t * 0.52 + 0.3) * Math.sin(g.t * 1.45 + 0.7)
+                     + 0.25 * Math.sin(g.t * 3.8 + 0.4);
+        g.angle += angVel * dts;
         const cA = Math.cos(g.angle), sA = Math.sin(g.angle);
-        const dh = r * cA / gp.sc; // along camera-right
-        const dv = r * sA / gp.sc; // along camera-down
+        const dh = r * cA / gp.sc;
+        const dv = r * sA / gp.sc;
         const s1X = g.X + cosY * dh + sinX * sinY * dv;
         const s1Y = g.Y + cosX * dv;
         const s1Z = g.Z + sinY * dh - sinX * cosY * dv;
