@@ -559,7 +559,7 @@
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
         if (s.firework) s.life -= dt * 2.5 / SS_LIFE_MS;
-        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / SS_LIFE_MS;
+        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 2 : 1));
         if (s.life <= 0) {
           if (!s.firework && heartPhase === 0) {
             for (const sp of specialStars) {
@@ -771,6 +771,8 @@
             engagedMode = true;
             rebuildSpecialStars(10);
             ssSpawn.hinted = false;
+            const cp = document.getElementById('console-pane');
+            if (cp) cp.style.display = 'none';
           }
           for (const sp of specialStars) {
             if (!sp.s.specialAlive) {
@@ -790,23 +792,23 @@
         } else {
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
-          const behind = 0.05;
-          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.15;
-          camOY += (followStar.Y - camOY) * 0.15;
-          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.15;
+          const behind = 0.02;
+          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.05;
+          camOY += (followStar.Y - camOY) * 0.05;
+          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.05;
           // Drive rotY directly (not via dragRY) so autoY accumulation can't cause a snap.
           // Wrap diff to shortest arc, then sync dragRY = rotY - autoY so the
           // general rotY += (autoY + dragRY - rotY)*0.1 at end of frame is a no-op.
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
           let diff = tRY - rotY;
           diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
-          rotY += diff * 0.07;
+          rotY += diff * 0.023;
           dragRY = rotY - autoY;
-          dragRX += (0.12 - dragRX) * 0.05;
+          dragRX += (0.12 - dragRX) * 0.017;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
         }
       } else {
-        camOX *= 0.94; camOY *= 0.94; camOZ *= 0.94;
+        camOX *= 0.98; camOY *= 0.98; camOZ *= 0.98;
       }
       rotX  += (dragRX - rotX) * 0.1;
       rotY  += (autoY + dragRY - rotY) * 0.1;
@@ -1009,7 +1011,7 @@
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       if (shootingStars.length) ssDraw(dt, sinX, cosX, sinY, cosY);
-      const wantFade = shootingStars.length > 0;
+      const wantFade = shootingStars.length > 0 || engagedMode;
       if (wantFade !== heroFaded) {
         heroFaded = wantFade;
         heroEls.forEach(el => {
