@@ -792,10 +792,10 @@
         } else {
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
-          const behind = 0.06;
-          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.04;
-          camOY += (followStar.Y - camOY) * 0.04;
-          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.04;
+          const behind = 0.012;
+          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.06;
+          camOY += (followStar.Y - camOY) * 0.06;
+          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.06;
           // Drive rotY directly (not via dragRY) so autoY accumulation can't cause a snap.
           // Wrap diff to shortest arc, then sync dragRY = rotY - autoY so the
           // general rotY += (autoY + dragRY - rotY)*0.1 at end of frame is a no-op.
