@@ -802,8 +802,10 @@
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           const behind = 0.002;
           const posAlpha = 0.95, rotAlpha = 0.04;
-          const tX = followStar.X - followStar.vX/vLen*behind;
-          const tZ = followStar.Z - followStar.vZ/vLen*behind;
+          // Predict one frame ahead — camera follow runs before physics in ssDraw,
+          // so without prediction the camera always chases the pre-physics position.
+          const tX = followStar.X + followStar.vX*dt - followStar.vX/vLen*behind;
+          const tZ = followStar.Z + followStar.vZ*dt - followStar.vZ/vLen*behind;
           camOX += (tX - camOX) * posAlpha;
           camOY += (followStar.Y - camOY) * posAlpha;
           camOZ += (tZ - camOZ) * posAlpha;
