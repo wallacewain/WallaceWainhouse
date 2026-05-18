@@ -559,9 +559,10 @@
             const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z);
             if (rXZ > 0.01) {
               const tgX = -s.Z / rXZ, tgZ = s.X / rXZ;
-              const orbV = Math.sqrt(SS_GRAVITY / rXZ);
-              s.vX += (tgX * orbV - s.vX) * heartT * heartT * 0.1;
-              s.vZ += (tgZ * orbV - s.vZ) * heartT * heartT * 0.1;
+              const jitter = 0.8 + ((s.orbitSpd - 0.05) / 0.05) * 0.4;
+              const orbV = Math.sqrt(SS_GRAVITY / rXZ) * jitter;
+              s.vX += (s.orbitDir * tgX * orbV - s.vX) * heartT * heartT * 0.1;
+              s.vZ += (s.orbitDir * tgZ * orbV - s.vZ) * heartT * heartT * 0.1;
             }
           }
         } else if (!s.mini && heartPhase > 0 && HT && HT.length > 0) {
