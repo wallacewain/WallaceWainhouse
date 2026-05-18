@@ -575,7 +575,7 @@
         g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         pair.pairTime = (pair.pairTime || 0) + dts;
-        const pulseR = pair.r * (0.5 + 2.5 * (1 - Math.cos(Math.PI * pair.pairTime)) * 0.5);
+        const pulseR = pair.r * (0.5 + 0.5 * Math.abs(Math.cos(Math.PI * pair.pairTime)));
         pair.angle += pair.rotSpeed * dts;
         const { s1, s2, angle, p1X, p1Z } = pair;
         const ca = Math.cos(angle), sa = Math.sin(angle);
@@ -738,6 +738,21 @@
               }
             }
           }
+        }
+      }
+      // force-draw: any non-lead pair star as large solid cyan circle
+      for (const s of shootingStars) {
+        if (s.mini || !s.trailNear || s.isLeadStar) continue;
+        const h = proj3(s.X, s.Y, s.Z);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = s.life;
+        if (h) {
+          ctx.fillStyle = '#00eeff';
+          ctx.beginPath(); ctx.arc(h.sx, h.sy, 28, 0, 6.2832); ctx.fill();
+        } else {
+          ctx.fillStyle = '#00eeff';
+          ctx.font = 'bold 13px monospace';
+          ctx.fillText('s2 off-cam', 10, 50);
         }
       }
       ctx.globalAlpha = 1;
