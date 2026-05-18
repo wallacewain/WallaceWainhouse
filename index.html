@@ -593,6 +593,7 @@
           shootingStars.splice(i, 1); continue;
         }
         const starR = s.mini ? ssR * 0.45 : ssR;
+        const isFollowStar = followStar === s && engagedMode;
         const ssWorldR = ssR * 1.4 / fov;
         const tl = s.trail.length;
         for (let j = 1; j < tl; j++) {
@@ -601,12 +602,12 @@
           if (!p) continue;
           ctx.globalAlpha = f * f * s.life * 0.9;
           ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? '#fff0a0' : '#ff8820');
-          const sz = Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc;
+          const sz = isFollowStar ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
-          if (followStar === s && engagedMode) {
+          if (isFollowStar) {
             const glowR = Math.min(W, H) * 0.22;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
             grd.addColorStop(0,    'rgba(255,252,220,1)');
@@ -626,7 +627,7 @@
           } else {
             ctx.globalAlpha = s.life * 0.95;
             ctx.fillStyle = '#fffce8';
-            const headR = ssWorldR * head.sc;
+            const headR = isFollowStar ? ssWorldR * head.sc : starR;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, headR, 0, 6.2832); ctx.fill();
           }
           if (!s.mini && !s.dying && heartPhase === 0) {
