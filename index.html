@@ -371,7 +371,7 @@
         }
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (engagedMode) { followStar = shootingStars[shootingStars.length - 1]; camFollowAlpha = 0.015; }
+      if (engagedMode) { followStar = shootingStars[shootingStars.length - 1]; camFollowAlpha = 0; }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
@@ -802,9 +802,9 @@
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
           const behind = 0.002;
-          const posAlpha = Math.min(0.35, camFollowAlpha + 0.008);
-          const rotAlpha = Math.min(0.012, camFollowAlpha * 0.035);
-          camFollowAlpha = posAlpha;
+          camFollowAlpha = Math.min(1.0, camFollowAlpha + 0.015);
+          const posAlpha = 0.01 + camFollowAlpha * 0.84;  // 0.01 → 0.85
+          const rotAlpha = 0.003 + camFollowAlpha * 0.05; // 0.003 → 0.053
           camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * posAlpha;
           camOY += (followStar.Y - camOY) * posAlpha;
           camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * posAlpha;
