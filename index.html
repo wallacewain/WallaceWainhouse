@@ -375,7 +375,7 @@
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ,
-                        life: 1, t: 0, trail1: [], trail2: [] };
+                        life: 1, t: 0, angle: 0, trail1: [], trail2: [] };
         pairGhosts.push(ghost);
         followGhost = ghost; camFollowT = 0.3;
         if (!ssSpawn.hinted && window.cLog) {
@@ -753,19 +753,27 @@
         g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
+        g.angle += 2.5 * dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 6);
         if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
         const gp = proj(g.X, g.Y, g.Z);
         if (!gp) continue;
-        // Camera-space horizontal offset — cosY/sinY are the camera-right world vector
-        // offsetPx pulses 80→160 so stars are always visible on screen
-        const offsetPx = 80 + 80 * Math.abs(Math.sin(Math.PI * g.t * 0.5));
-        const d = offsetPx / gp.sc; // world-space offset that gives exactly offsetPx on screen
-        const s1X = g.X + cosY * d, s1Z = g.Z + sinY * d; // yellow: camera-right
-        const s2X = g.X - cosY * d, s2Z = g.Z - sinY * d; // cyan:   camera-left
-        // Accumulate trail points in world space
-        g.trail1.push({ X: s1X, Y: g.Y, Z: s1Z });
-        g.trail2.push({ X: s2X, Y: g.Y, Z: s2Z });
+        // Circular orbit in camera space.
+        // camera-right world vector: (cosY, 0, sinY)
+        // camera-down world vector:  (sinX*sinY, cosX, -sinX*cosY)   [+screen-Y direction]
+        const r = 100 + 30 * Math.sin(Math.PI * g.t * 0.4);
+        const cA = Math.cos(g.angle), sA = Math.sin(g.angle);
+        const dh = r * cA / gp.sc; // along camera-right
+        const dv = r * sA / gp.sc; // along camera-down
+        const s1X = g.X + cosY * dh + sinX * sinY * dv;
+        const s1Y = g.Y + cosX * dv;
+        const s1Z = g.Z + sinY * dh - sinX * cosY * dv;
+        const s2X = g.X - cosY * dh - sinX * sinY * dv;
+        const s2Y = g.Y - cosX * dv;
+        const s2Z = g.Z - sinY * dh + sinX * cosY * dv;
+        // Accumulate trail points
+        g.trail1.push({ X: s1X, Y: s1Y, Z: s1Z });
+        g.trail2.push({ X: s2X, Y: s2Y, Z: s2Z });
         if (g.trail1.length > 50) g.trail1.shift();
         if (g.trail2.length > 50) g.trail2.shift();
         // Draw trails
@@ -786,8 +794,8 @@
           }
         }
         // Draw glows + heads
-        const p1 = proj(s1X, g.Y, s1Z);
-        const p2 = proj(s2X, g.Y, s2Z);
+        const p1 = proj(s1X, s1Y, s1Z);
+        const p2 = proj(s2X, s2Y, s2Z);
         for (let side = 0; side < 2; side++) {
           const p = side === 0 ? p1 : p2;
           if (!p) continue;
