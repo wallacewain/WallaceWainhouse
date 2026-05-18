@@ -452,6 +452,12 @@
       if (window.cLogHeart) window.cLogHeart(heartCount);
     }
 
+    window.cheatEngage = function() {
+      if (engagedMode || heartPhase !== 0) return;
+      heartCount = 20;
+      triggerHeart();
+    };
+
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
       const W = canvas.width, H = canvas.height;
       const gcx = W * 0.5, gcy = H * 0.5;
@@ -1109,6 +1115,26 @@
       }
       rows.forEach((r, i) => setTimeout(() => window.cLogInstant(r, true), 350 + i * 600));
     };
+
+    // DEBUG cheat: tap console 10 times to jump to engagement mode
+    let _cheatTaps = 0, _cheatTimer;
+    document.addEventListener('mousedown', function(e) {
+      const r = pane.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      clearTimeout(_cheatTimer);
+      _cheatTaps++;
+      _cheatTimer = setTimeout(() => { _cheatTaps = 0; }, 2000);
+      if (_cheatTaps >= 10 && window.cheatEngage) { window.cheatEngage(); _cheatTaps = 0; }
+    });
+    document.addEventListener('touchstart', function(e) {
+      const r = pane.getBoundingClientRect();
+      const t = e.touches[0];
+      if (t.clientX < r.left || t.clientX > r.right || t.clientY < r.top || t.clientY > r.bottom) return;
+      clearTimeout(_cheatTimer);
+      _cheatTaps++;
+      _cheatTimer = setTimeout(() => { _cheatTaps = 0; }, 2000);
+      if (_cheatTaps >= 10 && window.cheatEngage) { window.cheatEngage(); _cheatTaps = 0; }
+    }, { passive: true });
 
     setTimeout(() => cLog('> hello. i\'ve been star-ing at this screen.'), 700);
     setTimeout(() => cLog('> 5,000 stars loaded.'), 2500);
