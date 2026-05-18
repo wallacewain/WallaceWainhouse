@@ -270,6 +270,7 @@
     const SS_LIFE_MS = 12000;
     const SS_TRAIL   = 80;
     const shootingStars = [];
+    const starPairs = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
@@ -378,7 +379,22 @@
         if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (engagedMode) { followStar = shootingStars[shootingStars.length - 1]; camFollowT = 0; }
+      if (engagedMode) {
+        // Second star — spawn the pair
+        const vLen2 = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ) + 1e-8;
+        const p1X = -v.vZ / vLen2, p1Z = v.vX / vLen2; // horiz perp to velocity
+        const pairR = 0.02;
+        const s1 = shootingStars[shootingStars.length - 1];
+        s1.X += p1X * pairR; s1.Z += p1Z * pairR;
+        s1.headColor = '#fffce8'; s1.trailNear = '#ffe060'; s1.trailFar = '#ffa820';
+        const s2 = { id: ssIdCounter++, mini: false,
+          X: pos.X - p1X * pairR, Y: pos.Y, Z: pos.Z - p1Z * pairR,
+          vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false,
+          headColor: '#d0eeff', trailNear: '#66aaff', trailFar: '#3355cc' };
+        shootingStars.push(s2);
+        starPairs.push({ s1, s2, angle: 0, rotSpeed: 2.5, p1X, p1Z, r: pairR });
+        followStar = s1; camFollowT = 0;
+      }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
@@ -525,6 +541,23 @@
 
       const ssR   = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
       const hitR2 = Math.pow(Math.max(22, ssR * 6), 2);
+
+      // Pair physics — spring each star toward its rotating offset from the shared centre
+      for (let pi = starPairs.length - 1; pi >= 0; pi--) {
+        const pair = starPairs[pi];
+        const h1 = shootingStars.includes(pair.s1), h2 = shootingStars.includes(pair.s2);
+        if (!h1 && !h2) { starPairs.splice(pi, 1); continue; }
+        if (!h1 || !h2) continue;
+        pair.angle += pair.rotSpeed * dts;
+        const { s1, s2, angle, r, p1X, p1Z } = pair;
+        const midX = (s1.X + s2.X) / 2, midY = (s1.Y + s2.Y) / 2, midZ = (s1.Z + s2.Z) / 2;
+        const ca = Math.cos(angle), sa = Math.sin(angle);
+        const offX = p1X * ca * r, offY = sa * r * 0.4, offZ = p1Z * ca * r;
+        const k = 60 * dts;
+        s1.vX += ((midX + offX) - s1.X) * k; s1.vY += ((midY + offY) - s1.Y) * k; s1.vZ += ((midZ + offZ) - s1.Z) * k;
+        s2.vX += ((midX - offX) - s2.X) * k; s2.vY += ((midY - offY) - s2.Y) * k; s2.vZ += ((midZ - offZ) - s2.Z) * k;
+      }
+
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const s = shootingStars[i];
@@ -608,6 +641,7 @@
         }
         const starR = s.mini ? ssR * 0.45 : ssR;
         const isFollowStar = followStar === s && engagedMode;
+        const isPairStar = !s.mini && !!s.trailNear && engagedMode;
         const ssWorldR = ssR * 1.4 / fov;
         const tl = s.trail.length;
         for (let j = 1; j < tl; j++) {
@@ -615,8 +649,8 @@
           const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
           if (!p) continue;
           ctx.globalAlpha = f * f * s.life * 0.9;
-          ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? '#fff0a0' : '#ff8820');
-          const sz = isFollowStar ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
+          ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? (s.trailNear || '#fff0a0') : (s.trailFar || '#ff8820'));
+          const sz = (isFollowStar || isPairStar) ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
         }
         const head = proj3(s.X, s.Y, s.Z);
@@ -631,6 +665,16 @@
             ctx.globalAlpha = s.life;
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
+          } else if (isPairStar) {
+            const glowR = Math.min(W, H) * 0.15;
+            const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
+            grd.addColorStop(0,    'rgba(200,230,255,1)');
+            grd.addColorStop(0.08, 'rgba(100,170,255,0.9)');
+            grd.addColorStop(0.3,  'rgba(50,100,220,0.4)');
+            grd.addColorStop(1,    'rgba(20,50,180,0)');
+            ctx.globalAlpha = s.life;
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
           }
           if (s.mini && (heartPhase > 0 || s.firework)) {
             ctx.globalCompositeOperation = 'source-over';
@@ -640,8 +684,8 @@
             ctx.globalCompositeOperation = 'lighter';
           } else {
             ctx.globalAlpha = s.life * 0.95;
-            ctx.fillStyle = '#fffce8';
-            const headR = isFollowStar ? ssWorldR * head.sc : starR;
+            ctx.fillStyle = s.headColor || '#fffce8';
+            const headR = (isFollowStar || isPairStar) ? ssWorldR * head.sc : starR;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, headR, 0, 6.2832); ctx.fill();
           }
           if (!s.mini && !s.dying && heartPhase === 0) {
