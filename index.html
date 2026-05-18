@@ -804,7 +804,8 @@
           followStar = null;
         } else {
           camFollowT = Math.min(1, camFollowT + 0.05);
-          const tail = followStar.trail.length > 0 ? followStar.trail[0] : followStar;
+          const tl = followStar.trail.length;
+          const tail = tl > 0 ? followStar.trail[tl - 1] : followStar;
           camOX += (tail.X - camOX) * camFollowT;
           camOY += (tail.Y - camOY) * camFollowT;
           camOZ += (tail.Z - camOZ) * camFollowT;
