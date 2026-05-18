@@ -396,7 +396,7 @@
           headColor: '#00ccff', trailNear: '#00aaff', trailFar: '#0044dd' };
         s1.X = ghost.X; s1.Y = ghost.Y + pairR; s1.Z = ghost.Z;
         shootingStars.push(s2);
-        starPairs.push({ s1, s2, ghost, angle: Math.PI / 2, rotSpeed: 2.5, p1X, p1Z, r: pairR });
+        starPairs.push({ s1, s2, ghost, angle: Math.PI / 2, rotSpeed: 2.5, p1X, p1Z, r: pairR, pairTime: 0 });
         followGhost = ghost; camFollowT = 0.3;
       }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
@@ -561,11 +561,13 @@
         const ga = SS_GRAVITY * 0.15 / gr;
         g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
+        pair.pairTime = (pair.pairTime || 0) + dts;
+        const pulseR = pair.r * (0.5 + 2.5 * (1 - Math.cos(Math.PI * pair.pairTime)) * 0.5);
         pair.angle += pair.rotSpeed * dts;
-        const { s1, s2, angle, r, p1X, p1Z } = pair;
+        const { s1, s2, angle, p1X, p1Z } = pair;
         const ca = Math.cos(angle), sa = Math.sin(angle);
-        const offX = p1X * ca * r, offY = sa * r, offZ = p1Z * ca * r;
-        const k = 80 * dts;
+        const offX = p1X * ca * pulseR, offY = sa * pulseR, offZ = p1Z * ca * pulseR;
+        const k = 160 * dts;
         s1.vX += ((g.X + offX) - s1.X) * k; s1.vY += ((g.Y + offY) - s1.Y) * k; s1.vZ += ((g.Z + offZ) - s1.Z) * k;
         s2.vX += ((g.X - offX) - s2.X) * k; s2.vY += ((g.Y - offY) - s2.Y) * k; s2.vZ += ((g.Z - offZ) - s2.Z) * k;
       }
@@ -611,7 +613,7 @@
               s.vZ += (dir * tgZ * orbV - s.vZ) * heartT * heartT * 0.1;
             }
           }
-        } else if (!s.mini && heartPhase > 0 && HT && HT.length > 0) {
+        } else if (!s.mini && heartPhase > 0 && HT && HT.length > 0 && !(s.trailNear && engagedMode)) {
           // Non-mini shooting stars pulled toward heart curve during heart phases
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
           for (const ht of HT) {
@@ -625,6 +627,8 @@
           s.vX -= a * ex / r * dts;
           s.vY -= a * ey / r * dts;
           s.vZ -= a * ez / r * dts;
+        } else if (s.trailNear && engagedMode) {
+          // Pair star — ghost handles orbital gravity; skip individual gravity
         } else {
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
           const r  = Math.sqrt(r2);
