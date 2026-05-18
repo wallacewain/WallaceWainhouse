@@ -794,11 +794,14 @@
           camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.15;
           camOY += (followStar.Y - camOY) * 0.15;
           camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.15;
-          // Rotate to face direction of travel (wrap diff to [-π,π] to avoid 360° snap)
+          // Drive rotY directly (not via dragRY) so autoY accumulation can't cause a snap.
+          // Wrap diff to shortest arc, then sync dragRY = rotY - autoY so the
+          // general rotY += (autoY + dragRY - rotY)*0.1 at end of frame is a no-op.
           const tRY = Math.atan2(-followStar.vX, followStar.vZ);
-          let dRY = tRY - (autoY + dragRY);
-          dRY -= Math.round(dRY / (Math.PI * 2)) * (Math.PI * 2);
-          dragRY += dRY * 0.07;
+          let diff = tRY - rotY;
+          diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
+          rotY += diff * 0.07;
+          dragRY = rotY - autoY;
           dragRX += (0.12 - dragRX) * 0.05;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
         }
