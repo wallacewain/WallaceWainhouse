@@ -362,10 +362,8 @@
         if (oldest) oldest.dying = true;
       }
       if (engagedMode) {
-        // Tilt velocity ~20° out of the galaxy plane so the star cuts through it
-        const xzLen = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
-        v.vX *= 0.940; v.vZ *= 0.940;
-        v.vY = xzLen * 0.342 * (Math.random() < 0.5 ? 1 : -1);
+        // Super slo-mo: scale velocity down, keep on galactic plane
+        v.vX *= 0.15; v.vY *= 0.15; v.vZ *= 0.15;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
       if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
@@ -556,7 +554,7 @@
         } else {
           const r2 = s.X * s.X + s.Y * s.Y + s.Z * s.Z + SS_SOFTEN;
           const r  = Math.sqrt(r2);
-          const a  = SS_GRAVITY / r;
+          const a  = (engagedMode ? SS_GRAVITY * 0.15 : SS_GRAVITY) / r;
           s.vX -= a * s.X / r * dts;
           s.vY -= a * s.Y / r * dts;
           s.vZ -= a * s.Z / r * dts;
@@ -565,7 +563,7 @@
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
         if (s.firework) s.life -= dt * 2.5 / SS_LIFE_MS;
-        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 2 : 1));
+        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 6 : 1));
         if (s.life <= 0) {
           if (!s.firework && heartPhase === 0) {
             for (const sp of specialStars) {
@@ -798,7 +796,7 @@
         } else {
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
-          const behind = 0.02;
+          const behind = 0.008;
           camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.05;
           camOY += (followStar.Y - camOY) * 0.05;
           camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.05;
