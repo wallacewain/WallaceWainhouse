@@ -764,23 +764,22 @@
         // "Fucking" mode: periodic envelope that activates fast radial in-out
         const pulseEnv = Math.max(0, Math.sin(g.t * 0.38 + 1.0));
         const rSlow = rAmp * Math.sin(g.t * 0.55 + 1.5);
-        const rFast = pulseEnv * rAmp * 0.75 * Math.sin(g.t * 5.2); // ~0.83 Hz radial pulse
-        // In-out pulse time-based (not angle-based) so it stays slow regardless of spin speed
-        const rPulse = 10 * Math.sin(g.t * 1.5);
+        const rFast = pulseEnv * rAmp * 0.6 * Math.sin(g.t * 2.5); // ~0.4 Hz radial pulse
+        const rPulse = 8 * Math.sin(g.t * 0.7);
         const r = rSlow + rFast + rPulse;
         // Proximity: 1 when kissing, 0 when far apart
         const prox = Math.max(0, 1 - Math.abs(rSlow) / (rAmp * 0.4 + 1));
         // Base beating pattern — spin suppressed during pulse mode
         const spin1 = Math.sin(g.t * 0.52 + 0.3);
-        const baseVel = 4.0 * spin1 * Math.sin(g.t * 1.45 + 0.7) * (1 - pulseEnv * 0.75);
+        const baseVel = 2.0 * spin1 * Math.sin(g.t * 1.1 + 0.7) * (1 - pulseEnv * 0.75);
         // Extra twirl cuddle when stars are close
-        const closeTwirl = prox * prox * 6 * (spin1 >= 0 ? 1 : -1);
-        // Occasional 720° burst — capped so total stays within 2 Hz
-        const b1 =  Math.pow(Math.max(0,  Math.sin(g.t * 0.38 + 0.7)), 18) * 10;
-        const b2 =  Math.pow(Math.max(0, -Math.sin(g.t * 0.29 + 2.5)), 18) * -10;
-        // Hard cap at ±4π rad/s = 2 Hz
-        const angVel = Math.max(-Math.PI * 4, Math.min(Math.PI * 4,
-          baseVel + closeTwirl + b1 + b2 + 0.25 * Math.sin(g.t * 3.8 + 0.4)));
+        const closeTwirl = prox * prox * 3 * (spin1 >= 0 ? 1 : -1);
+        // Occasional 720° burst
+        const b1 =  Math.pow(Math.max(0,  Math.sin(g.t * 0.38 + 0.7)), 18) * 5;
+        const b2 =  Math.pow(Math.max(0, -Math.sin(g.t * 0.29 + 2.5)), 18) * -5;
+        // Hard cap at ±π rad/s (~0.5 rotations/sec)
+        const angVel = Math.max(-Math.PI, Math.min(Math.PI,
+          baseVel + closeTwirl + b1 + b2 + 0.1 * Math.sin(g.t * 2.1 + 0.4)));
         g.angle += angVel * dts;
         const cA = Math.cos(g.angle), sA = Math.sin(g.angle);
         const dh = r * cA / gp.sc;
