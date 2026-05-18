@@ -388,14 +388,16 @@
         // Invisible ghost: camera tracks this; both stars orbit around it
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ };
         s1.X = ghost.X + p1X * pairR; s1.Y = ghost.Y; s1.Z = ghost.Z + p1Z * pairR;
-        s1.headColor = '#fffce8'; s1.trailNear = '#ffe060'; s1.trailFar = '#ffa820'; s1.isLeadStar = true;
+        s1.headColor = '#fff8c0'; s1.trailNear = '#ffdd00'; s1.trailFar = '#ff8800'; s1.isLeadStar = true;
+        // Start orbit at π/2 so s1 is above ghost, s2 below — vertical split visible from any camera angle
         const s2 = { id: ssIdCounter++, mini: false,
-          X: ghost.X - p1X * pairR, Y: ghost.Y, Z: ghost.Z - p1Z * pairR,
+          X: ghost.X, Y: ghost.Y - pairR, Z: ghost.Z,
           vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false,
-          headColor: '#d0eeff', trailNear: '#66aaff', trailFar: '#3355cc' };
+          headColor: '#00ccff', trailNear: '#00aaff', trailFar: '#0044dd' };
+        s1.X = ghost.X; s1.Y = ghost.Y + pairR; s1.Z = ghost.Z;
         shootingStars.push(s2);
-        starPairs.push({ s1, s2, ghost, angle: 0, rotSpeed: 2.5, p1X, p1Z, r: pairR });
-        followGhost = ghost; camFollowT = 0;
+        starPairs.push({ s1, s2, ghost, angle: Math.PI / 2, rotSpeed: 2.5, p1X, p1Z, r: pairR });
+        followGhost = ghost; camFollowT = 0.3;
       }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
@@ -675,10 +677,10 @@
           } else if (isPairStar) {
             const glowR = Math.min(W, H) * 0.15;
             const grd = ctx.createRadialGradient(head.sx, head.sy, 0, head.sx, head.sy, glowR);
-            grd.addColorStop(0,    'rgba(200,230,255,1)');
-            grd.addColorStop(0.08, 'rgba(100,170,255,0.9)');
-            grd.addColorStop(0.3,  'rgba(50,100,220,0.4)');
-            grd.addColorStop(1,    'rgba(20,50,180,0)');
+            grd.addColorStop(0,    'rgba(180,255,255,1)');
+            grd.addColorStop(0.08, 'rgba(0,200,255,0.9)');
+            grd.addColorStop(0.3,  'rgba(0,100,220,0.4)');
+            grd.addColorStop(1,    'rgba(0,40,160,0)');
             ctx.globalAlpha = s.life;
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(head.sx, head.sy, glowR, 0, 6.2832); ctx.fill();
