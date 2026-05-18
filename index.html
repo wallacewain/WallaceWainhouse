@@ -220,7 +220,7 @@
     let heroFaded = false;
     let dragRX = 0.28, dragRY = 0;
     let rotX = 0.28, rotY = 0, autoY = 0, last = 0;
-    let camOX = 0, camOY = 0, camOZ = 0, camFollowAlpha = 0;
+    let camOX = 0, camOY = 0, camOZ = 0;
 
     // ── Mouse trail ───────────────────────────────────────────────────────
     const TRAIL = 16;
@@ -371,7 +371,7 @@
         }
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (engagedMode) { followStar = shootingStars[shootingStars.length - 1]; camFollowAlpha = 0; }
+      if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
@@ -802,9 +802,8 @@
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
           const behind = 0.002;
-          camFollowAlpha = Math.min(1.0, camFollowAlpha + 0.015);
-          const posAlpha = 0.01 + camFollowAlpha * 0.84;  // 0.01 → 0.85
-          const rotAlpha = 0.003 + camFollowAlpha * 0.05; // 0.003 → 0.053
+          const posAlpha = 0.5;
+          const rotAlpha = 0.04;
           camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * posAlpha;
           camOY += (followStar.Y - camOY) * posAlpha;
           camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * posAlpha;
