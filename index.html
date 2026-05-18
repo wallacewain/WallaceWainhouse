@@ -804,8 +804,8 @@
           const posAlpha = 0.95, rotAlpha = 0.04;
           // Predict one frame ahead — camera follow runs before physics in ssDraw,
           // so without prediction the camera always chases the pre-physics position.
-          const tX = followStar.X + followStar.vX*dt - followStar.vX/vLen*behind;
-          const tZ = followStar.Z + followStar.vZ*dt - followStar.vZ/vLen*behind;
+          const tX = followStar.X + followStar.vX*dt*0.001 - followStar.vX/vLen*behind;
+          const tZ = followStar.Z + followStar.vZ*dt*0.001 - followStar.vZ/vLen*behind;
           camOX += (tX - camOX) * posAlpha;
           camOY += (followStar.Y - camOY) * posAlpha;
           camOZ += (tZ - camOZ) * posAlpha;
