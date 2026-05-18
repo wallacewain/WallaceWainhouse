@@ -398,6 +398,9 @@
         shootingStars.push(s2);
         starPairs.push({ s1, s2, ghost, angle: Math.PI / 2, rotSpeed: 2.5, p1X, p1Z, r: pairR, pairTime: 0 });
         followGhost = ghost; camFollowT = 0.3;
+        if (window.cLogInstant) window.cLogInstant('> PAIR s1+s2 spawned');
+      } else {
+        if (window.cLogInstant) window.cLogInstant('> single star (eng=' + engagedMode + ')');
       }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
@@ -495,8 +498,9 @@
       engagedMode = true;
       rebuildSpecialStars(10);
       ssSpawn.hinted = false;
+      if (window.cLogInstant) window.cLogInstant('> engaged ✓');
     };
-    if (new URLSearchParams(location.search).get('e') !== null) setTimeout(window.cheatEngage, 200);
+    if (new URLSearchParams(location.search).get('e') !== null) setTimeout(() => { window.cheatEngage(); if (window.cLogInstant) window.cLogInstant('> ?e loaded'); }, 200);
 
     window.pairState = function() {
       const p = starPairs[0];
