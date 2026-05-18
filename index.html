@@ -551,9 +551,19 @@
           s.vX += (s.orbitDir * spd * tx/tLen - s.vX) * 0.06;
           s.vY += (s.orbitDir * spd * ty/tLen - s.vY) * 0.06;
           s.vZ += (s.orbitDir * spd * tz/tLen - s.vZ) * 0.06;
-          s.X += (htC.X - s.X) * 0.03;
-          s.Y += (htC.Y - s.Y) * 0.03;
-          s.Z += (htC.Z - s.Z) * 0.03;
+          const snapStr = heartPhase === 3 ? (1 - heartT) * 0.03 : 0.03;
+          s.X += (htC.X - s.X) * snapStr;
+          s.Y += (htC.Y - s.Y) * snapStr;
+          s.Z += (htC.Z - s.Z) * snapStr;
+          if (heartPhase === 3) {
+            const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z);
+            if (rXZ > 0.01) {
+              const tgX = -s.Z / rXZ, tgZ = s.X / rXZ;
+              const orbV = Math.sqrt(SS_GRAVITY / rXZ);
+              s.vX += (tgX * orbV - s.vX) * heartT * heartT * 0.1;
+              s.vZ += (tgZ * orbV - s.vZ) * heartT * heartT * 0.1;
+            }
+          }
         } else if (!s.mini && heartPhase > 0 && HT && HT.length > 0) {
           // Non-mini shooting stars pulled toward heart curve during heart phases
           let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -1076,10 +1086,6 @@
     }
 
     requestAnimationFrame(frame);
-    setInterval(() => {
-      if (heartPhase !== 0 || !window.cLog || engagedMode) return;
-      window.cLog('> two ✦, one shot. no pressure. all gravity.');
-    }, 28000);
   })();
 
   document.getElementById('yr').textContent = new Date().getFullYear();
