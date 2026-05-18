@@ -340,7 +340,7 @@
       const dz = 1.4 + z1 * cX;
       if (dz < 0.05) return null;
       const x1 = (sx - gcx) * dz / fov;
-      return { X: x1 * cY - z1 * sY, Y: (Math.random() - 0.5) * 0.04, Z: x1 * sY + z1 * cY, dz };
+      return { X: x1 * cY - z1 * sY + camOX, Y: (Math.random() - 0.5) * 0.04 + camOY, Z: x1 * sY + z1 * cY + camOZ, dz };
     }
 
     // Jacobian-inverse: convert screen-space velocity → 3D world velocity on XZ plane
@@ -360,10 +360,6 @@
       if (shootingStars.filter(s => !s.mini).length >= SS_MAX) {
         const oldest = shootingStars.find(s => !s.mini);
         if (oldest) oldest.dying = true;
-      }
-      if (engagedMode) {
-        // Super slo-mo: scale velocity down, keep on galactic plane
-        v.vX *= 0.15; v.vY *= 0.15; v.vZ *= 0.15;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
       if (engagedMode) followStar = shootingStars[shootingStars.length - 1];
@@ -797,9 +793,9 @@
           const vLen = Math.sqrt(followStar.vX*followStar.vX + followStar.vZ*followStar.vZ) + 1e-8;
           // Translate origin to just behind the star in direction of travel
           const behind = 0.0003;
-          camOX += (followStar.X - followStar.vX/vLen*behind - camOX) * 0.05;
-          camOY += (followStar.Y - camOY) * 0.05;
-          camOZ += (followStar.Z - followStar.vZ/vLen*behind - camOZ) * 0.05;
+          camOX = followStar.X - followStar.vX/vLen*behind;
+          camOY = followStar.Y;
+          camOZ = followStar.Z - followStar.vZ/vLen*behind;
           // Drive rotY directly (not via dragRY) so autoY accumulation can't cause a snap.
           // Wrap diff to shortest arc, then sync dragRY = rotY - autoY so the
           // general rotY += (autoY + dragRY - rotY)*0.1 at end of frame is a no-op.
