@@ -271,6 +271,7 @@
     const SS_TRAIL   = 80;
     const shootingStars = [];
     const starPairs = [];
+    const pairGhosts = [];
     let ssLX = 0, ssLY = 0, ssStartX = 0, ssStartY = 0, ssStartT = 0, ssPending = null;
     let ssIdCounter = 0;
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
@@ -360,56 +361,39 @@
       const pos = ssUnproject(sx, sy);
       if (!pos) return;
       const v = ss3DVel(vsx, vsy, pos.dz);
-      if (shootingStars.filter(s => !s.mini).length >= SS_MAX) {
-        const oldest = shootingStars.find(s => !s.mini);
-        if (oldest) oldest.dying = true;
-      }
+
       if (engagedMode) {
+        // Engaged mode: ghost only — no shootingStars entry
         v.vX *= 0.4; v.vY *= 0.4; v.vZ *= 0.4;
-        // Strip outward radial component
         const r2 = Math.sqrt(pos.X*pos.X + pos.Z*pos.Z);
         if (r2 > 0.01) {
           const radX = pos.X / r2, radZ = pos.Z / r2;
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        // Hard cap at orbital velocity — prevents escape even after radial strip
         const maxV = Math.sqrt(SS_GRAVITY * 0.15);
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
+        const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ,
+                        life: 1, t: 0, trail1: [], trail2: [] };
+        pairGhosts.push(ghost);
+        followGhost = ghost; camFollowT = 0.3;
+        if (!ssSpawn.hinted && window.cLog) {
+          ssSpawn.hinted = true;
+          setTimeout(() => { window.cLog('> two in one shot. the ring awaits.'); }, 1500);
+        }
+        return;
+      }
+
+      if (shootingStars.filter(s => !s.mini).length >= SS_MAX) {
+        const oldest = shootingStars.find(s => !s.mini);
+        if (oldest) oldest.dying = true;
       }
       shootingStars.push({ id: ssIdCounter++, mini: false, X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false });
-      if (engagedMode) {
-        // Second star — spawn the pair
-        const vLen2 = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ) + 1e-8;
-        const p1X = -v.vZ / vLen2, p1Z = v.vX / vLen2; // horiz perp to velocity
-        const pairR = 0.10;
-        const s1 = shootingStars[shootingStars.length - 1];
-        // Invisible ghost: camera tracks this; both stars orbit around it
-        const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ };
-        s1.X = ghost.X + p1X * pairR; s1.Y = ghost.Y; s1.Z = ghost.Z + p1Z * pairR;
-        s1.headColor = '#fff8c0'; s1.trailNear = '#ffdd00'; s1.trailFar = '#ff8800'; s1.isLeadStar = true;
-        // Start orbit at π/2 so s1 is above ghost, s2 below — vertical split visible from any camera angle
-        const s2 = { id: ssIdCounter++, mini: false,
-          X: ghost.X, Y: ghost.Y - pairR, Z: ghost.Z,
-          vX: v.vX, vY: v.vY, vZ: v.vZ, life: 1, trail: [], dying: false,
-          headColor: '#00ccff', trailNear: '#00aaff', trailFar: '#0044dd' };
-        s1.X = ghost.X; s1.Y = ghost.Y + pairR; s1.Z = ghost.Z;
-        shootingStars.push(s2);
-        starPairs.push({ s1, s2, ghost, angle: Math.PI / 2, rotSpeed: 2.5, p1X, p1Z, r: pairR, pairTime: 0 });
-        followGhost = ghost; camFollowT = 0.3;
-        if (window.cLogInstant) window.cLogInstant('> PAIR s1+s2 spawned');
-      } else {
-        if (window.cLogInstant) window.cLogInstant('> single star (eng=' + engagedMode + ')');
-      }
       if (window.cLogShot) window.cLogShot(ssIdCounter - 1);
       if (!ssSpawn.hinted && window.cLog) {
         ssSpawn.hinted = true;
-        if (engagedMode) {
-          setTimeout(() => { window.cLog('> ten special ✦ now.'); window.cLog('> two in one shot. the ring awaits.'); }, 1500);
-        } else {
-          setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> aim for the stars. no, literally.'); }, 1500);
-        }
+        setTimeout(() => { window.cLog('> two special ✦ hidden in the galaxy.'); window.cLog('> aim for the stars. no, literally.'); }, 1500);
       }
     }
 
@@ -740,23 +724,94 @@
           }
         }
       }
-      // force-draw: any non-lead pair star as large solid cyan circle
-      for (const s of shootingStars) {
-        if (s.mini || !s.trailNear || s.isLeadStar) continue;
-        const h = proj3(s.X, s.Y, s.Z);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = s.life;
-        if (h) {
-          ctx.fillStyle = '#00eeff';
-          ctx.beginPath(); ctx.arc(h.sx, h.sy, 28, 0, 6.2832); ctx.fill();
-        } else {
-          ctx.fillStyle = '#00eeff';
-          ctx.font = 'bold 13px monospace';
-          ctx.fillText('s2 off-cam', 10, 50);
-        }
-      }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawPairGhosts(dt, sinX, cosX, sinY, cosY) {
+      const W = canvas.width, H = canvas.height;
+      const gcx = W * 0.5, gcy = H * 0.5;
+      const fov = Math.max(W, H) * 1.6;
+      const dts = dt * 0.001;
+      function proj(X, Y, Z) {
+        const rx = X - camOX, ry = Y - camOY, rz = Z - camOZ;
+        const x1 =  rx * cosY + rz * sinY;
+        const z1 = -rx * sinY + rz * cosY;
+        const y2 =  ry * cosX - z1 * sinX;
+        const z2 =  ry * sinX + z1 * cosX;
+        const dz = camZ + z2;
+        if (dz < 0.01) return null;
+        const sc = fov / dz;
+        return { sx: x1 * sc + gcx, sy: y2 * sc + gcy, sc };
+      }
+      for (let pi = pairGhosts.length - 1; pi >= 0; pi--) {
+        const g = pairGhosts[pi];
+        // Ghost physics — same as engaged-mode shooting star
+        const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
+        const gr = Math.sqrt(gr2);
+        const ga = SS_GRAVITY * 0.15 / gr;
+        g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+        g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
+        g.t += dts;
+        g.life -= dts * 1000 / (SS_LIFE_MS * 6);
+        if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
+        const gp = proj(g.X, g.Y, g.Z);
+        if (!gp) continue;
+        // Camera-space horizontal offset — cosY/sinY are the camera-right world vector
+        // offsetPx pulses 80→160 so stars are always visible on screen
+        const offsetPx = 80 + 80 * Math.abs(Math.sin(Math.PI * g.t * 0.5));
+        const d = offsetPx / gp.sc; // world-space offset that gives exactly offsetPx on screen
+        const s1X = g.X + cosY * d, s1Z = g.Z + sinY * d; // yellow: camera-right
+        const s2X = g.X - cosY * d, s2Z = g.Z - sinY * d; // cyan:   camera-left
+        // Accumulate trail points in world space
+        g.trail1.push({ X: s1X, Y: g.Y, Z: s1Z });
+        g.trail2.push({ X: s2X, Y: g.Y, Z: s2Z });
+        if (g.trail1.length > 50) g.trail1.shift();
+        if (g.trail2.length > 50) g.trail2.shift();
+        // Draw trails
+        ctx.globalCompositeOperation = 'lighter';
+        for (let side = 0; side < 2; side++) {
+          const trail = side === 0 ? g.trail1 : g.trail2;
+          const near = side === 0 ? '#ffdd00' : '#00aaff';
+          const far  = side === 0 ? '#ff8800' : '#0044dd';
+          const tl = trail.length;
+          for (let j = 1; j < tl; j++) {
+            const f = j / tl;
+            const tp = proj(trail[j].X, trail[j].Y, trail[j].Z);
+            if (!tp) continue;
+            ctx.globalAlpha = f * f * g.life * 0.85;
+            ctx.fillStyle = f > 0.5 ? near : far;
+            const sz = Math.max(2, f * 7);
+            ctx.fillRect(tp.sx - sz * 0.5, tp.sy - sz * 0.5, sz, sz);
+          }
+        }
+        // Draw glows + heads
+        const p1 = proj(s1X, g.Y, s1Z);
+        const p2 = proj(s2X, g.Y, s2Z);
+        for (let side = 0; side < 2; side++) {
+          const p = side === 0 ? p1 : p2;
+          if (!p) continue;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = g.life;
+          const glowR = Math.min(W, H) * 0.12;
+          const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, glowR);
+          if (side === 0) {
+            grd.addColorStop(0,    'rgba(255,248,200,0.9)');
+            grd.addColorStop(0.15, 'rgba(255,210,60,0.7)');
+            grd.addColorStop(1,    'rgba(255,60,0,0)');
+          } else {
+            grd.addColorStop(0,    'rgba(0,220,255,0.9)');
+            grd.addColorStop(0.15, 'rgba(0,160,255,0.7)');
+            grd.addColorStop(1,    'rgba(0,20,120,0)');
+          }
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, glowR, 0, 6.2832); ctx.fill();
+          ctx.fillStyle = side === 0 ? '#fff8c0' : '#00ccff';
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, 10, 0, 6.2832); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
     }
 
     window.addEventListener('touchstart', e => {
@@ -924,7 +979,7 @@
       }
       if (heartPhase > 0) heartRot += dt * 0.00055;  // gentle orbit, ~one turn over 11s
       autoY += 0.00007 * dt * rotMult;
-      if (followGhost && !starPairs.some(p => p.ghost === followGhost)) followGhost = null;
+      if (followGhost && !pairGhosts.includes(followGhost)) followGhost = null;
       if (followStar && shootingStars.indexOf(followStar) === -1) followStar = null;
       const ft = followGhost || (engagedMode && followStar);
       if (ft) {
@@ -1158,6 +1213,7 @@
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       if (shootingStars.length) ssDraw(dt, sinX, cosX, sinY, cosY);
+      if (pairGhosts.length) drawPairGhosts(dt, sinX, cosX, sinY, cosY);
 
       const wantFade = shootingStars.length > 0 || engagedMode;
       if (wantFade !== heroFaded) {
