@@ -608,7 +608,7 @@
                 sp.killedById = s.id;
                 if (window.cHit) window.cHit(s.id);
                 spawnMiniStars(sp.s.x, sp.s.y, sp.s.z, engagedMode ? 3 : 10);
-                if (specialStars.filter(p => p.hitBy === s.id).length >= 2) triggerHeart();
+                if (!engagedMode && specialStars.filter(p => p.hitBy === s.id).length >= 2) triggerHeart();
               }
             }
           }
@@ -786,9 +786,10 @@
             followStar.X*followStar.X + followStar.Z*followStar.Z > 2.25) {
           followStar = null;
         } else {
-          const tRY = Math.atan2(-followStar.X, followStar.Z) + 0.12;
-          dragRY += (tRY - autoY - dragRY) * 0.06;
-          dragRX += (0.38 - dragRX) * 0.04;
+          // Face direction of travel, not star's position
+          const tRY = Math.atan2(-followStar.vX, followStar.vZ);
+          dragRY += (tRY - autoY - dragRY) * 0.07;
+          dragRX += (0.18 - dragRX) * 0.05;
           dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
         }
       }
@@ -1004,10 +1005,8 @@
 
     requestAnimationFrame(frame);
     setInterval(() => {
-      if (heartPhase !== 0 || !window.cLog) return;
-      window.cLog(engagedMode
-        ? '> ten ✦ out there. two in one shot. no pressure. all gravity.'
-        : '> two ✦, one shot. no pressure. all gravity.');
+      if (heartPhase !== 0 || !window.cLog || engagedMode) return;
+      window.cLog('> two ✦, one shot. no pressure. all gravity.');
     }, 28000);
   })();
 
