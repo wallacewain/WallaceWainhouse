@@ -473,6 +473,10 @@
       triggerHeart();
     };
 
+    window.camState = function() {
+      return { engagedMode, followStar: followStar ? { X: followStar.X, Y: followStar.Y, Z: followStar.Z, life: followStar.life } : null, camOX, camOY, camOZ };
+    };
+
     function ssDraw(dt, sinX, cosX, sinY, cosY) {
       const W = canvas.width, H = canvas.height;
       const gcx = W * 0.5, gcy = H * 0.5;
