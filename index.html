@@ -789,17 +789,19 @@
           const near = side === 0 ? '#ffdd00' : '#00aaff';
           const far  = side === 0 ? '#ff8800' : '#0044dd';
           const tl = trail.length;
+          const ssR = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
           for (let j = 1; j < tl; j++) {
             const f = j / tl;
             const tp = proj(trail[j].X, trail[j].Y, trail[j].Z);
             if (!tp) continue;
-            ctx.globalAlpha = f * f * g.life * 0.85;
+            ctx.globalAlpha = f * f * g.life * 0.9;
             ctx.fillStyle = f > 0.5 ? near : far;
-            const sz = Math.max(2, f * 7);
+            const sz = Math.max(ssR * 0.4, f * ssR);
             ctx.fillRect(tp.sx - sz * 0.5, tp.sy - sz * 0.5, sz, sz);
           }
         }
-        // Draw glows + heads
+        // Draw glows + heads — same sizing as regular shooting stars
+        const ssR = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
         const p1 = proj(s1X, s1Y, s1Z);
         const p2 = proj(s2X, s2Y, s2Z);
         for (let side = 0; side < 2; side++) {
@@ -807,21 +809,23 @@
           if (!p) continue;
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = g.life;
-          const glowR = Math.min(W, H) * 0.12;
+          const glowR = Math.min(W, H) * 0.15;
           const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, glowR);
           if (side === 0) {
-            grd.addColorStop(0,    'rgba(255,248,200,0.9)');
-            grd.addColorStop(0.15, 'rgba(255,210,60,0.7)');
+            grd.addColorStop(0,    'rgba(255,252,220,1)');
+            grd.addColorStop(0.08, 'rgba(255,220,80,0.9)');
+            grd.addColorStop(0.3,  'rgba(255,120,0,0.4)');
             grd.addColorStop(1,    'rgba(255,60,0,0)');
           } else {
-            grd.addColorStop(0,    'rgba(0,220,255,0.9)');
-            grd.addColorStop(0.15, 'rgba(0,160,255,0.7)');
+            grd.addColorStop(0,    'rgba(220,248,255,1)');
+            grd.addColorStop(0.08, 'rgba(80,200,255,0.9)');
+            grd.addColorStop(0.3,  'rgba(0,80,220,0.4)');
             grd.addColorStop(1,    'rgba(0,20,120,0)');
           }
           ctx.fillStyle = grd;
           ctx.beginPath(); ctx.arc(p.sx, p.sy, glowR, 0, 6.2832); ctx.fill();
-          ctx.fillStyle = side === 0 ? '#fff8c0' : '#00ccff';
-          ctx.beginPath(); ctx.arc(p.sx, p.sy, 10, 0, 6.2832); ctx.fill();
+          ctx.fillStyle = side === 0 ? '#fffce8' : '#e8f8ff';
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, ssR, 0, 6.2832); ctx.fill();
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
@@ -1014,7 +1018,7 @@
         dragRY = rotY - autoY;
         dragRX += (0.12 - dragRX) * 0.017;
         dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
-        camZ += (0.37 - camZ) * 0.005;
+        camZ += ((followGhost ? 0.20 : 0.37) - camZ) * 0.008;
       } else {
         camOX *= 0.98; camOY *= 0.98; camOZ *= 0.98;
         camZ += (1.4 - camZ) * 0.04;
