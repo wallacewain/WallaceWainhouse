@@ -491,7 +491,8 @@
         const z2 =  ry * sinX + z1 * cosX;
         const dz = camZ + z2;
         if (dz < 0.01) return null;
-        return { sx: x1 * fov / dz + gcx, sy: y2 * fov / dz + gcy };
+        const sc = fov / dz;
+        return { sx: x1 * sc + gcx, sy: y2 * sc + gcy, sc };
       }
 
       // Unproject a screen point to the Y=0 world plane (same logic as ssUnproject)
@@ -592,6 +593,7 @@
           shootingStars.splice(i, 1); continue;
         }
         const starR = s.mini ? ssR * 0.45 : ssR;
+        const ssWorldR = ssR * 1.4 / fov;
         const tl = s.trail.length;
         for (let j = 1; j < tl; j++) {
           const f = j / tl;
@@ -599,7 +601,7 @@
           if (!p) continue;
           ctx.globalAlpha = f * f * s.life * 0.9;
           ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? '#fff0a0' : '#ff8820');
-          const sz = Math.max(starR * 0.4, f * starR);
+          const sz = Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc;
           ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
         }
         const head = proj3(s.X, s.Y, s.Z);
@@ -624,7 +626,8 @@
           } else {
             ctx.globalAlpha = s.life * 0.95;
             ctx.fillStyle = '#fffce8';
-            ctx.beginPath(); ctx.arc(head.sx, head.sy, starR, 0, 6.2832); ctx.fill();
+            const headR = ssWorldR * head.sc;
+            ctx.beginPath(); ctx.arc(head.sx, head.sy, headR, 0, 6.2832); ctx.fill();
           }
           if (!s.mini && !s.dying && heartPhase === 0) {
             for (const sp of specialStars) {
