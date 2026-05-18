@@ -495,6 +495,16 @@
       triggerHeart();
     };
 
+    // Tap the debug overlay (top-left ~100×50 CSS px) to jump straight to engaged mode
+    canvas.addEventListener('click', e => {
+      const s = canvas.width / canvas.offsetWidth;
+      if (e.offsetX * s < 310 && e.offsetY * s < 104 && !engagedMode && heartPhase === 0) {
+        engagedMode = true;
+        rebuildSpecialStars(10);
+        ssSpawn.hinted = false;
+      }
+    });
+
     window.camState = function() {
       return { engagedMode, followStar: followStar ? { X: followStar.X, Y: followStar.Y, Z: followStar.Z, life: followStar.life } : null, camOX, camOY, camOZ };
     };
@@ -1123,17 +1133,24 @@
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       if (shootingStars.length) ssDraw(dt, sinX, cosX, sinY, cosY);
-      if (engagedMode) {
+      {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = 'rgba(0,0,0,0.82)';
-        ctx.fillRect(8, 8, 280, 90);
-        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(8, 8, 300, 96);
         ctx.font = '13px monospace';
-        const nonMini = shootingStars.filter(s => !s.mini);
-        ctx.fillText('SS:' + nonMini.length + '  pairs:' + starPairs.length + '  FG:' + (followGhost?1:0), 18, 30);
-        ctx.fillText('camX:' + camOX.toFixed(3) + '  fZ:' + camZ.toFixed(2), 18, 52);
-        ctx.fillText('s1Y:' + (nonMini[0]?nonMini[0].Y.toFixed(3):'--') + '  s2Y:' + (nonMini[1]?nonMini[1].Y.toFixed(3):'--'), 18, 74);
+        if (!engagedMode) {
+          ctx.fillStyle = '#ffdd00';
+          ctx.fillText('▶ TAP HERE → engaged mode', 18, 38);
+          ctx.fillStyle = '#888888';
+          ctx.fillText('(pair stars only visible there)', 18, 62);
+        } else {
+          const nonMini = shootingStars.filter(s => !s.mini);
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText('SS:' + nonMini.length + '  pairs:' + starPairs.length + '  FG:' + (followGhost?1:0), 18, 30);
+          ctx.fillText('camX:' + camOX.toFixed(3) + '  fZ:' + camZ.toFixed(2), 18, 52);
+          ctx.fillText('s1Y:' + (nonMini[0]?nonMini[0].Y.toFixed(3):'--') + '  s2Y:' + (nonMini[1]?nonMini[1].Y.toFixed(3):'--'), 18, 74);
+        }
       }
       const wantFade = shootingStars.length > 0 || engagedMode;
       if (wantFade !== heroFaded) {
