@@ -618,7 +618,7 @@
           const tX = -s.Z / rXZ * (s.fwTang || 1);
           const tZ =  s.X / rXZ * (s.fwTang || 1);
           const curTang = s.vX * tX + s.vZ * tZ;
-          const wantTang = 0.030;
+          const wantTang = 0.120;
           s.vX += tX * (wantTang - curTang) * 1.2 * dts;
           s.vZ += tZ * (wantTang - curTang) * 1.2 * dts;
           // Exponential drag for first 4s — fast burst decelerates across screen
