@@ -410,7 +410,7 @@
         for (let i = 0; i < 18; i++) {
           const phi = Math.acos(2 * Math.random() - 1);
           const th  = Math.random() * Math.PI * 2;
-          const spd = 0.04 + Math.random() * 0.05; // fast burst, drag will slow them
+          const spd = 0.12 + Math.random() * 0.15; // 3× faster — drag spreads them wide
           shootingStars.push({
             id: ssIdCounter++, mini: true, firework: true,
             fireworkColor: palette[Math.floor(Math.random() * palette.length)],
@@ -418,7 +418,8 @@
             vX: spd * Math.sin(phi) * Math.cos(th),
             vY: spd * Math.sin(phi) * Math.sin(th) * 0.15,
             vZ: spd * Math.cos(phi),
-            life: 1.0, trail: [], dying: false, fwAge: 0
+            life: 1.0, trail: [], dying: false,
+            fwAge: 0, fwTang: Math.random() < 0.5 ? 1 : -1
           });
         }
       }
@@ -613,8 +614,8 @@
         } else if (s.firework) {
           s.fwAge += dts;
           // Exponential drag for first 4s — fast burst decelerates across screen
-          if (s.fwAge < 4) { const df = 1 - 0.9 * dts; s.vX *= df; s.vY *= df; s.vZ *= df; }
-          // Ring suck: find nearest heartTarget and pull toward it, t=1.5→5s
+          if (s.fwAge < 4) { const df = 1 - 0.7 * dts; s.vX *= df; s.vY *= df; s.vZ *= df; }
+          // Ring suck: find nearest heartTarget, pull + orbit, t=1.5→5s
           const ringT = Math.max(0, Math.min(1, (s.fwAge - 1.5) / 3.5));
           if (ringT > 0 && heartTargets && heartTargets.length > 0) {
             let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -625,11 +626,20 @@
             }
             const rx = bX - s.X, ry = bY - s.Y, rz = bZ - s.Z;
             const rDist = Math.sqrt(bestD2) + 1e-8;
-            const pullStr = ringT * ringT * Math.min(rDist * 10, 1.8);
+            // Distance-proportional pull so far particles converge at same rate
+            const pullStr = ringT * ringT * rDist * 14;
             s.vX += rx / rDist * pullStr * dts;
             s.vY += ry / rDist * pullStr * dts;
             s.vZ += rz / rDist * pullStr * dts;
-            if (rDist < 0.006) { s.vX *= 0.93; s.vY *= 0.93; s.vZ *= 0.93; }
+            // Tangential orbit boost as particles approach ring
+            const ringRad = Math.sqrt(bX*bX + bZ*bZ) + 1e-8;
+            const tX = -bZ / ringRad * (s.fwTang || 1);
+            const tZ =  bX / ringRad * (s.fwTang || 1);
+            const orbitStr = ringT * Math.max(0, 1 - rDist / 0.03) * 1.2;
+            s.vX += tX * orbitStr * dts;
+            s.vZ += tZ * orbitStr * dts;
+            // Damp when on ring to settle into orbit rather than bouncing
+            if (rDist < 0.008) { s.vX *= 0.90; s.vY *= 0.90; s.vZ *= 0.90; }
           }
           // Gravity: fades in t=4→8s
           const gravFade = Math.max(0, Math.min(1, (s.fwAge - 4) / 4));
