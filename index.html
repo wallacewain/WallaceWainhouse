@@ -467,11 +467,10 @@
     }
 
     window.cheatEngage = function() {
-      if (engagedMode) return;
-      heartPhase = 0; heartT = 0; rotMult = 1;
-      engagedMode = true;
-      rebuildSpecialStars(40);      ssSpawn.hinted = false;
-      if (window.cLogInstant) window.cLogInstant('> engaged ✓');
+      if (engagedMode || heartPhase !== 0) return;
+      heartCount = 3;
+      triggerHeart();
+      if (window.cLogInstant) window.cLogInstant('> ♥ ×4');
     };
     if (new URLSearchParams(location.search).get('e') !== null) setTimeout(() => { window.cheatEngage(); if (window.cLogInstant) window.cLogInstant('> ?e loaded'); }, 200);
 
