@@ -636,14 +636,6 @@
             s.vZ += rz / rDist * pullStr * dts;
             if (rDist < 0.008) { s.vX *= 0.90; s.vY *= 0.90; s.vZ *= 0.90; }
           }
-          // Gravity: fades in t=4→8s
-          const gravFade = Math.max(0, Math.min(1, (s.fwAge - 4) / 4));
-          if (gravFade > 0) {
-            const r2 = s.X*s.X + s.Y*s.Y + s.Z*s.Z + SS_SOFTEN;
-            const r  = Math.sqrt(r2);
-            const a  = SS_GRAVITY * 0.3 * gravFade / r;
-            s.vX -= a * s.X / r * dts; s.vY -= a * s.Y / r * dts; s.vZ -= a * s.Z / r * dts;
-          }
         } else if (s.trailNear && engagedMode) {
           // Pair star — ghost handles orbital gravity; skip individual gravity
         } else {
