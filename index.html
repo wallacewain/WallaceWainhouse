@@ -799,8 +799,8 @@
         ctx.globalCompositeOperation = 'lighter';
         for (let side = 0; side < 2; side++) {
           const trail = side === 0 ? g.trail1 : g.trail2;
-          const near = side === 0 ? '#ffdd00' : '#00aaff';
-          const far  = side === 0 ? '#ff8800' : '#0044dd';
+          const near = side === 0 ? '#ffe0a0' : '#b8ccff';
+          const far  = side === 0 ? '#ff9940' : '#7090cc';
           const tl = trail.length;
           const ssR = (isMobile ? 1 : 0.7) * Math.max(2.5, Math.max(W, H) * 0.003);
           for (let j = 1; j < tl; j++) {
@@ -825,19 +825,21 @@
           const glowR = Math.min(W, H) * 0.15;
           const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, glowR);
           if (side === 0) {
-            grd.addColorStop(0,    'rgba(255,252,220,1)');
-            grd.addColorStop(0.08, 'rgba(255,220,80,0.9)');
-            grd.addColorStop(0.3,  'rgba(255,120,0,0.4)');
-            grd.addColorStop(1,    'rgba(255,60,0,0)');
+            // warm amber — matches galaxy's orange/K-type stars
+            grd.addColorStop(0,    'rgba(255,252,225,1)');
+            grd.addColorStop(0.08, 'rgba(255,225,120,0.9)');
+            grd.addColorStop(0.3,  'rgba(255,150,40,0.4)');
+            grd.addColorStop(1,    'rgba(255,80,0,0)');
           } else {
-            grd.addColorStop(0,    'rgba(220,248,255,1)');
-            grd.addColorStop(0.08, 'rgba(80,200,255,0.9)');
-            grd.addColorStop(0.3,  'rgba(0,80,220,0.4)');
-            grd.addColorStop(1,    'rgba(0,20,120,0)');
+            // icy blue-white — matches galaxy's B/A-type stars
+            grd.addColorStop(0,    'rgba(225,235,255,1)');
+            grd.addColorStop(0.08, 'rgba(165,190,255,0.85)');
+            grd.addColorStop(0.3,  'rgba(110,140,220,0.35)');
+            grd.addColorStop(1,    'rgba(70,100,190,0)');
           }
           ctx.fillStyle = grd;
           ctx.beginPath(); ctx.arc(p.sx, p.sy, glowR, 0, 6.2832); ctx.fill();
-          ctx.fillStyle = side === 0 ? '#fffce8' : '#e8f8ff';
+          ctx.fillStyle = side === 0 ? '#fffaea' : '#eef1ff';
           ctx.beginPath(); ctx.arc(p.sx, p.sy, ssR * 3.5, 0, 6.2832); ctx.fill();
         }
         // Hit detection — both star heads can explode special stars
