@@ -449,108 +449,116 @@
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (ctx.state === 'suspended') {
-          const r = () => ctx.resume();
-          document.addEventListener('pointerdown', r, { once: true });
+          document.addEventListener('pointerdown', () => ctx.resume(), { once: true });
         }
 
-        // Synthetic reverb: exponentially decaying stereo noise impulse (2.5 s tail)
-        const irLen = Math.floor(ctx.sampleRate * 2.5);
+        // Longer, lusher reverb tail (3.5 s)
+        const irLen = Math.floor(ctx.sampleRate * 3.5);
         const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
         for (let c = 0; c < 2; c++) {
           const d = ir.getChannelData(c);
           for (let i = 0; i < irLen; i++)
-            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.0);
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.6);
         }
         const rev = ctx.createConvolver(); rev.buffer = ir;
 
-        // Signal chain: bus → dry+wet → master → brightness shelf → out
+        // Master → brightness shelf → out
         const master = ctx.createGain(); master.gain.value = 0;
-        master.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 5);
+        master.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 6);
         const shelf = ctx.createBiquadFilter();
         shelf.type = 'highshelf'; shelf.frequency.value = 1400; shelf.gain.value = 0;
         master.connect(shelf); shelf.connect(ctx.destination);
 
+        // Slow breath swell: ±0.06 at ~14 s period
+        const swellOsc = ctx.createOscillator();
+        const swellAmt = ctx.createGain();
+        swellOsc.frequency.value = 0.072; swellAmt.gain.value = 0.06;
+        swellOsc.connect(swellAmt); swellAmt.connect(master.gain);
+        swellOsc.start();
+
         const bus = ctx.createGain();
-        const dry = ctx.createGain(); dry.gain.value = 0.60;
-        const wet = ctx.createGain(); wet.gain.value = 0.45;
+        const dry = ctx.createGain(); dry.gain.value = 0.52;
+        const wet = ctx.createGain(); wet.gain.value = 0.52;
         bus.connect(dry); bus.connect(rev);
         rev.connect(wet); dry.connect(master); wet.connect(master);
 
-        const melBus = ctx.createGain(); melBus.gain.value = 0.80;
+        const melBus = ctx.createGain(); melBus.gain.value = 0.72;
         melBus.connect(bus);
 
-        // String voice: 2 detuned saws + 1 triangle, each with a slow vibrato LFO
+        // Warm string voice: mostly triangle/sine, just a hint of saw for body
         function mkNote(freq, dest, vol, atk) {
-          vol = vol || 0.18; atk = atk || 1.8;
+          vol = vol || 0.18; atk = atk || 2.5;
           const gate = ctx.createGain();
           gate.gain.setValueAtTime(0, ctx.currentTime);
           gate.gain.linearRampToValueAtTime(vol, ctx.currentTime + atk);
           const lp = ctx.createBiquadFilter();
-          lp.type = 'lowpass'; lp.frequency.value = 2000; lp.Q.value = 0.5;
+          lp.type = 'lowpass'; lp.frequency.value = 1600; lp.Q.value = 0.4;
           lp.connect(gate); gate.connect(dest);
           const vs = [];
           for (const [det, type, g] of [
-            [0, 'sawtooth', 0.30], [10, 'sawtooth', 0.22],
-            [-10, 'sawtooth', 0.22], [0, 'triangle', 0.26]
+            [0,  'triangle', 0.42], [0,  'sawtooth', 0.18],
+            [11, 'sawtooth', 0.16], [-11,'sawtooth', 0.16], [0, 'sine', 0.08]
           ]) {
             const o = ctx.createOscillator(), lfo = ctx.createOscillator();
             const lfog = ctx.createGain(), og = ctx.createGain();
             o.type = type; o.frequency.value = freq; o.detune.value = det;
-            lfo.frequency.value = 4.3 + Math.random();
-            lfog.gain.value = 3 + Math.random() * 2;
+            lfo.frequency.value = 4.8 + Math.random() * 0.6;
+            lfog.gain.value = 6 + Math.random() * 3;   // deeper vibrato
             og.gain.value = g;
             lfo.connect(lfog); lfog.connect(o.detune);
             o.connect(og); og.connect(lp);
             o.start(); lfo.start(); vs.push(o, lfo);
           }
           return { rel(t) {
-            t = t || 1.5;
+            t = t || 2.0;
             gate.gain.setTargetAtTime(0, ctx.currentTime, t / 3);
             setTimeout(() => vs.forEach(v => { try { v.stop(); } catch(e) {} }), t * 1000 + 300);
           }};
         }
 
-        // D major chord progression: D → G → A → Bm, 10 s each
+        // C major with rich 7ths: Cmaj7 → Am7 → Fmaj7 → G7, 13 s each
         const chords = [
-          [146.83, 220.00, 293.66, 369.99, 440.00], // D maj: D3 A3 D4 F#4 A4
-          [196.00, 293.66, 392.00, 493.88],           // G maj: G3 D4 G4 B4
-          [220.00, 329.63, 440.00, 554.37],           // A maj: A3 E4 A4 C#5
-          [246.94, 369.99, 493.88, 587.33],           // Bm:    B3 F#4 B4 D5
+          [65.41, 130.81, 196.00, 261.63, 329.63, 493.88], // Cmaj7: C2 C3 G3 C4 E4 B4
+          [110.00, 164.81, 261.63, 329.63, 440.00],         // Am7:   A2 E3 C4 E4 A4
+          [87.31,  174.61, 261.63, 349.23, 523.25],         // Fmaj7: F2 F3 C4 F4 C5
+          [97.999, 196.00, 246.94, 293.66, 440.00],         // G7:    G2 G3 B3 D4 A4
         ];
         let ci = 0, cn = [];
         function setChord(i) {
-          cn.forEach(n => n.rel(2.5)); cn = [];
+          cn.forEach(n => n.rel(3.5)); cn = [];
           chords[i].forEach((f, k) => setTimeout(() => {
             if (!_mus) return;
-            const v = k === 0 ? 0.13 : k === chords[i].length - 1 ? 0.17 : 0.12;
-            cn.push(mkNote(f, bus, v, 1.8 + k * 0.2));
-          }, k * 220));
+            const v = k === 0 ? 0.16 : k === chords[i].length - 1 ? 0.15 : 0.12;
+            cn.push(mkNote(f, bus, v, 2.5 + k * 0.3));
+          }, k * 300));
         }
         setChord(0);
         const cTimer = setInterval(() => {
           if (!_mus) { clearInterval(cTimer); return; }
           ci = (ci + 1) % chords.length; setChord(ci);
-        }, 10000);
+        }, 13000);
 
-        // Melody: D major scale B3→D5, direction biased by rise/fall
-        const scale = [246.94, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 554.37, 587.33];
-        let mi = 4, mn = null, mTimer = null;
+        // Melody: C major scale from G3 (cello register) — slow, lyrical
+        const scale = [196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
+        //              G3      A3      B3      C4      D4      E4      F4      G4      A4      B4
+        let mi = 2, mn = null, mTimer = null;
         function nextMel() {
-          if (mn) mn.rel(1.5); mn = null;
+          if (mn) mn.rel(2.0); mn = null;
           const bias = _musRise > 0.006 ? 1 : _musRise < -0.006 ? -1 : 0;
           const r = Math.random();
           mi = Math.max(0, Math.min(scale.length - 1,
-            mi + bias + (r < 0.45 ? 1 : -1) * (r < 0.12 ? 2 : 1)));
-          mn = mkNote(scale[mi], melBus, 0.30, 1.0);
-          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 2500 + Math.random() * 2500);
+            mi + bias + (r < 0.5 ? 1 : -1) * (r < 0.15 ? 2 : 1)));
+          mn = mkNote(scale[mi], melBus, 0.32, 1.4);
+          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 4000 + Math.random() * 4000);
         }
-        setTimeout(() => { if (_mus) nextMel(); }, 2800);
+        setTimeout(() => { if (_mus) nextMel(); }, 3500);
 
-        _mus = { ctx, shelf, cTimer, mTimer,
+        _mus = { ctx, shelf, swellOsc, cTimer, mTimer,
           stop() {
             clearInterval(this.cTimer); clearTimeout(this.mTimer);
-            master.gain.setTargetAtTime(0, this.ctx.currentTime, 3.0);
-            setTimeout(() => { try { this.ctx.close(); } catch(e) {} }, 10000);
+            try { this.swellOsc.stop(); } catch(e) {}
+            master.gain.setTargetAtTime(0, this.ctx.currentTime, 3.5);
+            setTimeout(() => { try { this.ctx.close(); } catch(e) {} }, 12000);
             _mus = null;
           }
         };
