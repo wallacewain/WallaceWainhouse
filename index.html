@@ -448,110 +448,142 @@
       if (_mus) return;
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        if (ctx.state === 'suspended') {
+        if (ctx.state === 'suspended')
           document.addEventListener('pointerdown', () => ctx.resume(), { once: true });
-        }
 
-        // Longer, lusher reverb tail (3.5 s)
-        const irLen = Math.floor(ctx.sampleRate * 3.5);
+        // Bright, airy reverb (3 s)
+        const irLen = Math.floor(ctx.sampleRate * 3.0);
         const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
         for (let c = 0; c < 2; c++) {
           const d = ir.getChannelData(c);
           for (let i = 0; i < irLen; i++)
-            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.6);
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.4);
         }
         const rev = ctx.createConvolver(); rev.buffer = ir;
 
-        // Master → brightness shelf → out
+        // Master → gentle high-shelf (+2 dB air) → out
         const master = ctx.createGain(); master.gain.value = 0;
-        master.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 6);
+        master.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 6);
         const shelf = ctx.createBiquadFilter();
-        shelf.type = 'highshelf'; shelf.frequency.value = 1400; shelf.gain.value = 0;
+        shelf.type = 'highshelf'; shelf.frequency.value = 2200; shelf.gain.value = 2;
         master.connect(shelf); shelf.connect(ctx.destination);
 
-        // Slow breath swell: ±0.06 at ~14 s period
+        // Breath swell ±0.05 every ~12 s
         const swellOsc = ctx.createOscillator();
         const swellAmt = ctx.createGain();
-        swellOsc.frequency.value = 0.072; swellAmt.gain.value = 0.06;
+        swellOsc.frequency.value = 0.083; swellAmt.gain.value = 0.05;
         swellOsc.connect(swellAmt); swellAmt.connect(master.gain);
         swellOsc.start();
 
         const bus = ctx.createGain();
-        const dry = ctx.createGain(); dry.gain.value = 0.52;
-        const wet = ctx.createGain(); wet.gain.value = 0.52;
+        const dry = ctx.createGain(); dry.gain.value = 0.55;
+        const wet = ctx.createGain(); wet.gain.value = 0.48;
         bus.connect(dry); bus.connect(rev);
         rev.connect(wet); dry.connect(master); wet.connect(master);
 
-        const melBus = ctx.createGain(); melBus.gain.value = 0.72;
+        const melBus = ctx.createGain(); melBus.gain.value = 0.80;
         melBus.connect(bus);
+        const arpBus = ctx.createGain(); arpBus.gain.value = 0.55;
+        arpBus.connect(bus);
 
-        // Warm string voice: mostly triangle/sine, just a hint of saw for body
-        function mkNote(freq, dest, vol, atk) {
-          vol = vol || 0.18; atk = atk || 2.5;
+        // String pad: sine + triangle dominant, tiny saw for warmth, deep vibrato
+        function mkPad(freq, dest, vol, atk) {
+          vol = vol || 0.15; atk = atk || 2.5;
           const gate = ctx.createGain();
           gate.gain.setValueAtTime(0, ctx.currentTime);
           gate.gain.linearRampToValueAtTime(vol, ctx.currentTime + atk);
           const lp = ctx.createBiquadFilter();
-          lp.type = 'lowpass'; lp.frequency.value = 1600; lp.Q.value = 0.4;
+          lp.type = 'lowpass'; lp.frequency.value = 2200; lp.Q.value = 0.4;
           lp.connect(gate); gate.connect(dest);
           const vs = [];
           for (const [det, type, g] of [
-            [0,  'triangle', 0.42], [0,  'sawtooth', 0.18],
-            [11, 'sawtooth', 0.16], [-11,'sawtooth', 0.16], [0, 'sine', 0.08]
+            [0,'sine',0.35],[0,'triangle',0.38],[12,'triangle',0.15],[-12,'triangle',0.15],[0,'sawtooth',0.07]
           ]) {
             const o = ctx.createOscillator(), lfo = ctx.createOscillator();
             const lfog = ctx.createGain(), og = ctx.createGain();
             o.type = type; o.frequency.value = freq; o.detune.value = det;
-            lfo.frequency.value = 4.8 + Math.random() * 0.6;
-            lfog.gain.value = 6 + Math.random() * 3;   // deeper vibrato
+            lfo.frequency.value = 5.0 + Math.random() * 0.8;
+            lfog.gain.value = 7 + Math.random() * 4;
             og.gain.value = g;
             lfo.connect(lfog); lfog.connect(o.detune);
             o.connect(og); og.connect(lp);
             o.start(); lfo.start(); vs.push(o, lfo);
           }
           return { rel(t) {
-            t = t || 2.0;
+            t = t || 2.5;
             gate.gain.setTargetAtTime(0, ctx.currentTime, t / 3);
             setTimeout(() => vs.forEach(v => { try { v.stop(); } catch(e) {} }), t * 1000 + 300);
           }};
         }
 
-        // C major with rich 7ths: Cmaj7 → Am7 → Fmaj7 → G7, 13 s each
+        // Harp pluck: instant attack, exponential decay, tiny pitch-settle for realism
+        function mkPluck(freq, dest, vol) {
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(vol || 0.16, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass'; lp.frequency.value = 5000; lp.Q.value = 0.7;
+          const o = ctx.createOscillator();
+          o.type = 'triangle'; o.frequency.value = freq;
+          o.frequency.setValueAtTime(freq * 1.007, ctx.currentTime);
+          o.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.05);
+          o.connect(lp); lp.connect(g); g.connect(dest);
+          o.start();
+          setTimeout(() => { try { o.stop(); } catch(e) {} }, 2600);
+        }
+
+        // G major — all major / suspended chords, no minor, 12 s each
         const chords = [
-          [65.41, 130.81, 196.00, 261.63, 329.63, 493.88], // Cmaj7: C2 C3 G3 C4 E4 B4
-          [110.00, 164.81, 261.63, 329.63, 440.00],         // Am7:   A2 E3 C4 E4 A4
-          [87.31,  174.61, 261.63, 349.23, 523.25],         // Fmaj7: F2 F3 C4 F4 C5
-          [97.999, 196.00, 246.94, 293.66, 440.00],         // G7:    G2 G3 B3 D4 A4
+          [97.999, 196.00, 246.94, 293.66, 369.99, 440.00], // Gmaj9: G2 G3 B3 D4 F#4 A4
+          [130.81, 196.00, 261.63, 293.66, 329.63, 392.00], // Cadd9: C3 G3 C4 D4 E4 G4
+          [146.83, 220.00, 293.66, 369.99, 440.00],          // D:    D3 A3 D4 F#4 A4
+          [110.00, 220.00, 293.66, 329.63, 440.00],          // Asus2: A2 A3 D4 E4 A4
+        ];
+        const arpNotes = [               // sparkle notes for each chord (higher octave)
+          [392.00, 493.88, 587.33, 739.99],  // G4 B4 D5 F#5
+          [261.63, 329.63, 392.00, 587.33],  // C4 E4 G4 D5
+          [293.66, 369.99, 440.00, 587.33],  // D4 F#4 A4 D5
+          [220.00, 293.66, 329.63, 440.00],  // A3 D4 E4 A4
         ];
         let ci = 0, cn = [];
         function setChord(i) {
           cn.forEach(n => n.rel(3.5)); cn = [];
           chords[i].forEach((f, k) => setTimeout(() => {
             if (!_mus) return;
-            const v = k === 0 ? 0.16 : k === chords[i].length - 1 ? 0.15 : 0.12;
-            cn.push(mkNote(f, bus, v, 2.5 + k * 0.3));
-          }, k * 300));
+            cn.push(mkPad(f, bus, k === 0 ? 0.15 : 0.11, 2.5 + k * 0.35));
+          }, k * 380));
         }
         setChord(0);
         const cTimer = setInterval(() => {
           if (!_mus) { clearInterval(cTimer); return; }
           ci = (ci + 1) % chords.length; setChord(ci);
-        }, 13000);
+        }, 12000);
 
-        // Melody: C major scale from G3 (cello register) — slow, lyrical
-        const scale = [196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
-        //              G3      A3      B3      C4      D4      E4      F4      G4      A4      B4
-        let mi = 2, mn = null, mTimer = null;
+        // Harp sparkle: slow upward arpeggio every 3-6 s
+        function scheduleArp() {
+          if (!_mus) return;
+          arpNotes[ci].forEach((f, i) => setTimeout(() => {
+            if (_mus) mkPluck(f, arpBus, 0.17 - i * 0.02);
+          }, i * 340));
+          setTimeout(scheduleArp, 3200 + Math.random() * 3000);
+        }
+        setTimeout(scheduleArp, 2200);
+
+        // Melody: G pentatonic (G A B D E), violin register, quick attack
+        const scale = [392.00, 440.00, 493.88, 587.33, 659.26, 783.99, 880.00, 987.77];
+        //              G4      A4      B4      D5      E5      G5      A5      B5
+        let mi = 1, mn = null, mTimer = null;
         function nextMel() {
-          if (mn) mn.rel(2.0); mn = null;
+          if (mn) mn.rel(1.8); mn = null;
           const bias = _musRise > 0.006 ? 1 : _musRise < -0.006 ? -1 : 0;
           const r = Math.random();
+          const leap = r < 0.18 ? 3 : r < 0.42 ? 2 : 1;  // occasional romantic leaps
           mi = Math.max(0, Math.min(scale.length - 1,
-            mi + bias + (r < 0.5 ? 1 : -1) * (r < 0.15 ? 2 : 1)));
-          mn = mkNote(scale[mi], melBus, 0.32, 1.4);
-          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 4000 + Math.random() * 4000);
+            mi + (bias + (r < 0.55 ? 1 : -1)) * leap));
+          mn = mkPad(scale[mi], melBus, 0.26, 0.7);
+          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 3000 + Math.random() * 3500);
         }
-        setTimeout(() => { if (_mus) nextMel(); }, 3500);
+        setTimeout(() => { if (_mus) nextMel(); }, 3200);
 
         _mus = { ctx, shelf, swellOsc, cTimer, mTimer,
           stop() {
