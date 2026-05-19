@@ -377,22 +377,24 @@
       if (engagedMode) {
         // While a pair is alive and camera is following it, ignore further swipes
         if (followGhost && pairGhosts.length > 0) return;
-        // Engaged mode: ghost only — no shootingStars entry
-        v.vX *= 0.4; v.vY *= 0.4; v.vZ *= 0.4;
+        // Strip outward radial component, then fix to a constant speed —
+        // direction comes from the swipe, magnitude is always the same
         const r2 = Math.sqrt(pos.X*pos.X + pos.Z*pos.Z);
         if (r2 > 0.01) {
           const radX = pos.X / r2, radZ = pos.Z / r2;
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        const maxV = Math.sqrt(SS_GRAVITY * 0.15);
+        const PAIR_SPEED = 0.025;
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
-        if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
+        if (spd > 0.001) { const sc = PAIR_SPEED / spd; v.vX *= sc; v.vZ *= sc; }
+        else { v.vX = PAIR_SPEED; v.vZ = 0; }
+        v.vY = 0;
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ,
                         life: 1, t: 0, angle: 0, controlled: false, lastSc: 1,
-                        _ctrlTime: 0, trail1: [], trail2: [] };
+                        followStarted: false, _ctrlTime: 0, trail1: [], trail2: [] };
         pairGhosts.push(ghost);
-        followGhost = ghost; camFollowT = 0.3;
+        // Camera follow starts after a 2s pause then a 5s lerp-in (camFollowT from 0)
         if (!ssSpawn.hinted && window.cLog) {
           ssSpawn.hinted = true;
           setTimeout(() => { window.cLog('> two in one shot. the ring awaits.'); }, 1500);
@@ -1133,6 +1135,14 @@
         }
       }
       if (followGhost && !pairGhosts.includes(followGhost)) followGhost = null;
+      // Start following after 2s delay; camFollowT=0 gives a ~5s lerp to settled
+      if (!followGhost) {
+        for (const g of pairGhosts) {
+          if (!g.followStarted && g.t > 2) {
+            g.followStarted = true; followGhost = g; camFollowT = 0; break;
+          }
+        }
+      }
       if (followStar && shootingStars.indexOf(followStar) === -1) followStar = null;
       const ft = followGhost || (engagedMode && followStar);
       if (ft) {
