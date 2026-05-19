@@ -793,27 +793,36 @@
         g.lastSc = gp.sc;
         // Playful choreography in camera space.
         // Signed radius: when it passes through 0 the stars kiss and cross sides.
-        // Amplitude breathes (30–110px) for intimate/far moments.
-        const rAmp = 45 + 20 * Math.sin(g.t * 0.28 + 0.8);
-        // "Fucking" mode: periodic envelope that activates fast radial in-out
-        const pulseEnv = Math.max(0, Math.sin(g.t * 0.38 + 1.0));
-        const rSlow = rAmp * Math.sin(g.t * 0.55 + 1.5);
-        const rFast = pulseEnv * rAmp * 0.6 * Math.sin(g.t * 2.5); // ~0.4 Hz radial pulse
-        const rPulse = 8 * Math.sin(g.t * 0.7);
+        // Amplitude breathes (16–40px) — tighter keeps them close most of the time.
+        const rAmp = 28 + 12 * Math.sin(g.t * 0.28 + 0.8);
+        // Slow separation oscillation — lower freq = more time lingering near zero (kissing)
+        const rSlow = rAmp * Math.sin(g.t * 0.38 + 1.5);
+        // Proximity: 1 when kissing, 0 when separated
+        const prox  = Math.max(0, 1 - Math.abs(rSlow) / (rAmp * 0.35 + 1));
+        const prox3 = prox * prox * prox; // cube: very concentrated at the kiss
+        // Periodic "fucking" envelope + always-on fast radial bounce when close
+        const pulseBase = Math.max(0, Math.sin(g.t * 0.42 + 1.0));             // periodic gate
+        const pulseFast = prox * Math.max(0, Math.sin(g.t * 4.5 + 0.5));       // close-range fast
+        const pulseEnv  = Math.min(1, pulseBase * 0.55 + pulseFast * 0.85);
+        // Occasional excitement burst: fast spin then rapid close-range bounce (~every 10s)
+        const exciteEnv = Math.pow(Math.max(0, Math.sin(g.t * 0.31 + 2.2)), 16) * 1.8;
+        const rFast  = pulseEnv  * rAmp * 1.0  * Math.sin(g.t * 3.8)           // faster in-out
+                     + exciteEnv * rAmp * 0.7  * Math.sin(g.t * 6.0);          // extra-rapid during burst
+        const rPulse = 6 * Math.sin(g.t * 0.7);
         const r = rSlow + rFast + rPulse;
-        // Proximity: 1 when kissing, 0 when far apart
-        const prox = Math.max(0, 1 - Math.abs(rSlow) / (rAmp * 0.4 + 1));
-        // Base beating pattern — spin suppressed during pulse mode
-        const spin1 = Math.sin(g.t * 0.52 + 0.3);
-        const baseVel = 2.0 * spin1 * Math.sin(g.t * 1.1 + 0.7) * (1 - pulseEnv * 0.75);
-        // Extra twirl cuddle when stars are close
-        const closeTwirl = prox * prox * 3 * (spin1 >= 0 ? 1 : -1);
+        // Base spin — a bit faster overall, less suppressed during pulse
+        const spin1   = Math.sin(g.t * 0.55 + 0.3);
+        const baseVel = 2.6 * spin1 * Math.sin(g.t * 1.1 + 0.7) * (1 - pulseEnv * 0.45);
+        // Heavy close-cuddle twirl using prox³ — intense burst right at the kiss
+        const closeTwirl  = prox3 * 10 * (spin1 >= 0 ? 1 : -1);
         // Occasional 720° burst
         const b1 =  Math.pow(Math.max(0,  Math.sin(g.t * 0.38 + 0.7)), 18) * 5;
         const b2 =  Math.pow(Math.max(0, -Math.sin(g.t * 0.29 + 2.5)), 18) * -5;
-        // Hard cap at ±π rad/s (~0.5 rotations/sec)
-        const angVel = Math.max(-Math.PI, Math.min(Math.PI,
-          baseVel + closeTwirl + b1 + b2 + 0.1 * Math.sin(g.t * 2.1 + 0.4)));
+        // Excitement: sharp spin spike + cap opens to 2× for that moment
+        const exciteBoost = exciteEnv * 6 * (spin1 >= 0 ? 1 : -1);
+        const capRad = Math.PI * (1 + exciteEnv);
+        const angVel = Math.max(-capRad, Math.min(capRad,
+          baseVel + closeTwirl + b1 + b2 + exciteBoost + 0.12 * Math.sin(g.t * 2.1 + 0.4)));
         g.angle += angVel * dts;
         const cA = Math.cos(g.angle), sA = Math.sin(g.angle);
         const dh = r * cA / gp.sc;
