@@ -233,8 +233,14 @@
 
     window.addEventListener('mousedown', e => {
       if (e.button === 0) {
-        lDragging = true;
-        ssBegin(e.clientX, e.clientY);
+        if (followGhost) {
+          followGhost.controlled = true;
+          followGhost._ctrlTime = performance.now();
+          ldx = e.clientX; ldy = e.clientY;
+        } else {
+          lDragging = true;
+          ssBegin(e.clientX, e.clientY);
+        }
         e.preventDefault();
       } else if (e.button === 1) {
         mDragging = true;
@@ -243,9 +249,13 @@
       }
     });
     window.addEventListener('mouseup', e => {
-      if (e.button === 0 && lDragging) {
-        lDragging = false;
-        ssEnd();
+      if (e.button === 0) {
+        if (followGhost && followGhost.controlled) {
+          followGhost.controlled = false;
+        } else if (lDragging) {
+          lDragging = false;
+          ssEnd();
+        }
       } else if (e.button === 1) {
         mDragging = false;
       }
@@ -257,6 +267,20 @@
         dragRX += (e.clientY - ldy) / window.innerHeight * Math.PI * 0.8;
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = e.clientX; ldy = e.clientY;
+      } else if (followGhost && followGhost.controlled) {
+        const now = performance.now();
+        const elapsed = Math.max(4, Math.min(80, now - followGhost._ctrlTime));
+        followGhost._ctrlTime = now;
+        const dx = e.clientX - ldx, dy = e.clientY - ldy;
+        ldx = e.clientX; ldy = e.clientY;
+        const sc = followGhost.lastSc;
+        const vsx = dx / sc / (elapsed * 0.001);
+        const vsy = dy / sc / (elapsed * 0.001);
+        const sX = Math.sin(rotX), cX = Math.cos(rotX);
+        const sY = Math.sin(rotY), cY = Math.cos(rotY);
+        followGhost.vX = vsx * cY + vsy * sX * sY;
+        followGhost.vY = vsy * cX;
+        followGhost.vZ = vsx * sY - vsy * sX * cY;
       } else if (lDragging) {
         ssLX = e.clientX; ssLY = e.clientY;
       }
@@ -377,7 +401,8 @@
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > maxV) { const sc = maxV / spd; v.vX *= sc; v.vZ *= sc; }
         const ghost = { X: pos.X, Y: pos.Y, Z: pos.Z, vX: v.vX, vY: v.vY, vZ: v.vZ,
-                        life: 1, t: 0, angle: 0, trail1: [], trail2: [] };
+                        life: 1, t: 0, angle: 0, controlled: false, lastSc: 1,
+                        _ctrlTime: 0, trail1: [], trail2: [] };
         pairGhosts.push(ghost);
         followGhost = ghost; camFollowT = 0.3;
         if (!ssSpawn.hinted && window.cLog) {
@@ -748,17 +773,28 @@
       }
       for (let pi = pairGhosts.length - 1; pi >= 0; pi--) {
         const g = pairGhosts[pi];
-        // Ghost physics — same as engaged-mode shooting star
-        const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
-        const gr = Math.sqrt(gr2);
-        const ga = SS_GRAVITY * 0.15 / gr;
-        g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+        // Galaxy edge: lose flight control and sling into tangent orbit
+        const rEdge = Math.sqrt(g.X*g.X + g.Z*g.Z);
+        if (g.controlled && rEdge > 1.0) {
+          g.controlled = false;
+          const tangX = -g.Z / rEdge, tangZ = g.X / rEdge;
+          const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
+          g.vX = tangX * slingSpd; g.vY *= 0.3; g.vZ = tangZ * slingSpd;
+        }
+        // Ghost physics: gravity disabled while pilot is in control
+        if (!g.controlled) {
+          const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
+          const gr = Math.sqrt(gr2);
+          const ga = SS_GRAVITY * 0.15 / gr;
+          g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+        }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 6);
         if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
         const gp = proj(g.X, g.Y, g.Z);
         if (!gp) continue;
+        g.lastSc = gp.sc;
         // Playful choreography in camera space.
         // Signed radius: when it passes through 0 the stars kiss and cross sides.
         // Amplitude breathes (30–110px) for intimate/far moments.
@@ -874,6 +910,12 @@
         dragging = true;
         ldx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         ldy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      } else if (followGhost) {
+        // Flight control: single finger steers the pair ghost
+        e.preventDefault();
+        followGhost.controlled = true;
+        followGhost._ctrlTime = performance.now();
+        ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
       } else {
         msx = ldx = e.touches[0].clientX;
         msy = ldy = e.touches[0].clientY;
@@ -889,6 +931,22 @@
         dragRX += (cy - ldy) / window.innerHeight * Math.PI * 0.8;
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = cx; ldy = cy;
+      } else if (followGhost && followGhost.controlled) {
+        // Steer the ghost: convert screen drag velocity to world velocity
+        const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
+        const now = performance.now();
+        const elapsed = Math.max(4, Math.min(80, now - followGhost._ctrlTime));
+        followGhost._ctrlTime = now;
+        const dx = nx - ldx, dy = ny - ldy;
+        ldx = nx; ldy = ny;
+        const sc = followGhost.lastSc;
+        const vsx = dx / sc / (elapsed * 0.001);
+        const vsy = dy / sc / (elapsed * 0.001);
+        const sX = Math.sin(rotX), cX = Math.cos(rotX);
+        const sY = Math.sin(rotY), cY = Math.cos(rotY);
+        followGhost.vX = vsx * cY + vsy * sX * sY;
+        followGhost.vY = vsy * cX;
+        followGhost.vZ = vsx * sY - vsy * sX * cY;
       } else {
         const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
         ssLX = nx; ssLY = ny;
@@ -898,7 +956,11 @@
     window.addEventListener('touchend', e => {
       if (e.touches.length === 0) {
         dragging = false; msx = -9999; msy = -9999;
-        ssEnd();
+        if (followGhost && followGhost.controlled) {
+          followGhost.controlled = false; // release: gravity resumes
+        } else {
+          ssEnd();
+        }
       }
     });
 
