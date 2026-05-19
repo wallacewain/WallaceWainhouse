@@ -793,19 +793,19 @@
         g.lastSc = gp.sc;
         // Playful choreography in camera space.
         // Signed radius: when it passes through 0 the stars kiss and cross sides.
-        const rAmp = 36 + 16 * Math.sin(g.t * 0.28 + 0.8);        // 20–52px
-        const rSlow = rAmp * Math.sin(g.t * 0.46 + 1.5);           // between old/new freq
+        const rAmp = 40 + 18 * Math.sin(g.t * 0.28 + 0.8);        // 22–58px — less intimate minimum
+        const rSlow = rAmp * Math.sin(g.t * 0.50 + 1.5);           // slightly faster oscillation
         // Proximity: 1 when kissing, 0 when separated
         const prox  = Math.max(0, 1 - Math.abs(rSlow) / (rAmp * 0.38 + 1));
         const prox2 = prox * prox;
         // Periodic pulse + moderate close-range fast bounce
         const pulseBase = Math.max(0, Math.sin(g.t * 0.40 + 1.0));
-        const pulseFast = prox * Math.max(0, Math.sin(g.t * 4.5 + 0.5)) * 0.55;
+        const pulseFast = prox * Math.max(0, Math.sin(g.t * 4.5 + 0.5)) * 0.45;
         const pulseEnv  = Math.min(1, pulseBase * 0.55 + pulseFast);
         // Occasional excitement burst (~every 10s)
         const exciteEnv = Math.pow(Math.max(0, Math.sin(g.t * 0.31 + 2.2)), 16) * 1.8;
-        const rFast  = pulseEnv  * rAmp * 0.80 * Math.sin(g.t * 3.2)
-                     + exciteEnv * rAmp * 0.55 * Math.sin(g.t * 5.5);
+        const rFast  = pulseEnv  * rAmp * 0.65 * Math.sin(g.t * 3.0)
+                     + exciteEnv * rAmp * 0.42 * Math.sin(g.t * 4.8);
         const rPulse = 7 * Math.sin(g.t * 0.7);
         const r = rSlow + rFast + rPulse;
         // Base spin
@@ -816,9 +816,9 @@
         // Occasional 720° burst
         const b1 =  Math.pow(Math.max(0,  Math.sin(g.t * 0.38 + 0.7)), 18) * 5;
         const b2 =  Math.pow(Math.max(0, -Math.sin(g.t * 0.29 + 2.5)), 18) * -5;
-        // Excitement boost, cap opens to ~1.8× at peak
-        const exciteBoost = exciteEnv * 4 * (spin1 >= 0 ? 1 : -1);
-        const capRad = Math.PI * (1 + exciteEnv * 0.8);
+        // Excitement boost, cap opens to ~1.7× at peak
+        const exciteBoost = exciteEnv * 3 * (spin1 >= 0 ? 1 : -1);
+        const capRad = Math.PI * (1 + exciteEnv * 0.7);
         const angVel = Math.max(-capRad, Math.min(capRad,
           baseVel + closeTwirl + b1 + b2 + exciteBoost + 0.1 * Math.sin(g.t * 2.1 + 0.4)));
         g.angle += angVel * dts;
