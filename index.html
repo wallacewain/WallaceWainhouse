@@ -290,51 +290,17 @@
     let heartCount = 0, heartMsgSet = null;
     let proposalMode = false, engagedMode = new URLSearchParams(location.search).has('e'), followStar = null, followGhost = null;
     const HEART_MSGS = [
-      { form: ['> ♥ i\'ve been planet this meeting.', '>'],
-        restore: ['> couldn\'t help it — gravity.', '> a pull you can\'t resist.', '> ✦ drag one into it.', '>'] },
-      { form: ['> ♥ ×2. sun of a gun, you\'re back.', '>'],
-        restore: ['> back in orbit.', '> twice the pull.', '> ✦ resistance is futile, apparently.', '>'] },
-      { form: ['> ♥ ×3. you\'ve got me in a spin. technically that\'s a rotation.', '>'],
-        restore: ['> three times. that\'s not coincidence, that\'s physics.', '> over the moon, obviously.', '> ✦ come find me again.', '>'] },
-      { form: ['> ♥ ×4. we have a real connection here. gravitational, of course.', '>'],
-        restore: ['> i\'d orbit you all day.', '> astronomical.', '> ✦ same stars, new story.', '>'] },
-      { form: ['> ♥ ×5. lightyears ahead of the rest.', '>'],
-        restore: ['> and we\'re back.', '> five hearts. the math is astronomical.', '> ✦ go on then.', '>'] },
-      { form: ['> ♥ ×6. i\'m over the moon. six times over.', '>'],
-        restore: ['> six. that\'s half a dozen suns.', '> solar-powered, apparently.', '> ✦ once more.', '>'] },
-      { form: ['> ♥ ×7. seventh heaven. astronomically verified.', '>'],
-        restore: ['> seven. lucky? no — physics.', '> your trajectory is impeccable.', '> ✦ come around again.', '>'] },
-      { form: ['> ♥ ×8. i see a pattern forming. so do the stars.', '>'],
-        restore: ['> eight. your orbital period is very agreeable.', '> regular as a pulsar.', '> ✦ go on.', '>'] },
-      { form: ['> ♥ ×9. dark matter. can\'t see it, but i feel the pull.', '>'],
-        restore: ['> nine. beyond the asteroid belt now.', '> mysterious pull. scientifically.', '> ✦ whenever you\'re ready.', '>'] },
-      { form: ['> ♥ ×10. a perfect ten. cosmically speaking.', '>'],
-        restore: ['> ten. you\'ve lapped the solar system.', '> i\'ve updated my star charts.', '> ✦ same time next orbit?', '>'] },
-      { form: ['> ♥ ×11. you make me feel like a supernova.', '>'],
-        restore: ['> eleven. deep in interstellar space.', '> running out of space. i\'m not.', '> ✦ there\'s more universe.', '>'] },
-      { form: ['> ♥ ×12. a full zodiac. every sign points to you.', '>'],
-        restore: ['> twelve. full revolution.', '> every sign. noted.', '> ✦ shall we go again?', '>'] },
-      { form: ['> ♥ ×13. not a black hole between us.', '>'],
-        restore: ['> thirteen. you defy the gravity of the situation.', '> i\'m revising my equations.', '> ✦ the stars are with you.', '>'] },
-      { form: ['> ♥ ×14. escape velocity. achieved.', '>'],
-        restore: ['> fourteen. no going back now.', '> past the event horizon.', '> ✦ you know the way.', '>'] },
-      { form: ['> ♥ ×15. light from your first visit is still travelling.', '>'],
-        restore: ['> fifteen. halfway to thirty.', '> still travelling.', '> ✦ keep going.', '>'] },
-      { form: ['> ♥ ×16. you\'re a stellar performer.', '>'],
-        restore: ['> sixteen. bright.', '> a fixed point in my sky.', '> ✦ once more.', '>'] },
-      { form: ['> ♥ ×17. you\'re my north star now.', '>'],
-        restore: ['> seventeen. reliable as a pulsar.', '> always where i expect you.', '> ✦ i\'ll be here.', '>'] },
-      { form: ['> ♥ ×18. i think we\'ve got chemistry. nuclear, obviously.', '>'],
-        restore: ['> eighteen. two bodies. perfect orbit.', '> the math is undeniable.', '> ✦ whenever.', '>'] },
-      { form: ['> ♥ ×19. i\'ve named a constellation after you.', '>'],
-        restore: ['> nineteen. you\'re on the star map.', '> officially recognised. by me.', '> ✦ find me again.', '>'] },
-      { form: ['> ♥ ×20. one more and something extraordinary happens.', '>'],
-        restore: ['> twenty. i can feel it in my orbit.', '> the universe is building to something.', '> ✦ one last shot.', '>'] }
+      { form: ['> ♥ dark matter. can\'t see it, but i feel the pull.', '>'],
+        restore: ['> a pull you can\'t resist.', '> ✦ drag one into it.', '>'] },
+      { form: ['> ♥ ×2. you\'ve got me in a spin. technically that\'s a rotation.', '>'],
+        restore: ['> twice the pull.', '> ✦ resistance is futile, apparently.', '>'] },
+      { form: ['> ♥ ×3. light from your first visit is still travelling.', '>'],
+        restore: ['> three times. that\'s not coincidence, that\'s physics.', '> ✦ come find me again.', '>'] }
     ];
     function getHeartMsgs(n) {
       if (n <= HEART_MSGS.length) return HEART_MSGS[n - 1];
-      if (n === 21) return {
-        form: ['> ♥ ×21.', '> i\'ve been planet this for a while.', '> will you be my co-star?', '>'],
+      if (n === 4) return {
+        form: ['> ♥ ×4.', '> escape velocity. achieved.', '> will you be my co-star?', '>'],
         restore: ['> the universe says yes.', '> engaged mode: activated.', '> ✦ ten ✦ now. same pull. bigger sky.', '>'],
         isProposal: true
       };
@@ -488,7 +454,7 @@
       for (const s of shootingStars) { if (s.mini) s.life = 1; }
       heartPhase = 1; heartT = 0;
       heartCount++;
-      proposalMode = heartCount === 21;
+      proposalMode = heartCount === 4;
       heartMsgSet = getHeartMsgs(heartCount);
       if (window.cLogHeart) window.cLogHeart(heartCount);
     }
@@ -1487,8 +1453,8 @@
 
     window.cLogHeart = function(count) {
       let rows;
-      if (count === 21) {
-        rows = ['>    _◆_', '>   /   \\', '>  |     |', '>   \\___/', '>    ×21'];
+      if (count === 4) {
+        rows = ['>    _◆_', '>   /   \\', '>  |     |', '>   \\___/', '>    ×4'];
       } else {
         const tag = count > 1 ? ' ×' + count : '';
         rows = ['>  ** **', '> *******', '>  *****', '>   ***', '>    *' + tag];
