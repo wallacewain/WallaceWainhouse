@@ -323,7 +323,7 @@
       const dz = camZ + z1 * cX;
       if (dz < 0.05) return null;
       const x1 = (sx - gcx) * dz / fov;
-      return { X: x1 * cY - z1 * sY + camOX, Y: (Math.random() - 0.5) * 0.04 + camOY, Z: x1 * sY + z1 * cY + camOZ, dz };
+      return { X: x1 * cY - z1 * sY + camOX, Y: camOY, Z: x1 * sY + z1 * cY + camOZ, dz };
     }
 
     // Jacobian-inverse: convert screen-space velocity → 3D world velocity on XZ plane
