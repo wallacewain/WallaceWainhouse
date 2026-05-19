@@ -398,23 +398,29 @@
     }
 
     function spawnFireworks() {
+      const palette = ['#fffce8','#ffd080','#ff9940','#ffb840','#c8d8ff','#a8c0ff','#ffe0a0','#ffffff'];
       const bursts = [
-        { X: 0.15, Z: 0.05, color: '#ff6644' }, { X: -0.18, Z: 0.12, color: '#ffdd22' },
-        { X: 0.08, Z: -0.14, color: '#44ffaa' }, { X: -0.08, Z: -0.08, color: '#88aaff' },
-        { X: 0.22, Z: -0.06, color: '#ff44cc' }, { X: -0.05, Z: 0.18, color: '#ffffa0' }
+        { X: 0.15, Z: 0.05 }, { X: -0.18, Z: 0.12 },
+        { X: 0.08, Z: -0.14 }, { X: -0.08, Z: -0.08 },
+        { X: 0.22, Z: -0.06 }, { X: -0.05, Z: 0.18 }
       ];
       for (const b of bursts) {
+        const rB = Math.sqrt(b.X*b.X + b.Z*b.Z) + 1e-8;
+        const tangSign = Math.random() < 0.5 ? 1 : -1;
+        const tX = -b.Z / rB * tangSign, tZ = b.X / rB * tangSign;
         for (let i = 0; i < 14; i++) {
           const phi = Math.acos(2 * Math.random() - 1);
           const th  = Math.random() * Math.PI * 2;
-          const spd = 0.05 + Math.random() * 0.12;
+          const spd = 0.003 + Math.random() * 0.006;
+          const ts  = 0.002 + Math.random() * 0.003;
           shootingStars.push({
-            id: ssIdCounter++, mini: true, firework: true, fireworkColor: b.color,
-            X: b.X, Y: 0.02, Z: b.Z,
-            vX: spd * Math.sin(phi) * Math.cos(th),
-            vY: spd * Math.sin(phi) * Math.sin(th) * 0.3,
-            vZ: spd * Math.cos(phi),
-            life: 0.7 + Math.random() * 0.3, trail: [], dying: false
+            id: ssIdCounter++, mini: true, firework: true,
+            fireworkColor: palette[Math.floor(Math.random() * palette.length)],
+            X: b.X, Y: 0, Z: b.Z,
+            vX: spd * Math.sin(phi) * Math.cos(th) + tX * ts,
+            vY: spd * Math.sin(phi) * Math.sin(th) * 0.2,
+            vZ: spd * Math.cos(phi) + tZ * ts,
+            life: 1.0, trail: [], dying: false, fwAge: 0
           });
         }
       }
@@ -607,6 +613,18 @@
           s.vX -= a * ex / r * dts;
           s.vY -= a * ey / r * dts;
           s.vZ -= a * ez / r * dts;
+        } else if (s.firework) {
+          s.fwAge += dts;
+          // Zero gravity for first 3s, then ramp to 0.25× normal by 6s
+          const gravFade = Math.max(0, Math.min(1, (s.fwAge - 3) / 3));
+          if (gravFade > 0) {
+            const r2 = s.X*s.X + s.Y*s.Y + s.Z*s.Z + SS_SOFTEN;
+            const r  = Math.sqrt(r2);
+            const a  = SS_GRAVITY * 0.25 * gravFade / r;
+            s.vX -= a * s.X / r * dts;
+            s.vY -= a * s.Y / r * dts;
+            s.vZ -= a * s.Z / r * dts;
+          }
         } else if (s.trailNear && engagedMode) {
           // Pair star — ghost handles orbital gravity; skip individual gravity
         } else {
@@ -620,7 +638,7 @@
         s.trail.push({ X: s.X, Y: s.Y, Z: s.Z });
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
-        if (s.firework) s.life -= dt * 2.5 / SS_LIFE_MS;
+        if (s.firework) s.life -= dt * 0.8 / SS_LIFE_MS;
         else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 6 : 1));
         if (s.life <= 0) {
           if (!s.firework && heartPhase === 0) {
