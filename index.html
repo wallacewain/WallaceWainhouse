@@ -1113,25 +1113,25 @@
       if (followStar && shootingStars.indexOf(followStar) === -1) followStar = null;
       const ft = followGhost || (engagedMode && followStar);
       if (ft) {
-        camFollowT += (1 - camFollowT) * 0.004;
+        camFollowT += (1 - camFollowT) * 0.002;
         const t2 = camFollowT * camFollowT; // quadratic ease-in: all rates start at zero
         const vLen = Math.sqrt(ft.vX*ft.vX + ft.vZ*ft.vZ) + 1e-8;
         const behind = 0.1;
         const tX = ft.X - ft.vX/vLen * behind;
         const tY = ft.Y;
         const tZ = ft.Z - ft.vZ/vLen * behind;
-        const posRate = t2 * 0.10;
+        const posRate = t2 * 0.018;
         camOX += (tX - camOX) * posRate;
         camOY += (tY - camOY) * posRate;
         camOZ += (tZ - camOZ) * posRate;
         const tRY = Math.atan2(-ft.vX, ft.vZ);
         let diff = tRY - rotY;
         diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
-        rotY += diff * (t2 * 0.035);
+        rotY += diff * (t2 * 0.008);
         dragRY = rotY - autoY;
-        dragRX += (0.12 - dragRX) * (0.004 + t2 * 0.012);
+        dragRX += (0.12 - dragRX) * (0.002 + t2 * 0.008);
         dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
-        camZ += ((followGhost ? 0.20 : 0.37) - camZ) * (0.004 + t2 * 0.010);
+        camZ += ((followGhost ? 0.20 : 0.37) - camZ) * (0.003 + t2 * 0.007);
       } else {
         camOX *= 0.98; camOY *= 0.98; camOZ *= 0.98;
         camZ += (1.4 - camZ) * 0.04;
