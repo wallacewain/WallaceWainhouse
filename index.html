@@ -441,6 +441,123 @@
         });
       }
     }
+    // ── Engaged mode atmospheric music ──────────────────────────────────────
+    let _mus = null, _musRise = 0;
+
+    function startEngagedMusic() {
+      if (_mus) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') {
+          const r = () => ctx.resume();
+          document.addEventListener('pointerdown', r, { once: true });
+        }
+
+        // Synthetic reverb: exponentially decaying stereo noise impulse (2.5 s tail)
+        const irLen = Math.floor(ctx.sampleRate * 2.5);
+        const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+        for (let c = 0; c < 2; c++) {
+          const d = ir.getChannelData(c);
+          for (let i = 0; i < irLen; i++)
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.0);
+        }
+        const rev = ctx.createConvolver(); rev.buffer = ir;
+
+        // Signal chain: bus → dry+wet → master → brightness shelf → out
+        const master = ctx.createGain(); master.gain.value = 0;
+        master.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 5);
+        const shelf = ctx.createBiquadFilter();
+        shelf.type = 'highshelf'; shelf.frequency.value = 1400; shelf.gain.value = 0;
+        master.connect(shelf); shelf.connect(ctx.destination);
+
+        const bus = ctx.createGain();
+        const dry = ctx.createGain(); dry.gain.value = 0.60;
+        const wet = ctx.createGain(); wet.gain.value = 0.45;
+        bus.connect(dry); bus.connect(rev);
+        rev.connect(wet); dry.connect(master); wet.connect(master);
+
+        const melBus = ctx.createGain(); melBus.gain.value = 0.80;
+        melBus.connect(bus);
+
+        // String voice: 2 detuned saws + 1 triangle, each with a slow vibrato LFO
+        function mkNote(freq, dest, vol, atk) {
+          vol = vol || 0.18; atk = atk || 1.8;
+          const gate = ctx.createGain();
+          gate.gain.setValueAtTime(0, ctx.currentTime);
+          gate.gain.linearRampToValueAtTime(vol, ctx.currentTime + atk);
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass'; lp.frequency.value = 2000; lp.Q.value = 0.5;
+          lp.connect(gate); gate.connect(dest);
+          const vs = [];
+          for (const [det, type, g] of [
+            [0, 'sawtooth', 0.30], [10, 'sawtooth', 0.22],
+            [-10, 'sawtooth', 0.22], [0, 'triangle', 0.26]
+          ]) {
+            const o = ctx.createOscillator(), lfo = ctx.createOscillator();
+            const lfog = ctx.createGain(), og = ctx.createGain();
+            o.type = type; o.frequency.value = freq; o.detune.value = det;
+            lfo.frequency.value = 4.3 + Math.random();
+            lfog.gain.value = 3 + Math.random() * 2;
+            og.gain.value = g;
+            lfo.connect(lfog); lfog.connect(o.detune);
+            o.connect(og); og.connect(lp);
+            o.start(); lfo.start(); vs.push(o, lfo);
+          }
+          return { rel(t) {
+            t = t || 1.5;
+            gate.gain.setTargetAtTime(0, ctx.currentTime, t / 3);
+            setTimeout(() => vs.forEach(v => { try { v.stop(); } catch(e) {} }), t * 1000 + 300);
+          }};
+        }
+
+        // D major chord progression: D → G → A → Bm, 10 s each
+        const chords = [
+          [146.83, 220.00, 293.66, 369.99, 440.00], // D maj: D3 A3 D4 F#4 A4
+          [196.00, 293.66, 392.00, 493.88],           // G maj: G3 D4 G4 B4
+          [220.00, 329.63, 440.00, 554.37],           // A maj: A3 E4 A4 C#5
+          [246.94, 369.99, 493.88, 587.33],           // Bm:    B3 F#4 B4 D5
+        ];
+        let ci = 0, cn = [];
+        function setChord(i) {
+          cn.forEach(n => n.rel(2.5)); cn = [];
+          chords[i].forEach((f, k) => setTimeout(() => {
+            if (!_mus) return;
+            const v = k === 0 ? 0.13 : k === chords[i].length - 1 ? 0.17 : 0.12;
+            cn.push(mkNote(f, bus, v, 1.8 + k * 0.2));
+          }, k * 220));
+        }
+        setChord(0);
+        const cTimer = setInterval(() => {
+          if (!_mus) { clearInterval(cTimer); return; }
+          ci = (ci + 1) % chords.length; setChord(ci);
+        }, 10000);
+
+        // Melody: D major scale B3→D5, direction biased by rise/fall
+        const scale = [246.94, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 554.37, 587.33];
+        let mi = 4, mn = null, mTimer = null;
+        function nextMel() {
+          if (mn) mn.rel(1.5); mn = null;
+          const bias = _musRise > 0.006 ? 1 : _musRise < -0.006 ? -1 : 0;
+          const r = Math.random();
+          mi = Math.max(0, Math.min(scale.length - 1,
+            mi + bias + (r < 0.45 ? 1 : -1) * (r < 0.12 ? 2 : 1)));
+          mn = mkNote(scale[mi], melBus, 0.30, 1.0);
+          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 2500 + Math.random() * 2500);
+        }
+        setTimeout(() => { if (_mus) nextMel(); }, 2800);
+
+        _mus = { ctx, shelf, cTimer, mTimer,
+          stop() {
+            clearInterval(this.cTimer); clearTimeout(this.mTimer);
+            master.gain.setTargetAtTime(0, this.ctx.currentTime, 3.0);
+            setTimeout(() => { try { this.ctx.close(); } catch(e) {} }, 10000);
+            _mus = null;
+          }
+        };
+      } catch(e) { /* audio unavailable */ }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     function triggerHeart() {
       if (heartPhase !== 0) return;
       const spread = Math.min(canvas.width, canvas.height) * 0.16;
@@ -1139,7 +1256,8 @@
           if (proposalMode) {
             proposalMode = false;
             engagedMode = true;
-            rebuildSpecialStars(40);            ssSpawn.hinted = false;
+            rebuildSpecialStars(40); ssSpawn.hinted = false;
+            startEngagedMusic();
             const cp = document.getElementById('console-pane');
             if (cp) { cp.style.transition = 'opacity 2s ease'; cp.style.opacity = '0'; setTimeout(() => { cp.style.display = 'none'; }, 2000); }
           }
@@ -1413,6 +1531,11 @@
       ctx.globalCompositeOperation = 'source-over';
       if (shootingStars.length) ssDraw(dt, sinX, cosX, sinY, cosY);
       if (pairGhosts.length) drawPairGhosts(dt, sinX, cosX, sinY, cosY);
+      if (_mus && followGhost) {
+        _musRise = _musRise * 0.96 + (followGhost.vY || 0) * 40 * 0.04;
+        _mus.shelf.gain.setTargetAtTime(
+          Math.max(-3, Math.min(3, _musRise * 180)), _mus.ctx.currentTime, 0.8);
+      }
 
       const wantFade = shootingStars.length > 0 || engagedMode;
       if (wantFade !== heroFaded) {
