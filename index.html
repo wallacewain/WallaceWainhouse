@@ -122,7 +122,7 @@
 
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
-    const COUNT    = isMobile ? 3000 : 5000;
+    const COUNT    = isMobile ? 3000 : 2500;
     const szScale  = isMobile ? 1.0 : 0.5;
     const BRANCHES = 3, SPIN = 1.8, RND_PWR = 3;
 
@@ -280,7 +280,7 @@
     const SS_GRAVITY = 0.10;   // weaker; 1/r falloff keeps arcs gradual
     const SS_SOFTEN  = 0.008;
     const SS_LIFE_MS = 12000;
-    const SS_TRAIL   = 80;
+    const SS_TRAIL   = isMobile ? 80 : 30;
     const shootingStars = [];
     const starPairs = [];
     const pairGhosts = [];
@@ -639,14 +639,38 @@
         const isPairStar = !s.mini && !!s.trailNear && engagedMode;
         const ssWorldR = ssR * 1.4 / fov;
         const tl = s.trail.length;
-        for (let j = 1; j < tl; j++) {
-          const f = j / tl;
-          const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
-          if (!p) continue;
-          ctx.globalAlpha = f * f * s.life * 0.9;
-          ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? (s.trailNear || '#fff0a0') : (s.trailFar || '#ff8820'));
-          const sz = isPairStar ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
-          ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
+        if (!isMobile && !isPairStar && tl > 1) {
+          // Desktop: two solid line passes (far dim / near bright) — no gap dots
+          ctx.lineCap = 'round';
+          const half = Math.floor(tl / 2);
+          const passes = [
+            { from: 1,    to: half, color: s.firework ? s.fireworkColor : (s.trailFar  || '#ff8820'), alpha: 0.35, lw: starR * 0.8 },
+            { from: half, to: tl,   color: s.firework ? s.fireworkColor : (s.trailNear || '#fff0a0'), alpha: 0.80, lw: starR * 1.4 },
+          ];
+          for (const pass of passes) {
+            ctx.beginPath();
+            let moved = false;
+            for (let j = pass.from; j < pass.to; j++) {
+              const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
+              if (!p) { moved = false; continue; }
+              if (!moved) { ctx.moveTo(p.sx, p.sy); moved = true; } else ctx.lineTo(p.sx, p.sy);
+            }
+            ctx.globalAlpha = pass.alpha * s.life;
+            ctx.strokeStyle = pass.color;
+            ctx.lineWidth = pass.lw;
+            ctx.stroke();
+          }
+        } else {
+          // Mobile (and pair stars): original dot trail
+          for (let j = 1; j < tl; j++) {
+            const f = j / tl;
+            const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
+            if (!p) continue;
+            ctx.globalAlpha = f * f * s.life * 0.9;
+            ctx.fillStyle = s.firework ? s.fireworkColor : (f > 0.5 ? (s.trailNear || '#fff0a0') : (s.trailFar || '#ff8820'));
+            const sz = isPairStar ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
+            ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
+          }
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
