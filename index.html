@@ -496,21 +496,31 @@
           lp.type = 'lowpass'; lp.frequency.value = 2200; lp.Q.value = 0.4;
           lp.connect(gate); gate.connect(dest);
           const vs = [];
-          for (const [det, type, g] of [
-            [0,'sine',0.35],[0,'triangle',0.38],[12,'triangle',0.15],[-12,'triangle',0.15],[0,'sawtooth',0.07]
-          ]) {
-            const o = ctx.createOscillator(), lfo = ctx.createOscillator();
-            const lfog = ctx.createGain(), og = ctx.createGain();
-            o.type = type; o.frequency.value = freq; o.detune.value = det;
-            lfo.frequency.value = 5.0 + Math.random() * 0.8;
-            lfog.gain.value = 7 + Math.random() * 4;
-            og.gain.value = g;
-            lfo.connect(lfog); lfog.connect(o.detune);
-            o.connect(og); og.connect(lp);
-            o.start(); lfo.start(); vs.push(o, lfo);
+          if (isMobile) {
+            // 2 oscillators only, no LFOs — keeps node count low on mobile
+            for (const [type, g] of [['sine', 0.60], ['triangle', 0.40]]) {
+              const o = ctx.createOscillator(), og = ctx.createGain();
+              o.type = type; o.frequency.value = freq; og.gain.value = g;
+              o.connect(og); og.connect(lp); o.start(); vs.push(o);
+            }
+          } else {
+            for (const [det, type, g] of [
+              [0,'sine',0.35],[0,'triangle',0.38],[12,'triangle',0.15],[-12,'triangle',0.15],[0,'sawtooth',0.07]
+            ]) {
+              const o = ctx.createOscillator(), lfo = ctx.createOscillator();
+              const lfog = ctx.createGain(), og = ctx.createGain();
+              o.type = type; o.frequency.value = freq; o.detune.value = det;
+              lfo.frequency.value = 5.0 + Math.random() * 0.8;
+              lfog.gain.value = 7 + Math.random() * 4;
+              og.gain.value = g;
+              lfo.connect(lfog); lfog.connect(o.detune);
+              o.connect(og); og.connect(lp);
+              o.start(); lfo.start(); vs.push(o, lfo);
+            }
           }
+          const relT = isMobile ? 2.0 : 2.5;
           return { rel(t) {
-            t = t || 2.5;
+            t = t || relT;
             gate.gain.setTargetAtTime(0, ctx.currentTime, t / 3);
             setTimeout(() => vs.forEach(v => { try { v.stop(); } catch(e) {} }), t * 1000 + 300);
           }};
@@ -545,13 +555,22 @@
           [293.66, 369.99, 440.00, 587.33],  // D4 F#4 A4 D5
           [220.00, 293.66, 329.63, 440.00],  // A3 D4 E4 A4
         ];
+        // Mobile chords: 3 notes only (root, fifth, third) to cut oscillator count
+        const mobileChords = [
+          [97.999, 293.66, 369.99],   // Gmaj9 root: G2 D4 F#4
+          [130.81, 261.63, 392.00],   // Cadd9 root: C3 C4 G4
+          [146.83, 293.66, 440.00],   // D root:     D3 D4 A4
+          [110.00, 220.00, 329.63],   // Asus2 root: A2 A3 E4
+        ];
         let ci = 0, cn = [];
         function setChord(i) {
-          cn.forEach(n => n.rel(3.5)); cn = [];
-          chords[i].forEach((f, k) => setTimeout(() => {
+          const xfade = isMobile ? 2.0 : 3.5;
+          cn.forEach(n => n.rel(xfade)); cn = [];
+          const notes = isMobile ? mobileChords[i] : chords[i];
+          notes.forEach((f, k) => setTimeout(() => {
             if (!_mus) return;
-            cn.push(mkPad(f, bus, k === 0 ? 0.15 : 0.11, 2.5 + k * 0.35));
-          }, k * 380));
+            cn.push(mkPad(f, bus, k === 0 ? 0.15 : 0.11, isMobile ? 1.8 : 2.5 + k * 0.35));
+          }, k * (isMobile ? 250 : 380)));
         }
         setChord(0);
         const cTimer = setInterval(() => {
@@ -567,7 +586,7 @@
           }, i * 340));
           setTimeout(scheduleArp, 3200 + Math.random() * 3000);
         }
-        setTimeout(scheduleArp, 2200);
+        if (!isMobile) setTimeout(scheduleArp, 2200);
 
         // Melody: G pentatonic (G A B D E), violin register, quick attack
         const scale = [392.00, 440.00, 493.88, 587.33, 659.26, 783.99, 880.00, 987.77];
