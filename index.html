@@ -234,8 +234,7 @@
     window.addEventListener('mousedown', e => {
       if (e.button === 0) {
         if (followGhost) {
-          followGhost.controlled = true;
-          followGhost._ctrlTime = performance.now();
+          beginControl(followGhost, e.clientX, e.clientY);
           ldx = e.clientX; ldy = e.clientY;
         } else {
           lDragging = true;
@@ -268,19 +267,8 @@
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = e.clientX; ldy = e.clientY;
       } else if (followGhost && followGhost.controlled) {
-        const now = performance.now();
-        const elapsed = Math.max(4, Math.min(80, now - followGhost._ctrlTime));
-        followGhost._ctrlTime = now;
-        const dx = e.clientX - ldx, dy = e.clientY - ldy;
+        steerGhost(followGhost, e.clientX - followGhost._ctrlStartX, e.clientY - followGhost._ctrlStartY);
         ldx = e.clientX; ldy = e.clientY;
-        const sc = followGhost.lastSc;
-        const vsx = dx / sc / (elapsed * 0.001);
-        const vsy = dy / sc / (elapsed * 0.001);
-        const sX = Math.sin(rotX), cX = Math.cos(rotX);
-        const sY = Math.sin(rotY), cY = Math.cos(rotY);
-        followGhost.vX = vsx * cY + vsy * sX * sY;
-        followGhost.vY = vsy * cX;
-        followGhost.vZ = vsx * sY - vsy * sX * cY;
       } else if (lDragging) {
         ssLX = e.clientX; ssLY = e.clientY;
       }
@@ -781,8 +769,12 @@
           const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
           g.vX = tangX * slingSpd; g.vY *= 0.3; g.vZ = tangZ * slingSpd;
         }
-        // Ghost physics: gravity disabled while pilot is in control
-        if (!g.controlled) {
+        // Steering: lerp velocity to target; gravity disabled while controlled
+        if (g.controlled && g._ctrlTargetVX !== undefined) {
+          g.vX += (g._ctrlTargetVX - g.vX) * 0.12;
+          g.vY += (g._ctrlTargetVY - g.vY) * 0.12;
+          g.vZ += (g._ctrlTargetVZ - g.vZ) * 0.12;
+        } else if (!g.controlled) {
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
           const ga = SS_GRAVITY * 0.15 / gr;
@@ -904,6 +896,43 @@
       }
     }
 
+    // Flight control helpers
+    function beginControl(g, x, y) {
+      g.controlled = true;
+      g._ctrlStartX = x; g._ctrlStartY = y;
+      const spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
+      g._ctrlSpeed = Math.max(0.008, spd);
+      if (spd > 0.001) {
+        g._ctrlBaseVX = g.vX / spd; g._ctrlBaseVY = g.vY / spd; g._ctrlBaseVZ = g.vZ / spd;
+      } else {
+        const cY = Math.cos(rotY), sY = Math.sin(rotY);
+        g._ctrlBaseVX = -sY; g._ctrlBaseVY = 0; g._ctrlBaseVZ = cY;
+      }
+      g._ctrlTargetVX = g.vX; g._ctrlTargetVY = g.vY; g._ctrlTargetVZ = g.vZ;
+    }
+    function steerGhost(g, totalDx, totalDy) {
+      // 0.25°/px so 20px drag = 5° deflection
+      const yaw   =  totalDx * (Math.PI / 720);
+      const pitch = -totalDy * (Math.PI / 720); // drag down → ghost aims up
+      const cY = Math.cos(rotY), sY = Math.sin(rotY);
+      // Yaw around world-Y
+      const cosYaw = Math.cos(yaw), sinYaw = Math.sin(yaw);
+      let tvX = g._ctrlBaseVX * cosYaw + g._ctrlBaseVZ * sinYaw;
+      let tvY = g._ctrlBaseVY;
+      let tvZ = -g._ctrlBaseVX * sinYaw + g._ctrlBaseVZ * cosYaw;
+      // Pitch around camera-right axis (cY, 0, sY) via Rodrigues
+      const cosPitch = Math.cos(pitch), sinPitch = Math.sin(pitch);
+      const kdotv = cY * tvX + sY * tvZ;
+      const rx = tvX * cosPitch + (-sY * tvY) * sinPitch + cY * kdotv * (1 - cosPitch);
+      const ry = tvY * cosPitch + (sY * tvX - cY * tvZ) * sinPitch;
+      const rz = tvZ * cosPitch + ( cY * tvY) * sinPitch + sY * kdotv * (1 - cosPitch);
+      const len = Math.sqrt(rx*rx + ry*ry + rz*rz) || 1;
+      const spd = g._ctrlSpeed;
+      g._ctrlTargetVX = rx / len * spd;
+      g._ctrlTargetVY = ry / len * spd;
+      g._ctrlTargetVZ = rz / len * spd;
+    }
+
     window.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         e.preventDefault();
@@ -911,10 +940,8 @@
         ldx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         ldy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       } else if (followGhost) {
-        // Flight control: single finger steers the pair ghost
         e.preventDefault();
-        followGhost.controlled = true;
-        followGhost._ctrlTime = performance.now();
+        beginControl(followGhost, e.touches[0].clientX, e.touches[0].clientY);
         ldx = e.touches[0].clientX; ldy = e.touches[0].clientY;
       } else {
         msx = ldx = e.touches[0].clientX;
@@ -932,32 +959,19 @@
         dragRX  = Math.max(-0.9, Math.min(0.9, dragRX));
         ldx = cx; ldy = cy;
       } else if (followGhost && followGhost.controlled) {
-        // Steer the ghost: convert screen drag velocity to world velocity
         const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
-        const now = performance.now();
-        const elapsed = Math.max(4, Math.min(80, now - followGhost._ctrlTime));
-        followGhost._ctrlTime = now;
-        const dx = nx - ldx, dy = ny - ldy;
+        steerGhost(followGhost, nx - followGhost._ctrlStartX, ny - followGhost._ctrlStartY);
         ldx = nx; ldy = ny;
-        const sc = followGhost.lastSc;
-        const vsx = dx / sc / (elapsed * 0.001);
-        const vsy = dy / sc / (elapsed * 0.001);
-        const sX = Math.sin(rotX), cX = Math.cos(rotX);
-        const sY = Math.sin(rotY), cY = Math.cos(rotY);
-        followGhost.vX = vsx * cY + vsy * sX * sY;
-        followGhost.vY = vsy * cX;
-        followGhost.vZ = vsx * sY - vsy * sX * cY;
       } else {
         const nx = e.touches[0].clientX, ny = e.touches[0].clientY;
-        ssLX = nx; ssLY = ny;
-        msx = nx; msy = ny;
+        ssLX = nx; ssLY = ny; msx = nx; msy = ny;
       }
     }, { passive: false });
     window.addEventListener('touchend', e => {
       if (e.touches.length === 0) {
         dragging = false; msx = -9999; msy = -9999;
         if (followGhost && followGhost.controlled) {
-          followGhost.controlled = false; // release: gravity resumes
+          followGhost.controlled = false;
         } else {
           ssEnd();
         }
@@ -1120,14 +1134,15 @@
         const tX = ft.X - ft.vX/vLen * behind;
         const tY = ft.Y;
         const tZ = ft.Z - ft.vZ/vLen * behind;
-        const posRate = 0.03 + camFollowT * 0.15;
+        const isControlled = followGhost && followGhost.controlled;
+        const posRate = isControlled ? 0.04 : 0.03 + camFollowT * 0.15;
         camOX += (tX - camOX) * posRate;
         camOY += (tY - camOY) * posRate;
         camOZ += (tZ - camOZ) * posRate;
         const tRY = Math.atan2(-ft.vX, ft.vZ);
         let diff = tRY - rotY;
         diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2);
-        rotY += diff * (0.02 + camFollowT * 0.05);
+        rotY += diff * (isControlled ? 0.002 : 0.02 + camFollowT * 0.05);
         dragRY = rotY - autoY;
         dragRX += (0.12 - dragRX) * 0.017;
         dragRX = Math.max(-0.9, Math.min(0.9, dragRX));
