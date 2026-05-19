@@ -635,7 +635,7 @@
             const ringRad = Math.sqrt(bX*bX + bZ*bZ) + 1e-8;
             const tX = -bZ / ringRad * (s.fwTang || 1);
             const tZ =  bX / ringRad * (s.fwTang || 1);
-            const orbitStr = ringT * Math.max(0, 1 - rDist / 0.03) * 1.2;
+            const orbitStr = ringT * Math.max(0, 1 - rDist / 0.10) * 0.20;
             s.vX += tX * orbitStr * dts;
             s.vZ += tZ * orbitStr * dts;
             // Damp when on ring to settle into orbit rather than bouncing
