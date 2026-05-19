@@ -804,8 +804,8 @@
         const pulseEnv  = Math.min(1, pulseBase * 0.55 + pulseFast);
         // Occasional excitement burst (~every 10s)
         const exciteEnv = Math.pow(Math.max(0, Math.sin(g.t * 0.31 + 2.2)), 16) * 1.8;
-        const rFast  = pulseEnv  * rAmp * 0.50 * Math.sin(g.t * 2.6)
-                     + exciteEnv * rAmp * 0.32 * Math.sin(g.t * 4.0);
+        const rFast  = pulseEnv  * rAmp * 0.50 * Math.sin(g.t * 1.3)
+                     + exciteEnv * rAmp * 0.32 * Math.sin(g.t * 2.0);
         const rPulse = 7 * Math.sin(g.t * 0.7);
         const r = rSlow + rFast + rPulse;
         // Base spin
