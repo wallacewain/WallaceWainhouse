@@ -30,6 +30,7 @@
   }
   </script>
   <style>
+    html, body { cursor: crosshair; }
     #galaxy-bg {
       position: fixed;
       top: 0; left: 0;
@@ -640,25 +641,17 @@
         const ssWorldR = ssR * 1.4 / fov;
         const tl = s.trail.length;
         if (!isMobile && !isPairStar && tl > 1) {
-          // Desktop: two solid line passes (far dim / near bright) — no gap dots
+          // Desktop: per-segment tapered line — thin dim tail → thick bright head
           ctx.lineCap = 'round';
-          const half = Math.floor(tl / 2);
-          const passes = [
-            { from: 1,    to: half, color: s.firework ? s.fireworkColor : (s.trailFar  || '#ff8820'), alpha: 0.35, lw: starR * 0.8 },
-            { from: half, to: tl,   color: s.firework ? s.fireworkColor : (s.trailNear || '#fff0a0'), alpha: 0.80, lw: starR * 1.4 },
-          ];
-          for (const pass of passes) {
-            ctx.beginPath();
-            let moved = false;
-            for (let j = pass.from; j < pass.to; j++) {
-              const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
-              if (!p) { moved = false; continue; }
-              if (!moved) { ctx.moveTo(p.sx, p.sy); moved = true; } else ctx.lineTo(p.sx, p.sy);
-            }
-            ctx.globalAlpha = pass.alpha * s.life;
-            ctx.strokeStyle = pass.color;
-            ctx.lineWidth = pass.lw;
-            ctx.stroke();
+          ctx.strokeStyle = s.firework ? s.fireworkColor : (s.trailNear || '#fff0a0');
+          for (let j = 2; j < tl; j++) {
+            const f = j / tl;
+            const pa = proj3(s.trail[j-1].X, s.trail[j-1].Y, s.trail[j-1].Z);
+            const pb = proj3(s.trail[j].X,   s.trail[j].Y,   s.trail[j].Z);
+            if (!pa || !pb) continue;
+            ctx.globalAlpha = f * f * s.life * 0.88;
+            ctx.lineWidth   = f * starR * 1.6;
+            ctx.beginPath(); ctx.moveTo(pa.sx, pa.sy); ctx.lineTo(pb.sx, pb.sy); ctx.stroke();
           }
         } else {
           // Mobile (and pair stars): original dot trail
