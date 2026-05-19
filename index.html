@@ -398,28 +398,26 @@
     }
 
     function spawnFireworks() {
-      const palette = ['#fffce8','#ffd080','#ff9940','#ffb840','#c8d8ff','#a8c0ff','#ffe0a0','#ffffff'];
+      // Muted galaxy tones — readable in source-over without blowing out
+      const palette = ['#fffee8','#ffe8b0','#ffd080','#f0d0a8','#e0eaff','#c8d8ff','#f4f0ff','#fff0d8'];
+      // Burst origins scattered at ring scale (~0.038 world units from centre)
       const bursts = [
-        { X: 0.15, Z: 0.05 }, { X: -0.18, Z: 0.12 },
-        { X: 0.08, Z: -0.14 }, { X: -0.08, Z: -0.08 },
-        { X: 0.22, Z: -0.06 }, { X: -0.05, Z: 0.18 }
+        { X:  0.038, Z:  0.000 }, { X:  0.019, Z:  0.033 },
+        { X: -0.019, Z:  0.033 }, { X: -0.038, Z:  0.000 },
+        { X: -0.019, Z: -0.033 }, { X:  0.019, Z: -0.033 }
       ];
       for (const b of bursts) {
-        const rB = Math.sqrt(b.X*b.X + b.Z*b.Z) + 1e-8;
-        const tangSign = Math.random() < 0.5 ? 1 : -1;
-        const tX = -b.Z / rB * tangSign, tZ = b.X / rB * tangSign;
-        for (let i = 0; i < 14; i++) {
+        for (let i = 0; i < 18; i++) {
           const phi = Math.acos(2 * Math.random() - 1);
           const th  = Math.random() * Math.PI * 2;
-          const spd = 0.003 + Math.random() * 0.006;
-          const ts  = 0.002 + Math.random() * 0.003;
+          const spd = 0.04 + Math.random() * 0.05; // fast burst, drag will slow them
           shootingStars.push({
             id: ssIdCounter++, mini: true, firework: true,
             fireworkColor: palette[Math.floor(Math.random() * palette.length)],
             X: b.X, Y: 0, Z: b.Z,
-            vX: spd * Math.sin(phi) * Math.cos(th) + tX * ts,
-            vY: spd * Math.sin(phi) * Math.sin(th) * 0.2,
-            vZ: spd * Math.cos(phi) + tZ * ts,
+            vX: spd * Math.sin(phi) * Math.cos(th),
+            vY: spd * Math.sin(phi) * Math.sin(th) * 0.15,
+            vZ: spd * Math.cos(phi),
             life: 1.0, trail: [], dying: false, fwAge: 0
           });
         }
@@ -614,15 +612,32 @@
           s.vZ -= a * ez / r * dts;
         } else if (s.firework) {
           s.fwAge += dts;
-          // Zero gravity for first 3s, then ramp to 0.25× normal by 6s
-          const gravFade = Math.max(0, Math.min(1, (s.fwAge - 3) / 3));
+          // Exponential drag for first 4s — fast burst decelerates across screen
+          if (s.fwAge < 4) { const df = 1 - 0.9 * dts; s.vX *= df; s.vY *= df; s.vZ *= df; }
+          // Ring suck: find nearest heartTarget and pull toward it, t=1.5→5s
+          const ringT = Math.max(0, Math.min(1, (s.fwAge - 1.5) / 3.5));
+          if (ringT > 0 && heartTargets && heartTargets.length > 0) {
+            let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
+            for (const ht of heartTargets) {
+              const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
+              const d2 = ex*ex + ey*ey + ez*ez;
+              if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
+            }
+            const rx = bX - s.X, ry = bY - s.Y, rz = bZ - s.Z;
+            const rDist = Math.sqrt(bestD2) + 1e-8;
+            const pullStr = ringT * ringT * Math.min(rDist * 10, 1.8);
+            s.vX += rx / rDist * pullStr * dts;
+            s.vY += ry / rDist * pullStr * dts;
+            s.vZ += rz / rDist * pullStr * dts;
+            if (rDist < 0.006) { s.vX *= 0.93; s.vY *= 0.93; s.vZ *= 0.93; }
+          }
+          // Gravity: fades in t=4→8s
+          const gravFade = Math.max(0, Math.min(1, (s.fwAge - 4) / 4));
           if (gravFade > 0) {
             const r2 = s.X*s.X + s.Y*s.Y + s.Z*s.Z + SS_SOFTEN;
             const r  = Math.sqrt(r2);
-            const a  = SS_GRAVITY * 0.25 * gravFade / r;
-            s.vX -= a * s.X / r * dts;
-            s.vY -= a * s.Y / r * dts;
-            s.vZ -= a * s.Z / r * dts;
+            const a  = SS_GRAVITY * 0.3 * gravFade / r;
+            s.vX -= a * s.X / r * dts; s.vY -= a * s.Y / r * dts; s.vZ -= a * s.Z / r * dts;
           }
         } else if (s.trailNear && engagedMode) {
           // Pair star — ghost handles orbital gravity; skip individual gravity
@@ -672,6 +687,7 @@
           }
         } else {
           // Mobile (and pair stars): original dot trail
+          if (s.firework) ctx.globalCompositeOperation = 'source-over';
           for (let j = 1; j < tl; j++) {
             const f = j / tl;
             const p = proj3(s.trail[j].X, s.trail[j].Y, s.trail[j].Z);
@@ -681,6 +697,7 @@
             const sz = isPairStar ? Math.max(ssWorldR * 0.4, f * ssWorldR) * p.sc : Math.max(starR * 0.4, f * starR);
             ctx.fillRect(p.sx - sz * 0.5, p.sy - sz * 0.5, sz, sz);
           }
+          if (s.firework) ctx.globalCompositeOperation = 'lighter';
         }
         const head = proj3(s.X, s.Y, s.Z);
         if (head) {
