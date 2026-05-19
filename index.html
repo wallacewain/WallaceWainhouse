@@ -841,7 +841,7 @@
             const f = j / tl;
             const tp = proj(trail[j].X, trail[j].Y, trail[j].Z);
             if (!tp) continue;
-            ctx.globalAlpha = f * g.life * 0.75;
+            ctx.globalAlpha = f * g.life * 0.50;
             ctx.fillStyle = f > 0.5 ? near : far;
             const sz = Math.max(ssR * 1.2, f * ssR * 3.5);
             ctx.fillRect(tp.sx - sz * 0.5, tp.sy - sz * 0.5, sz, sz);
@@ -855,7 +855,7 @@
         for (let side = 0; side < 2; side++) {
           const p = side === 0 ? p1 : p2;
           if (!p) continue;
-          ctx.globalAlpha = g.life;
+          ctx.globalAlpha = g.life * 0.50;
           const glowR = Math.min(W, H) * 0.15;
           const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, glowR);
           if (side === 0) {
@@ -873,6 +873,7 @@
           }
           ctx.fillStyle = grd;
           ctx.beginPath(); ctx.arc(p.sx, p.sy, glowR, 0, 6.2832); ctx.fill();
+          ctx.globalAlpha = g.life * 0.90;
           ctx.fillStyle = side === 0 ? '#fffaea' : '#eef1ff';
           ctx.beginPath(); ctx.arc(p.sx, p.sy, ssR * 3.5, 0, 6.2832); ctx.fill();
         }
