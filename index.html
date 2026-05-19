@@ -613,9 +613,13 @@
           s.vZ -= a * ez / r * dts;
         } else if (s.firework) {
           s.fwAge += dts;
+          // Tangential spin from t=0 — arcs paths while still moving fast
+          const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z) + 1e-8;
+          s.vX += (-s.Z / rXZ) * (s.fwTang || 1) * 0.05 * dts;
+          s.vZ += ( s.X / rXZ) * (s.fwTang || 1) * 0.05 * dts;
           // Exponential drag for first 4s — fast burst decelerates across screen
           if (s.fwAge < 4) { const df = 1 - 0.7 * dts; s.vX *= df; s.vY *= df; s.vZ *= df; }
-          // Ring suck: find nearest heartTarget, pull + orbit, t=1.5→5s
+          // Ring suck: find nearest heartTarget and pull, t=1.5→5s
           const ringT = Math.max(0, Math.min(1, (s.fwAge - 1.5) / 3.5));
           if (ringT > 0 && heartTargets && heartTargets.length > 0) {
             let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
@@ -626,19 +630,10 @@
             }
             const rx = bX - s.X, ry = bY - s.Y, rz = bZ - s.Z;
             const rDist = Math.sqrt(bestD2) + 1e-8;
-            // Distance-proportional pull so far particles converge at same rate
             const pullStr = ringT * ringT * rDist * 14;
             s.vX += rx / rDist * pullStr * dts;
             s.vY += ry / rDist * pullStr * dts;
             s.vZ += rz / rDist * pullStr * dts;
-            // Tangential orbit boost as particles approach ring
-            const ringRad = Math.sqrt(bX*bX + bZ*bZ) + 1e-8;
-            const tX = -bZ / ringRad * (s.fwTang || 1);
-            const tZ =  bX / ringRad * (s.fwTang || 1);
-            const orbitStr = ringT * Math.max(0, 1 - rDist / 0.10) * 0.20;
-            s.vX += tX * orbitStr * dts;
-            s.vZ += tZ * orbitStr * dts;
-            // Damp when on ring to settle into orbit rather than bouncing
             if (rDist < 0.008) { s.vX *= 0.90; s.vY *= 0.90; s.vZ *= 0.90; }
           }
           // Gravity: fades in t=4→8s
