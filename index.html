@@ -744,7 +744,10 @@
         } else if (!g.controlled) {
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
-          const ga = SS_GRAVITY * 0.15 / gr;
+          // Grade gravity to zero inside r=0.25 so the ghost doesn't
+          // slingshot through the centre and bounce uncontrollably
+          const gravFade = Math.min(1.0, gr / 0.25);
+          const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
         // Soft galaxy boundary: quadratic restoring pull starts at r=0.7, applies always
