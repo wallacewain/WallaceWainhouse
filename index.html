@@ -756,6 +756,9 @@
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
+        // Hard speed cap: galaxy diameter 1.4 / 15s minimum crossing time
+        const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
+        if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 6);
