@@ -861,7 +861,7 @@
         if (s.trail.length > SS_TRAIL) s.trail.shift();
         s.X += s.vX * dts; s.Y += s.vY * dts; s.Z += s.vZ * dts;
         if (s.firework) s.life -= dt * 0.8 / SS_LIFE_MS;
-        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 6 : 1));
+        else if (!s.mini || heartPhase === 0) s.life -= dt * (s.dying ? 4 : 1) / (SS_LIFE_MS * (engagedMode && !s.mini ? 12 : 1));
         if (s.life <= 0) {
           if (!s.firework && heartPhase === 0) {
             for (const sp of specialStars) {
@@ -1021,7 +1021,7 @@
         if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
-        g.life -= dts * 1000 / (SS_LIFE_MS * 6);
+        g.life -= dts * 1000 / (SS_LIFE_MS * 12);
         if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
         const gp = proj(g.X, g.Y, g.Z);
         if (!gp) continue;
