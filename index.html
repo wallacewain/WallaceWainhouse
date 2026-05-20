@@ -32,7 +32,8 @@
   <style>
     html, body { cursor: crosshair; }
     /* Hide site chrome when in fullscreen */
-    :fullscreen header,        :-webkit-full-screen header { display: none !important; }
+    :fullscreen header, :fullscreen footer, :fullscreen main,
+    :-webkit-full-screen header, :-webkit-full-screen footer, :-webkit-full-screen main { display: none !important; }
     #galaxy-bg {
       position: fixed;
       top: 0; left: 0;
