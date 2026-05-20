@@ -852,9 +852,13 @@
               s.vX += tX * (0.120 - curTang) * 0.8 * dts;
               s.vZ += tZ * (0.120 - curTang) * 0.8 * dts;
             } else {
-              // Ring gone mid-flight: bleed off velocity so particles fade in place
-              const df = 1 - 1.8 * dts;
-              s.vX *= df; s.vY *= df; s.vZ *= df;
+              // Ring gone mid-flight: fall under galaxy gravity like regular stars
+              const gr2 = s.X*s.X + s.Y*s.Y + s.Z*s.Z + SS_SOFTEN;
+              const gr  = Math.sqrt(gr2);
+              const ga  = SS_GRAVITY * 0.15 / gr;
+              s.vX -= ga * s.X / gr * dts;
+              s.vY -= ga * s.Y / gr * dts;
+              s.vZ -= ga * s.Z / gr * dts;
             }
           }
         } else if (s.trailNear && engagedMode) {
