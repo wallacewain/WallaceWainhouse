@@ -451,6 +451,10 @@
         if (ctx.state === 'suspended')
           document.addEventListener('pointerdown', () => ctx.resume(), { once: true });
 
+        // Pause/resume with tab visibility
+        const _visHandler = () => document.hidden ? ctx.suspend() : ctx.resume();
+        document.addEventListener('visibilitychange', _visHandler);
+
         // Bright, airy reverb (3 s)
         const irLen = Math.floor(ctx.sampleRate * 3.0);
         const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
@@ -613,6 +617,7 @@
         _mus = { ctx, shelf, swellOsc, cTimer, mTimer,
           stop() {
             clearInterval(this.cTimer); clearTimeout(this.mTimer);
+            document.removeEventListener('visibilitychange', _visHandler);
             try { this.swellOsc.stop(); } catch(e) {}
             master.gain.setTargetAtTime(0, this.ctx.currentTime, 3.5);
             setTimeout(() => { try { this.ctx.close(); } catch(e) {} }, 12000);
