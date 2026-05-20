@@ -255,7 +255,7 @@
     // ── Interaction state ─────────────────────────────────────────────────
     let msx = -9999, msy = -9999;
     let dragging = false, ldx = 0, ldy = 0;
-    let lDragging = false, mDragging = false;
+    let lDragging = false, mDragging = false, hintDragging = false;
     const heroEls = document.querySelectorAll('.hero h1, .hero p');
     let heroFaded = false;
     let dragRX = 0.28, dragRY = 0;
@@ -1266,7 +1266,7 @@
         dragging = false; msx = -9999; msy = -9999;
         if (followGhost && followGhost.controlled) {
           followGhost.controlled = false;
-        } else {
+        } else if (!hintDragging) {
           ssEnd();
         }
       }
@@ -1279,7 +1279,7 @@
 
       function hStart(cx, cy) {
         if (hActive) return;
-        hActive = true;
+        hActive = true; hintDragging = true;
         const ghost = document.createElement('div');
         ghost.className = 'dh-ghost';
         ghost.innerHTML = hintEl.innerHTML;
@@ -1306,7 +1306,7 @@
 
       function hEnd(cx, cy) {
         if (!hActive) return;
-        hActive = false;
+        hActive = false; hintDragging = false;
         ssLX = cx; ssLY = cy;
         if (hGhost) {
           const g = hGhost; hGhost = null;
