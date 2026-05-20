@@ -588,22 +588,24 @@
         }
         if (!isMobile) setTimeout(scheduleArp, 2200);
 
-        // Melody: G pentatonic (G A B D E), up to G5 — A5/B5 were too shrill
-        const scale = [392.00, 440.00, 493.88, 587.33, 659.26, 783.99];
-        //              G4      A4      B4      D5      E5      G5
+        // Melody: G pentatonic lower register — caps at D5 to avoid whistling
+        const scale = [392.00, 440.00, 493.88, 587.33];
+        //              G4      A4      B4      D5
         let mi = 1, mn = null, mTimer = null;
         function nextMel() {
-          if (mn) mn.rel(1.8); mn = null;
+          // Release time shorter at higher notes so they don't linger
+          if (mn) { mn.rel(mi < 2 ? 1.6 : 0.7); } mn = null;
           const bias = _musRise > 0.006 ? 1 : _musRise < -0.006 ? -1 : 0;
+          // Gravity back toward B4 (index 2) when above it — prevents dwelling up high
+          const grav = mi >= 2 ? -1 : 0;
           const r = Math.random();
-          const leap = r < 0.18 ? 3 : r < 0.42 ? 2 : 1;  // occasional romantic leaps
+          const leap = r < 0.12 ? 2 : 1;  // mostly steps
           mi = Math.max(0, Math.min(scale.length - 1,
-            mi + (bias + (r < 0.55 ? 1 : -1)) * leap));
-          // Quieter + shorter at higher register so it doesn't whistle
+            mi + (bias + grav + (r < 0.48 ? 1 : -1)) * leap));
           const hiF = mi / (scale.length - 1);
-          const vol = 0.26 - hiF * 0.10;
-          const dur = 1800 + Math.random() * 2000 - hiF * 800;
-          mn = mkPad(scale[mi], melBus, vol, 0.7);
+          const vol = 0.22 - hiF * 0.08;          // 0.22 → 0.14
+          const dur = 900 + Math.random() * 1100 - hiF * 500;  // 900-2000ms low, 400-1500ms high
+          mn = mkPad(scale[mi], melBus, vol, 0.5);
           mTimer = setTimeout(() => { if (_mus) nextMel(); }, dur);
         }
         setTimeout(() => { if (_mus) nextMel(); }, 3200);
