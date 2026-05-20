@@ -836,13 +836,14 @@
             s.vX += tX * (wantTang - curTang) * ringT * 4.0 * dts;
             s.vY += tY * (wantTang - curTang) * ringT * 4.0 * dts;
             s.vZ += tZ * (wantTang - curTang) * ringT * 4.0 * dts;
-            // Damp only the radial component when near ring — preserves orbital motion
-            if (rDist < 0.010) {
-              const radVel = s.vX * (rx/rDist) + s.vY * (ry/rDist) + s.vZ * (rz/rDist);
-              s.vX -= rx / rDist * radVel * 0.35;
-              s.vY -= ry / rDist * radVel * 0.35;
-              s.vZ -= rz / rDist * radVel * 0.35;
-            }
+            // Progressive radial braking: cancel inward velocity as particle nears ring
+            // — makes it arrive tangentially ("hit flat") rather than head-on
+            const radVel = s.vX*(rx/rDist) + s.vY*(ry/rDist) + s.vZ*(rz/rDist);
+            const brakeFade = Math.max(0, 1 - rDist / 0.045);
+            const brake = Math.min(1, brakeFade * brakeFade * 7 * dts);
+            s.vX -= rx / rDist * radVel * brake;
+            s.vY -= ry / rDist * radVel * brake;
+            s.vZ -= rz / rDist * radVel * brake;
           } else {
             // Pre-ring: gentle spin around origin so burst isn't just outward
             const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z) + 1e-8;
