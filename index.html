@@ -588,9 +588,9 @@
         }
         if (!isMobile) setTimeout(scheduleArp, 2200);
 
-        // Melody: G pentatonic (G A B D E), violin register, quick attack
-        const scale = [392.00, 440.00, 493.88, 587.33, 659.26, 783.99, 880.00, 987.77];
-        //              G4      A4      B4      D5      E5      G5      A5      B5
+        // Melody: G pentatonic (G A B D E), up to G5 — A5/B5 were too shrill
+        const scale = [392.00, 440.00, 493.88, 587.33, 659.26, 783.99];
+        //              G4      A4      B4      D5      E5      G5
         let mi = 1, mn = null, mTimer = null;
         function nextMel() {
           if (mn) mn.rel(1.8); mn = null;
@@ -599,8 +599,12 @@
           const leap = r < 0.18 ? 3 : r < 0.42 ? 2 : 1;  // occasional romantic leaps
           mi = Math.max(0, Math.min(scale.length - 1,
             mi + (bias + (r < 0.55 ? 1 : -1)) * leap));
-          mn = mkPad(scale[mi], melBus, 0.26, 0.7);
-          mTimer = setTimeout(() => { if (_mus) nextMel(); }, 3000 + Math.random() * 3500);
+          // Quieter + shorter at higher register so it doesn't whistle
+          const hiF = mi / (scale.length - 1);
+          const vol = 0.26 - hiF * 0.10;
+          const dur = 1800 + Math.random() * 2000 - hiF * 800;
+          mn = mkPad(scale[mi], melBus, vol, 0.7);
+          mTimer = setTimeout(() => { if (_mus) nextMel(); }, dur);
         }
         setTimeout(() => { if (_mus) nextMel(); }, 3200);
 
