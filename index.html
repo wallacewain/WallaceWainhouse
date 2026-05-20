@@ -793,31 +793,42 @@
           s.vZ -= a * ez / r * dts;
         } else if (s.firework) {
           s.fwAge += dts;
-          // Steer toward target tangential orbital speed — keeps particles moving around ring
-          const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z) + 1e-8;
-          const tX = -s.Z / rXZ * (s.fwTang || 1);
-          const tZ =  s.X / rXZ * (s.fwTang || 1);
-          const curTang = s.vX * tX + s.vZ * tZ;
-          const wantTang = 0.120;
-          s.vX += tX * (wantTang - curTang) * 1.2 * dts;
-          s.vZ += tZ * (wantTang - curTang) * 1.2 * dts;
           // Exponential drag for first 4s — fast burst decelerates across screen
           if (s.fwAge < 4) { const df = 1 - 0.7 * dts; s.vX *= df; s.vY *= df; s.vZ *= df; }
-          // Ring suck: find nearest heartTarget and pull, t=1.5→5s
+          // Ring suck + ring-tangent steering: t=1.5→5s
           const ringT = Math.max(0, Math.min(1, (s.fwAge - 1.5) / 3.5));
           if (ringT > 0 && heartTargets && heartTargets.length > 0) {
-            let bestD2 = Infinity, bX = 0, bY = 0, bZ = 0;
-            for (const ht of heartTargets) {
+            // Find nearest ring point AND its index so we can compute the ring tangent
+            let bestD2 = Infinity, bestIdx = 0;
+            for (let hi = 0; hi < heartTargets.length; hi++) {
+              const ht = heartTargets[hi];
               const ex = s.X - ht.X, ey = s.Y - ht.Y, ez = s.Z - ht.Z;
               const d2 = ex*ex + ey*ey + ez*ez;
-              if (d2 < bestD2) { bestD2 = d2; bX = ht.X; bY = ht.Y; bZ = ht.Z; }
+              if (d2 < bestD2) { bestD2 = d2; bestIdx = hi; }
             }
+            const bX = heartTargets[bestIdx].X, bY = heartTargets[bestIdx].Y, bZ = heartTargets[bestIdx].Z;
             const rx = bX - s.X, ry = bY - s.Y, rz = bZ - s.Z;
             const rDist = Math.sqrt(bestD2) + 1e-8;
+            // Pull toward ring
             const pullStr = ringT * ringT * rDist * 14;
             s.vX += rx / rDist * pullStr * dts;
             s.vY += ry / rDist * pullStr * dts;
             s.vZ += rz / rDist * pullStr * dts;
+            // Steer tangentially along the ring curve (not around global origin)
+            const n = heartTargets.length;
+            const tgA = heartTargets[(bestIdx + 3) % n];
+            const tgB = heartTargets[(bestIdx - 3 + n) % n];
+            let tX = tgA.X - tgB.X, tY = tgA.Y - tgB.Y, tZ = tgA.Z - tgB.Z;
+            const tLen = Math.sqrt(tX*tX + tY*tY + tZ*tZ) + 1e-8;
+            tX = tX / tLen * (s.fwTang || 1);
+            tY = tY / tLen * (s.fwTang || 1);
+            tZ = tZ / tLen * (s.fwTang || 1);
+            const curTang = s.vX*tX + s.vY*tY + s.vZ*tZ;
+            const wantTang = 0.120;
+            // Steering ramps up with ringT so particles smoothly transition to orbit
+            s.vX += tX * (wantTang - curTang) * ringT * 4.0 * dts;
+            s.vY += tY * (wantTang - curTang) * ringT * 4.0 * dts;
+            s.vZ += tZ * (wantTang - curTang) * ringT * 4.0 * dts;
             // Damp only the radial component when near ring — preserves orbital motion
             if (rDist < 0.010) {
               const radVel = s.vX * (rx/rDist) + s.vY * (ry/rDist) + s.vZ * (rz/rDist);
@@ -825,6 +836,14 @@
               s.vY -= ry / rDist * radVel * 0.35;
               s.vZ -= rz / rDist * radVel * 0.35;
             }
+          } else {
+            // Pre-ring: gentle spin around origin so burst isn't just outward
+            const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z) + 1e-8;
+            const tX = -s.Z / rXZ * (s.fwTang || 1);
+            const tZ =  s.X / rXZ * (s.fwTang || 1);
+            const curTang = s.vX * tX + s.vZ * tZ;
+            s.vX += tX * (0.120 - curTang) * 0.8 * dts;
+            s.vZ += tZ * (0.120 - curTang) * 0.8 * dts;
           }
         } else if (s.trailNear && engagedMode) {
           // Pair star — ghost handles orbital gravity; skip individual gravity
