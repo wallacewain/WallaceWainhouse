@@ -836,14 +836,12 @@
             s.vX += tX * (wantTang - curTang) * ringT * 4.0 * dts;
             s.vY += tY * (wantTang - curTang) * ringT * 4.0 * dts;
             s.vZ += tZ * (wantTang - curTang) * ringT * 4.0 * dts;
-            // Progressive radial braking: cancel inward velocity as particle nears ring
-            // — makes it arrive tangentially ("hit flat") rather than head-on
+            // Strip radial component — velocity becomes fully parallel to ring on contact
             const radVel = s.vX*(rx/rDist) + s.vY*(ry/rDist) + s.vZ*(rz/rDist);
-            const brakeFade = Math.max(0, 1 - rDist / 0.045);
-            const brake = Math.min(1, brakeFade * brakeFade * 7 * dts);
-            s.vX -= rx / rDist * radVel * brake;
-            s.vY -= ry / rDist * radVel * brake;
-            s.vZ -= rz / rDist * radVel * brake;
+            const strip = Math.max(0, 1 - rDist / 0.06);  // ramps 0→1 as particle closes in
+            s.vX -= rx / rDist * radVel * strip;
+            s.vY -= ry / rDist * radVel * strip;
+            s.vZ -= rz / rDist * radVel * strip;
           } else {
             // Pre-ring: gentle spin around origin so burst isn't just outward
             const rXZ = Math.sqrt(s.X*s.X + s.Z*s.Z) + 1e-8;
