@@ -31,6 +31,8 @@
   </script>
   <style>
     html, body { cursor: crosshair; }
+    /* Hide site chrome when in fullscreen */
+    :fullscreen header,        :-webkit-full-screen header { display: none !important; }
     #galaxy-bg {
       position: fixed;
       top: 0; left: 0;
