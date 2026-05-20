@@ -85,6 +85,13 @@
 </head>
 <body>
   <canvas id="galaxy-bg"></canvas>
+  <button id="fsBtn" title="Fullscreen (F)" aria-label="Toggle fullscreen" style="
+    position:fixed; bottom:14px; right:14px; z-index:9999;
+    width:32px; height:32px; padding:0; border:none; border-radius:6px;
+    background:rgba(255,255,255,0.10); color:#fff; font-size:16px;
+    cursor:pointer; opacity:0.45; transition:opacity .2s;
+    display:flex; align-items:center; justify-content:center;
+  ">⛶</button>
   <header>
     <nav>
       <a href="/" class="logo"><svg viewBox="-323 -28 2446 296" height="18" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-279.60,-4.00 -298.80,10.40 -123.60,244.00 -104.40,229.60"/><polygon points="-54.00,229.60 -34.80,244.00 140.40,10.40 121.20,-4.00"/><polygon points="210.00,-4.00 190.80,10.40 366.00,244.00 385.20,229.60"/><polygon points="435.60,229.60 454.80,244.00 630.00,10.40 610.80,-4.00"/><polygon points="699.60,-4.00 680.40,10.40 855.60,244.00 874.80,229.60"/><polygon points="925.20,229.60 944.40,244.00 1119.60,10.40 1100.40,-4.00"/><polygon points="1189.20,-4.00 1170.00,10.40 1345.20,244.00 1364.40,229.60"/><polygon points="1414.80,229.60 1434.00,244.00 1609.20,10.40 1590.00,-4.00"/><polygon points="1678.80,-4.00 1659.60,10.40 1834.80,244.00 1854.00,229.60"/><polygon points="1904.40,229.60 1923.60,244.00 2098.80,10.40 2079.60,-4.00"/></svg></a>
@@ -120,6 +127,33 @@
     }
     resize();
     window.addEventListener('resize', resize);
+
+    // ── Fullscreen ────────────────────────────────────────────────────────
+    const fsBtn = document.getElementById('fsBtn');
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      fsBtn.style.display = 'none'; // requestFullscreen unsupported on iOS Safari
+    } else {
+      const isFS  = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const enterFS = () => {
+        const el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el).catch(() => {});
+      };
+      const exitFS  = () => (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+      const toggleFS = () => isFS() ? exitFS() : enterFS();
+      const updateIcon = () => { fsBtn.textContent = isFS() ? '⊠' : '⛶'; };
+      document.addEventListener('fullscreenchange', updateIcon);
+      document.addEventListener('webkitfullscreenchange', updateIcon);
+      fsBtn.addEventListener('click', toggleFS);
+      fsBtn.addEventListener('mouseover', () => { fsBtn.style.opacity = '0.85'; });
+      fsBtn.addEventListener('mouseout',  () => { fsBtn.style.opacity = '0.45'; });
+      // F key shortcut on desktop
+      document.addEventListener('keydown', e => { if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) toggleFS(); });
+      // Auto-fullscreen when phone tilts to landscape
+      const tryLandscapeFS = () => setTimeout(() => { if (window.innerWidth > window.innerHeight && !isFS()) enterFS(); }, 150);
+      window.addEventListener('orientationchange', tryLandscapeFS);
+      screen.orientation?.addEventListener('change', tryLandscapeFS);
+    }
 
     // ── Galaxy generation ─────────────────────────────────────────────────
     const isMobile = window.innerWidth < 768;
