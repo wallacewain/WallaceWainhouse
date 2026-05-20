@@ -342,8 +342,8 @@
       const v = ss3DVel(vsx, vsy, pos.dz);
 
       if (engagedMode) {
-        // While a pair is alive and camera is following it, ignore further swipes
-        if (followGhost && pairGhosts.length > 0) return;
+        // Only one pair at a time
+        if (pairGhosts.length > 0) return;
         // Strip outward radial component, then fix to a constant speed —
         // direction comes from the swipe, magnitude is always the same
         const r2 = Math.sqrt(pos.X*pos.X + pos.Z*pos.Z);
