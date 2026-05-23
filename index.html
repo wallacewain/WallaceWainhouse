@@ -1055,10 +1055,10 @@
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Soft galaxy boundary: quadratic restoring pull starts at r=0.7, applies always
+        // Soft galaxy boundary: quadratic restoring pull starts at r=1.5, applies always
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 0.7) {
-          const excess = rXZ - 0.7;
+        if (rXZ > 1.5) {
+          const excess = rXZ - 1.5;
           const pull = SS_GRAVITY * excess * excess * 12 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
