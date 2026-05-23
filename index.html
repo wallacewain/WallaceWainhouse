@@ -1050,16 +1050,16 @@
         } else if (!g.controlled) {
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
-          // Zero gravity inside r=0.4, ramp to full by r=0.8
-          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.4) / 0.4));
+          // Zero gravity inside r=0.25, ramp to full by r=0.5
+          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25) / 0.25));
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Cubic boundary: near-zero 0.7→1.5, ramps sharply toward r=2.0
+        // Soft boundary: free inside r=1.4, gentle quadratic turn only near true galaxy edge
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 0.7) {
-          const excess = rXZ - 0.7;
-          const pull = SS_GRAVITY * excess * excess * excess * 2.5 / rXZ;
+        if (rXZ > 1.4) {
+          const excess = rXZ - 1.4;
+          const pull = SS_GRAVITY * excess * excess * 4 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
