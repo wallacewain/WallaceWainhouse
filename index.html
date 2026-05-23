@@ -1055,11 +1055,12 @@
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Soft galaxy boundary: quadratic restoring pull starts at r=1.5, applies always
+        // Soft galaxy boundary: gentle quadratic from r=0.7 — coefficient low enough
+        // that natural orbit is preserved but steered ghost can reach r~1.5
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 1.5) {
-          const excess = rXZ - 1.5;
-          const pull = SS_GRAVITY * excess * excess * 12 / rXZ;
+        if (rXZ > 0.7) {
+          const excess = rXZ - 0.7;
+          const pull = SS_GRAVITY * excess * excess * 2 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
