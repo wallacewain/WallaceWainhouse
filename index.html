@@ -1036,7 +1036,7 @@
         const g = pairGhosts[pi];
         // Galaxy edge: lose flight control and sling into tangent orbit
         const rEdge = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (g.controlled && rEdge > 1.0) {
+        if (g.controlled && rEdge > 2.0) {
           g.controlled = false;
           const tangX = -g.Z / rEdge, tangZ = g.X / rEdge;
           const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
@@ -1051,16 +1051,16 @@
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
           // Zero gravity inside r=0.25, then linear ramp to full at r=0.5
-          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25) / 0.25));
+          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.5) / 0.5));
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
         // Soft galaxy boundary: gentle quadratic from r=0.7 — coefficient low enough
         // that natural orbit is preserved but steered ghost can reach r~1.5
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 0.7) {
-          const excess = rXZ - 0.7;
-          const pull = SS_GRAVITY * excess * excess * 2 / rXZ;
+        if (rXZ > 1.4) {
+          const excess = rXZ - 1.4;
+          const pull = SS_GRAVITY * excess * excess * 12 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
