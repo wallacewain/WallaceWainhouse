@@ -1044,11 +1044,11 @@
           const gr  = Math.sqrt(gr2);
           if (gr > 1.0) {
             // Outside galaxy edge: inward gravity curves ghost back
-            const ga = SS_GRAVITY * 0.15 / gr;
+            const ga = SS_GRAVITY * 0.30 / gr;
             g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
           } else {
             // Inside galaxy: very gentle pull toward galactic plane
-            g.vY -= 0.05 * g.Y * dts;
+            g.vY -= 0.10 * g.Y * dts;
           }
         }
         // Fixed speed — gravity only steers direction, never changes magnitude
@@ -1056,7 +1056,7 @@
         if (_spd > 0.001) { const _sc = 0.062 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
-        g.life -= dts * 1000 / (SS_LIFE_MS * 12);
+        g.life -= dts * 1000 / (SS_LIFE_MS * 24);
         if (g.life <= 0) { if (followGhost === g) followGhost = null; pairGhosts.splice(pi, 1); continue; }
         const gp = proj(g.X, g.Y, g.Z);
         if (!gp) continue;
