@@ -327,7 +327,6 @@
     let heartPhase = 0, heartT = 0, rotMult = 1, heartRot = 0, heartStartRotX = 0.28;
     let heartCount = 0, heartMsgSet = null;
     let proposalMode = false, engagedMode = new URLSearchParams(location.search).has('e'), followStar = null, followGhost = null;
-    let galaxyExpandT = 0, galaxyExpanding = false;
     const HEART_MSGS = [
       { form: ['> ♥ dark matter. can\'t see it, but i feel the pull.', '>'],
         restore: ['> a pull you can\'t resist.', '> ✦ drag one into it.', '>'] },
@@ -1035,10 +1034,9 @@
       }
       for (let pi = pairGhosts.length - 1; pi >= 0; pi--) {
         const g = pairGhosts[pi];
-        const gS = 1 + 2 * galaxyExpandT;  // boundary scale matches galaxy expansion (1→3)
         // Galaxy edge: lose flight control and sling into tangent orbit
         const rEdge = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (g.controlled && rEdge > 1.0 * gS) {
+        if (g.controlled && rEdge > 1.0) {
           g.controlled = false;
           const tangX = -g.Z / rEdge, tangZ = g.X / rEdge;
           const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
@@ -1052,19 +1050,20 @@
         } else if (!g.controlled) {
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
-          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25*gS) / (0.25*gS)));
+          // Zero gravity inside r=0.25, then linear ramp to full at r=0.5
+          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25) / 0.25));
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Soft galaxy boundary grows with expansion
+        // Soft galaxy boundary: quadratic restoring pull starts at r=0.7, applies always
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 0.7 * gS) {
-          const excess = rXZ - 0.7 * gS;
+        if (rXZ > 0.7) {
+          const excess = rXZ - 0.7;
           const pull = SS_GRAVITY * excess * excess * 12 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
-        // Hard speed cap
+        // Hard speed cap: galaxy diameter 1.4 / 15s minimum crossing time
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
         if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
@@ -1471,19 +1470,6 @@
 
       const sinX = Math.sin(rotX), cosX = Math.cos(rotX);
       const sinY = Math.sin(rotY), cosY = Math.cos(rotY);
-
-      // Galaxy expansion: once camera is locked to ghost, spread stars to 3× their origin
-      if (followGhost && camFollowT > 0.95 && !galaxyExpanding && galaxyExpandT === 0) {
-        galaxyExpanding = true;
-        for (const s of stars) { s.ox = s.x; s.oy = s.y; s.oz = s.z; }
-      }
-      if (galaxyExpanding) {
-        const dt_ = dt * 0.001;
-        galaxyExpandT = Math.min(1, galaxyExpandT + dt_ / 8);  // 8 seconds to full expansion
-        const sc = 1 + 2 * galaxyExpandT;  // 1→3
-        for (const s of stars) { s.x = s.ox * sc; s.y = s.oy * sc; s.z = s.oz * sc; }
-        if (galaxyExpandT >= 1) galaxyExpanding = false;
-      }
 
       const proj = [];
       for (let si = 0; si < stars.length; si++) {
