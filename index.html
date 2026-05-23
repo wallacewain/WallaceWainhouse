@@ -1034,14 +1034,6 @@
       }
       for (let pi = pairGhosts.length - 1; pi >= 0; pi--) {
         const g = pairGhosts[pi];
-        // Galaxy edge: lose flight control and sling into tangent orbit
-        const rEdge = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (g.controlled && rEdge > 1.0) {
-          g.controlled = false;
-          const tangX = -g.Z / rEdge, tangZ = g.X / rEdge;
-          const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
-          g.vX = tangX * slingSpd; g.vY *= 0.3; g.vZ = tangZ * slingSpd;
-        }
         // Steering: lerp velocity to target; gravity disabled while controlled
         if (g.controlled && g._ctrlTargetVX !== undefined) {
           g.vX += (g._ctrlTargetVX - g.vX) * 0.12;
