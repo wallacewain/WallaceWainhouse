@@ -1047,13 +1047,6 @@
           g.vX += (g._ctrlTargetVX - g.vX) * 0.12;
           g.vY += (g._ctrlTargetVY - g.vY) * 0.12;
           g.vZ += (g._ctrlTargetVZ - g.vZ) * 0.12;
-        } else if (!g.controlled) {
-          const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
-          const gr = Math.sqrt(gr2);
-          // Zero gravity inside r=0.25, ramp to full by r=0.5
-          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25) / 0.25));
-          const ga = SS_GRAVITY * 0.15 / gr * gravFade;
-          g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
         // Soft boundary: starts at r=0.7 but 5th-power curve keeps force near-zero
         // until close to r=2.0, so ghost feels free through most of galaxy
