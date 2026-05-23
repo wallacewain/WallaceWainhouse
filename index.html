@@ -1048,12 +1048,9 @@
           g.vY += (g._ctrlTargetVY - g.vY) * 0.12;
           g.vZ += (g._ctrlTargetVZ - g.vZ) * 0.12;
         } else if (!g.controlled) {
-          // Gentle uniform galaxy gravity — no suppression zone, so releasing
-          // control gives a smooth orbiting bounce back through the galaxy
-          const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
-          const gr  = Math.sqrt(gr2);
-          const ga  = SS_GRAVITY * 0.03 / gr;
-          g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+          // Gentle pull toward galactic plane only — doesn't resist XZ travel,
+          // so ghost can roam freely; outer boundary handles the turn-around
+          g.vY -= 0.12 * g.Y * dts;
         }
         // Soft boundary: starts at r=0.7 but 5th-power curve keeps force near-zero
         // until close to r=2.0, so ghost feels free through most of galaxy
