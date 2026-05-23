@@ -1047,10 +1047,6 @@
           g.vX += (g._ctrlTargetVX - g.vX) * 0.12;
           g.vY += (g._ctrlTargetVY - g.vY) * 0.12;
           g.vZ += (g._ctrlTargetVZ - g.vZ) * 0.12;
-        } else if (!g.controlled) {
-          // Gentle pull toward galactic plane only — doesn't resist XZ travel,
-          // so ghost can roam freely; outer boundary handles the turn-around
-          g.vY -= 0.12 * g.Y * dts;
         }
         // Soft boundary: starts at r=0.7 but 5th-power curve keeps force near-zero
         // until close to r=2.0, so ghost feels free through most of galaxy
@@ -1061,9 +1057,11 @@
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
-        // Hard speed cap
+        // Hard speed cap (XZ travel only)
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
         if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
+        // Plane spring applied after cap — purely additive, no XZ speed penalty
+        if (!g.controlled) g.vY -= 0.06 * g.Y * dts;
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 12);
