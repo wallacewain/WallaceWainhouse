@@ -1046,10 +1046,9 @@
             // Outside galaxy edge: inward gravity curves ghost back
             const ga = SS_GRAVITY * 0.15 / gr;
             g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
-          } else {
-            // Inside galaxy: very gentle pull toward galactic plane
-            g.vY -= 0.10 * g.Y * dts;
           }
+          // Plane gravity always on — keeps Y amplitude in check everywhere
+          g.vY -= 0.10 * g.Y * dts;
         }
         // Fixed speed — gravity only steers direction, never changes magnitude
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
