@@ -1045,7 +1045,8 @@
           if (gr > 1.0) {
             // Outside galaxy edge: inward gravity curves ghost back
             const ga = SS_GRAVITY * 0.15 / gr;
-            g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+            const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z) + 1e-8;
+            g.vX -= ga * g.X / rXZ * dts; g.vZ -= ga * g.Z / rXZ * dts;
           }
           // Plane gravity always on — keeps Y amplitude in check everywhere
           g.vY -= 0.10 * g.Y * dts;
