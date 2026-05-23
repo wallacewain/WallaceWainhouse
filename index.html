@@ -1044,7 +1044,7 @@
           const gr  = Math.sqrt(gr2);
           if (gr > 1.0) {
             // Outside galaxy edge: inward gravity curves ghost back
-            const ga = SS_GRAVITY * 0.30 / gr;
+            const ga = SS_GRAVITY * 0.15 / gr;
             g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
           } else {
             // Inside galaxy: very gentle pull toward galactic plane
