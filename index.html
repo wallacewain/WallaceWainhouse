@@ -389,7 +389,7 @@
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        const PAIR_SPEED = 0.093;
+        const PAIR_SPEED = 0.062;
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > 0.001) { const sc = PAIR_SPEED / spd; v.vX *= sc; v.vZ *= sc; }
         else { v.vX = PAIR_SPEED; v.vZ = 0; }
@@ -1039,10 +1039,21 @@
           g.vX += (g._ctrlTargetVX - g.vX) * 0.12;
           g.vY += (g._ctrlTargetVY - g.vY) * 0.12;
           g.vZ += (g._ctrlTargetVZ - g.vZ) * 0.12;
+        } else if (!g.controlled) {
+          const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
+          const gr  = Math.sqrt(gr2);
+          if (gr > 1.0) {
+            // Outside galaxy edge: inward gravity curves ghost back
+            const ga = SS_GRAVITY * 0.15 / gr;
+            g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
+          } else {
+            // Inside galaxy: very gentle pull toward galactic plane
+            g.vY -= 0.05 * g.Y * dts;
+          }
         }
-        // Hard speed cap: galaxy diameter 1.4 / 15s minimum crossing time
+        // Fixed speed — gravity only steers direction, never changes magnitude
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
-        if (_spd > 0.001) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
+        if (_spd > 0.001) { const _sc = 0.062 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 12);
