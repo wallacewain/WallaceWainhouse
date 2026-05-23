@@ -1055,11 +1055,11 @@
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Linear boundary: starts gently at r=0.7, builds slowly to r=2.0
+        // Cubic boundary: near-zero 0.7→1.5, ramps sharply toward r=2.0
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
         if (rXZ > 0.7) {
           const excess = rXZ - 0.7;
-          const pull = SS_GRAVITY * excess * 1.5 / rXZ;  // linear over wide range
+          const pull = SS_GRAVITY * excess * excess * excess * 2.5 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
