@@ -389,7 +389,7 @@
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        const PAIR_SPEED = 0.025;
+        const PAIR_SPEED = 0.10;
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > 0.001) { const sc = PAIR_SPEED / spd; v.vX *= sc; v.vZ *= sc; }
         else { v.vX = PAIR_SPEED; v.vZ = 0; }
@@ -1065,7 +1065,7 @@
         }
         // Hard speed cap (unchanged — ghost speed preserved)
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
-        if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
+        if (_spd > 0.37) { const _sc = 0.37 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 12);
