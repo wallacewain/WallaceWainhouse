@@ -353,12 +353,11 @@
       const fov = Math.max(W, H) * 1.6;
       const sX = Math.sin(rotX), cX = Math.cos(rotX);
       const sY = Math.sin(rotY), cY = Math.cos(rotY);
-      const eCamZ = camZ * (engagedMode ? 3 : 1);
       const D = sy - gcy;
       const denom = sX * fov + D * cX;
       if (Math.abs(denom) < 1e-4) return null;
-      const z1 = -D * eCamZ / denom;
-      const dz = eCamZ + z1 * cX;
+      const z1 = -D * camZ / denom;
+      const dz = camZ + z1 * cX;
       if (dz < 0.05) return null;
       const x1 = (sx - gcx) * dz / fov;
       return { X: x1 * cY - z1 * sY + camOX, Y: camOY, Z: x1 * sY + z1 * cY + camOZ, dz };
@@ -390,7 +389,7 @@
           const radDot = v.vX * radX + v.vZ * radZ;
           if (radDot > 0) { v.vX -= radDot * radX; v.vZ -= radDot * radZ; }
         }
-        const PAIR_SPEED = 0.075;
+        const PAIR_SPEED = 0.025;
         const spd = Math.sqrt(v.vX*v.vX + v.vZ*v.vZ);
         if (spd > 0.001) { const sc = PAIR_SPEED / spd; v.vX *= sc; v.vZ *= sc; }
         else { v.vX = PAIR_SPEED; v.vZ = 0; }
@@ -716,9 +715,6 @@
       const gcx = W * 0.5, gcy = H * 0.5;
       const fov = Math.max(W, H) * 1.6;
       const dts = dt * 0.001;
-      // In engaged mode the world is 3× larger — camera zooms out to match
-      const eS = engagedMode ? 3 : 1;
-      const eCamZ = camZ * eS;
 
       function proj3(X, Y, Z) {
         const rx = X - camOX, ry = Y - camOY, rz = Z - camOZ;
@@ -726,7 +722,7 @@
         const z1 = -rx * sinY + rz * cosY;
         const y2 =  ry * cosX - z1 * sinX;
         const z2 =  ry * sinX + z1 * cosX;
-        const dz = eCamZ + z2;
+        const dz = camZ + z2;
         if (dz < 0.01) return null;
         const sc = fov / dz;
         return { sx: x1 * sc + gcx, sy: y2 * sc + gcy, sc };
@@ -737,8 +733,8 @@
         const D = scy - gcy;
         const denom = sinX * fov + D * cosX;
         if (Math.abs(denom) < 1e-4) return null;
-        const z1 = -D * eCamZ / denom;
-        const dz = eCamZ + z1 * cosX;
+        const z1 = -D * camZ / denom;
+        const dz = camZ + z1 * cosX;
         if (dz < 0.05) return null;
         const x1 = (scx - gcx) * dz / fov;
         return { X: x1 * cosY - z1 * sinY, Y: 0, Z: x1 * sinY + z1 * cosY };
@@ -747,7 +743,7 @@
       // Precompute heart curve sample points in 3D world space for this frame's camera
       let heartTargets = null;
       if (heartPhase > 0) {
-        const hs = Math.min(W, H) * 0.018 * eS;
+        const hs = Math.min(W, H) * 0.018;
         heartTargets = [];
         for (let k = 0; k < 64; k++) {
           const th = (k / 64) * Math.PI * 2;
@@ -1025,14 +1021,13 @@
       const gcx = W * 0.5, gcy = H * 0.5;
       const fov = Math.max(W, H) * 1.6;
       const dts = dt * 0.001;
-      const eCamZ = camZ * 3;  // engaged mode is always active here
       function proj(X, Y, Z) {
         const rx = X - camOX, ry = Y - camOY, rz = Z - camOZ;
         const x1 =  rx * cosY + rz * sinY;
         const z1 = -rx * sinY + rz * cosY;
         const y2 =  ry * cosX - z1 * sinX;
         const z2 =  ry * sinX + z1 * cosX;
-        const dz = eCamZ + z2;
+        const dz = camZ + z2;
         if (dz < 0.01) return null;
         const sc = fov / dz;
         return { sx: x1 * sc + gcx, sy: y2 * sc + gcy, sc };
@@ -1041,7 +1036,7 @@
         const g = pairGhosts[pi];
         // Galaxy edge: lose flight control and sling into tangent orbit
         const rEdge = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (g.controlled && rEdge > 3.0) {
+        if (g.controlled && rEdge > 1.0) {
           g.controlled = false;
           const tangX = -g.Z / rEdge, tangZ = g.X / rEdge;
           const slingSpd = Math.sqrt(SS_GRAVITY * 0.15 / rEdge) * 3;
@@ -1055,22 +1050,22 @@
         } else if (!g.controlled) {
           const gr2 = g.X*g.X + g.Y*g.Y + g.Z*g.Z + SS_SOFTEN;
           const gr = Math.sqrt(gr2);
-          // Zero gravity inside r=0.75, then linear ramp to full at r=1.5
-          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.75) / 0.75));
+          // Zero gravity inside r=0.25, then linear ramp to full at r=0.5
+          const gravFade = Math.max(0, Math.min(1.0, (gr - 0.25) / 0.25));
           const ga = SS_GRAVITY * 0.15 / gr * gravFade;
           g.vX -= ga * g.X / gr * dts; g.vY -= ga * g.Y / gr * dts; g.vZ -= ga * g.Z / gr * dts;
         }
-        // Soft galaxy boundary: quadratic restoring pull starts at r=2.1, applies always
+        // Soft galaxy boundary: quadratic restoring pull starts at r=0.7, applies always
         const rXZ = Math.sqrt(g.X*g.X + g.Z*g.Z);
-        if (rXZ > 2.1) {
-          const excess = rXZ - 2.1;
+        if (rXZ > 0.7) {
+          const excess = rXZ - 0.7;
           const pull = SS_GRAVITY * excess * excess * 12 / rXZ;
           g.vX -= g.X * pull * dts;
           g.vZ -= g.Z * pull * dts;
         }
-        // Hard speed cap (3× world scale)
+        // Hard speed cap: galaxy diameter 1.4 / 15s minimum crossing time
         const _spd = Math.sqrt(g.vX*g.vX + g.vY*g.vY + g.vZ*g.vZ);
-        if (_spd > 0.279) { const _sc = 0.279 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
+        if (_spd > 0.093) { const _sc = 0.093 / _spd; g.vX *= _sc; g.vY *= _sc; g.vZ *= _sc; }
         g.X += g.vX * dts; g.Y += g.vY * dts; g.Z += g.vZ * dts;
         g.t += dts;
         g.life -= dts * 1000 / (SS_LIFE_MS * 12);
