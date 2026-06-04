@@ -533,7 +533,7 @@
     }
 
     // ── Batch folder strip ──────────────────────────────────────────────────
-    const SPLIT_BYTES = 80 * 1024 * 1024; // start a new zip every ~80 MB of image data
+    const SPLIT_BYTES = 2 * 1024 * 1024 * 1024; // start a new zip every ~2 GB of image data
     const IMG_RX = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)$/i;
     let batchFiles = [];
 
