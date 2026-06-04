@@ -53,7 +53,8 @@
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent-hover); }
     .btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
     .tool-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
-    .batch-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .batch-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; transition: border-color 0.15s, background 0.15s; }
+    .batch-section.drag-over { border-color: var(--accent); background: rgba(96,165,250,0.06); }
     .batch-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
     .batch-desc { font-size: 0.875rem; color: var(--muted); margin: 0; }
     .batch-pick { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
@@ -93,6 +94,7 @@
             <div class="summary-camera" id="summary-camera"></div>
             <div class="summary-dims" id="summary-dims"></div>
           </div>
+          <button class="btn-ghost" id="clear-btn" style="margin-left:auto;align-self:flex-start">&#x2715; Clear</button>
         </div>
         <div class="exif-grid" id="exif-grid"></div>
         <div class="edit-section">
@@ -112,13 +114,14 @@
         </div>
       </div>
       <hr class="tool-divider">
-      <div class="batch-section">
+      <div class="batch-section" id="batch-section">
         <div class="batch-head">Batch strip a folder</div>
-        <p class="batch-desc">Select a folder to strip EXIF from every image inside it. Output is split into separate zip files to keep memory use low. Nothing is uploaded &mdash; all processing happens in your browser.</p>
+        <p class="batch-desc">Select or drop a folder to strip EXIF from every image inside it. Output is split into separate zip files to keep memory use low. Nothing is uploaded &mdash; all processing happens in your browser.</p>
         <div class="batch-pick">
           <input type="file" id="folder-input" webkitdirectory multiple style="display:none">
           <button class="btn-ghost" id="folder-btn">Choose folder&hellip;</button>
           <span class="batch-count" id="folder-count"></span>
+          <button class="btn-ghost" id="batch-clear" style="display:none;margin-left:auto">&#x2715; Clear</button>
         </div>
         <div class="batch-progress-wrap" id="batch-progress" style="display:none">
           <div class="batch-bar-track"><div class="batch-bar-fill" id="batch-bar"></div></div>
@@ -139,12 +142,24 @@
 
     let currentFile = null, currentUrl = null;
 
-    const zone = document.getElementById('drop');
-    const inp  = document.getElementById('file-input');
+    const zone     = document.getElementById('drop');
+    const inp      = document.getElementById('file-input');
+    const clearBtn = document.getElementById('clear-btn');
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) go(e.dataTransfer.files[0]); });
     inp.addEventListener('change', () => { if (inp.files[0]) go(inp.files[0]); });
+
+    clearBtn.addEventListener('click', () => {
+      currentFile = null;
+      if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+      document.getElementById('results').classList.remove('visible');
+      const dzThumb = document.getElementById('dz-thumb');
+      dzThumb.style.display = 'none'; dzThumb.src = '';
+      document.getElementById('dz-strong').textContent = 'Drop an image here';
+      document.getElementById('dz-hint').textContent = 'or click to select — JPEG, TIFF, HEIC, WebP supported';
+      inp.value = '';
+    });
 
     async function go(file) {
       currentFile = file;
@@ -216,6 +231,7 @@
       document.getElementById('remove-gps-btn').disabled = !isJpeg;
 
       document.getElementById('results').classList.add('visible');
+      clearBtn.style.display = '';
     }
 
     function dmsToDecimal(dms, ref) {
@@ -545,16 +561,62 @@
     const batchStatus   = document.getElementById('batch-status');
     const batchActions  = document.getElementById('batch-actions');
     const batchStart    = document.getElementById('batch-start');
+    const batchClear    = document.getElementById('batch-clear');
+    const batchSection  = document.getElementById('batch-section');
 
     folderBtn.addEventListener('click', () => folderInp.click());
 
-    folderInp.addEventListener('change', () => {
-      batchFiles = Array.from(folderInp.files).filter(f => IMG_RX.test(f.name));
+    function setBatchFiles(files) {
+      batchFiles = files.filter(f => IMG_RX.test(f.name));
       const n = batchFiles.length;
       folderCount.textContent = n ? `${n} image${n !== 1 ? 's' : ''} found` : 'No supported images found';
       batchActions.style.display = n ? '' : 'none';
+      batchClear.style.display = n ? '' : 'none';
       batchProgress.style.display = 'none';
+    }
+
+    folderInp.addEventListener('change', () => setBatchFiles(Array.from(folderInp.files)));
+
+    batchClear.addEventListener('click', () => {
+      batchFiles = [];
+      folderCount.textContent = '';
+      batchActions.style.display = 'none';
+      batchClear.style.display = 'none';
+      batchProgress.style.display = 'none';
+      folderInp.value = '';
     });
+
+    batchSection.addEventListener('dragover', e => { e.preventDefault(); batchSection.classList.add('drag-over'); });
+    batchSection.addEventListener('dragleave', () => batchSection.classList.remove('drag-over'));
+    batchSection.addEventListener('drop', async e => {
+      e.preventDefault();
+      batchSection.classList.remove('drag-over');
+      folderCount.textContent = 'Reading folder…';
+      batchActions.style.display = 'none';
+      batchClear.style.display = 'none';
+      const entries = Array.from(e.dataTransfer.items)
+        .filter(i => i.kind === 'file')
+        .map(i => i.webkitGetAsEntry())
+        .filter(Boolean);
+      const files = [];
+      for (const entry of entries) files.push(...await readAllFiles(entry));
+      setBatchFiles(files);
+    });
+
+    async function readAllFiles(entry) {
+      if (entry.isFile) return [await new Promise((res, rej) => entry.file(res, rej))];
+      if (!entry.isDirectory) return [];
+      const reader = entry.createReader();
+      const entries = [];
+      for (;;) {
+        const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        if (!batch.length) break;
+        entries.push(...batch);
+      }
+      const results = [];
+      for (const e of entries) results.push(...await readAllFiles(e));
+      return results;
+    }
 
     batchStart.addEventListener('click', async () => {
       if (!batchFiles.length || !window.JSZip) return;
