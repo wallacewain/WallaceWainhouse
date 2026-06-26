@@ -189,9 +189,9 @@
           <div class="field">
             <label>Colours</label>
             <select id="qsel">
-              <option value="256">256 &mdash; high quality (slower)</option>
-              <option value="128" selected>128 &mdash; medium</option>
-              <option value="64">64 &mdash; low quality (faster)</option>
+              <option value="2">High quality (slower)</option>
+              <option value="8" selected>Medium</option>
+              <option value="20">Low quality (faster)</option>
             </select>
           </div>
           <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;padding-top:1.4rem;justify-content:flex-start">
@@ -218,6 +218,7 @@
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
   <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
   const fpsLbl = document.getElementById('fps-lbl');
@@ -225,6 +226,13 @@
   let mode = 'video', imgFrames = [], busy = false;
   let previewActive = false, outUrl = null, vidUrl = null;
   let viewMin = 0, viewMax = 1; // visible window of the video timeline
+
+  // Preload the gif.js worker as a blob URL immediately so it's ready when needed
+  let workerUrl = null;
+  const workerReady = fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(txt => { workerUrl = URL.createObjectURL(new Blob([txt], { type: 'application/javascript' })); })
+    .catch(() => {});
 
   const vid      = document.getElementById('vid');
   const startEl  = document.getElementById('v-start');
@@ -504,14 +512,6 @@
     });
   }
 
-  // ── GIF encoder — lazy ESM import, cached after first load ───────────────
-  let _gifenc = null;
-  async function loadGifenc() {
-    if (_gifenc) return _gifenc;
-    _gifenc = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.1/dist/gifenc.esm.js');
-    return _gifenc;
-  }
-
   // ── Generate ──────────────────────────────────────────────────────────────
   async function generate() {
     if (busy) return;
@@ -531,14 +531,6 @@
     const delay  = Math.round(1000 / fps);
     const cap    = document.getElementById('cap');
     const ctx    = cap.getContext('2d');
-
-    let GIFEncoder, quantize, applyPalette;
-    try {
-      ({ GIFEncoder, quantize, applyPalette } = await loadGifenc());
-    } catch(e) {
-      setStatus('Could not load GIF encoder — check your connection', null);
-      busy = false; checkReady(); return;
-    }
 
     try {
       const frames = [];
@@ -579,29 +571,39 @@
         }
       }
 
-      // Encode
-      const encoder = GIFEncoder();
-      const total   = frames.length;
+      // Encode with gif.js
+      setStatus('Preparing encoder…', 0.55);
+      await workerReady;
+      if (!workerUrl) throw new Error('GIF worker not available — check your connection');
 
-      for (let i = 0; i < total; i++) {
-        setStatus(`Encoding ${i+1} / ${total}…`, 0.5 + (i+1) / total * 0.5);
-        const { data, width, height } = frames[i];
-        const palette = quantize(data, colors);
-        const index   = applyPalette(data, palette);
-        const opts = { palette, delay };
-        if (i === 0) opts.repeat = loop ? 0 : -1;
-        encoder.writeFrame(index, width, height, opts);
-        await new Promise(r => setTimeout(r, 0));
-      }
+      const blob = await new Promise((resolve, reject) => {
+        const gif = new GIF({
+          workers: 2,
+          quality: colors,
+          width: cap.width,
+          height: cap.height,
+          workerScript: workerUrl,
+          repeat: loop ? 0 : -1,
+        });
 
-      encoder.finish();
-      const blob = new Blob([encoder.bytesView()], { type: 'image/gif' });
+        for (const imgData of frames) {
+          const tmp = document.createElement('canvas');
+          tmp.width = imgData.width;
+          tmp.height = imgData.height;
+          tmp.getContext('2d').putImageData(imgData, 0, 0);
+          gif.addFrame(tmp, { delay, copy: true });
+        }
+
+        gif.on('progress', p => setStatus('Encoding…', 0.6 + p * 0.4));
+        gif.on('finished', blob => resolve(blob));
+        gif.render();
+      });
       outUrl = URL.createObjectURL(blob);
 
       const imgEl = document.getElementById('gif-img');
       imgEl.src = outUrl; imgEl.style.display = 'block';
       document.getElementById('out-meta').textContent =
-        `${cap.width} × ${cap.height} px · ${total} frames · ${(blob.size/1024).toFixed(0)} KB`;
+        `${cap.width} × ${cap.height} px · ${frames.length} frames · ${(blob.size/1024).toFixed(0)} KB`;
       const dl = document.getElementById('dl-btn');
       dl.href = outUrl; dl.style.display = 'inline-flex';
       setStatus('Done!', 1);
