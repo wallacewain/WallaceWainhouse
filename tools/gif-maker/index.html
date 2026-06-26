@@ -218,7 +218,6 @@
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/gifenc@1.0.1/dist/gifenc.iife.js"></script>
   <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
   const fpsLbl = document.getElementById('fps-lbl');
@@ -339,6 +338,7 @@
       const [a, b] = e.touches;
       pinch0 = {
         d:       Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
+        midX:    (a.clientX + b.clientX) / 2,
         viewMin: viewMin,
         viewMax: viewMax,
       };
@@ -349,14 +349,21 @@
     if (e.touches.length !== 2 || !pinch0) return;
     e.preventDefault();
     const [a, b] = e.touches;
-    const d    = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-    // Invert: spread (d grows) → scale < 1 → smaller window = zoom in
-    const scale  = pinch0.d / d;
-    const mid    = (pinch0.viewMin + pinch0.viewMax) / 2;
-    const half   = (pinch0.viewMax - pinch0.viewMin) / 2 * scale;
-    const MIN_WIN = 0.2; // don't zoom in past 0.2 s window
-    if (half * 2 < MIN_WIN) return;
-    setView(mid - half, mid + half);
+    const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const newMidX = (a.clientX + b.clientX) / 2;
+
+    // Zoom: spread = zoom in (invert so larger distance = smaller window)
+    const scale    = pinch0.d / newDist;
+    const viewSpan = pinch0.viewMax - pinch0.viewMin;
+    const half     = viewSpan / 2 * scale;
+    if (half * 2 < 0.2) return; // don't zoom past 0.2s window
+
+    // Pan: midpoint shift in pixels → time offset (drag right = earlier content)
+    const trackW  = trimPanel.getBoundingClientRect().width || 1;
+    const panTime = -(newMidX - pinch0.midX) / trackW * viewSpan;
+
+    const centre = (pinch0.viewMin + pinch0.viewMax) / 2 + panTime;
+    setView(centre - half, centre + half);
   }, { passive: false });
 
   trimPanel.addEventListener('touchend', e => {
@@ -497,13 +504,17 @@
     });
   }
 
+  // ── GIF encoder — lazy ESM import, cached after first load ───────────────
+  let _gifenc = null;
+  async function loadGifenc() {
+    if (_gifenc) return _gifenc;
+    _gifenc = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.1/dist/gifenc.esm.js');
+    return _gifenc;
+  }
+
   // ── Generate ──────────────────────────────────────────────────────────────
   async function generate() {
     if (busy) return;
-    if (!window.gifenc) {
-      setStatus('GIF encoder not loaded — check your connection and refresh', null);
-      return;
-    }
     if (previewActive) stopPreview();
 
     busy = true;
@@ -520,7 +531,14 @@
     const delay  = Math.round(1000 / fps);
     const cap    = document.getElementById('cap');
     const ctx    = cap.getContext('2d');
-    const { GIFEncoder, quantize, applyPalette } = gifenc;
+
+    let GIFEncoder, quantize, applyPalette;
+    try {
+      ({ GIFEncoder, quantize, applyPalette } = await loadGifenc());
+    } catch(e) {
+      setStatus('Could not load GIF encoder — check your connection', null);
+      busy = false; checkReady(); return;
+    }
 
     try {
       const frames = [];
