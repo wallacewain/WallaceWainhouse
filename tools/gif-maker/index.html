@@ -290,6 +290,36 @@
   startEl.addEventListener('input', updateTrimFill);
   endEl.addEventListener('input',   updateTrimFill);
 
+  // ── Pinch to expand / contract trim range ─────────────────────────────────
+  let pinch0 = null;
+  const trimPanel = document.querySelector('.trim-panel');
+
+  trimPanel.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    const [a, b] = e.touches;
+    pinch0 = {
+      d:     Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
+      start: parseFloat(startEl.value),
+      end:   parseFloat(endEl.value),
+    };
+  }, { passive: true });
+
+  trimPanel.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !pinch0) return;
+    e.preventDefault();
+    const [a, b] = e.touches;
+    const d     = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const scale = d / pinch0.d;
+    const dur   = parseFloat(startEl.max) || 1;
+    const mid   = (pinch0.start + pinch0.end) / 2;
+    const half  = (pinch0.end - pinch0.start) / 2 * scale;
+    startEl.value = Math.max(0,   mid - half).toFixed(3);
+    endEl.value   = Math.min(dur, mid + half).toFixed(3);
+    updateTrimFill();
+  }, { passive: false });
+
+  trimPanel.addEventListener('touchend', () => { pinch0 = null; }, { passive: true });
+
   // Stop preview if user pauses video manually
   vid.addEventListener('pause', () => { if (previewActive) stopPreview(); });
 
