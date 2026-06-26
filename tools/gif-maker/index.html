@@ -20,35 +20,82 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
+    .tool-wrap { max-width: 680px; display: flex; flex-direction: column; gap: 1.25rem; padding-bottom: 4rem; }
+
     .mode-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .mode-tab { flex: 1; padding: 0.55rem 1rem; text-align: center; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-right: 1px solid var(--border); transition: background 0.15s, color 0.15s; font-family: var(--font); }
     .mode-tab:last-child { border-right: none; }
     .mode-tab.active { background: var(--surface); color: var(--text); }
     .mode-tab:hover:not(.active) { color: var(--text); }
 
-    .frames-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; margin-top: 1rem; }
+    /* Video + trim */
+    .vid-wrap { display: none; flex-direction: column; gap: 0.75rem; }
+    .vid-wrap.visible { display: flex; }
+    video#vid { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: block; background: #000; max-height: 380px; object-fit: contain; }
+
+    /* Trim panel */
+    .trim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .trim-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+
+    /* Dual-handle range slider */
+    .trim-track { position: relative; height: 38px; }
+    .trim-bg { position: absolute; top: 50%; transform: translateY(-50%); left: 0; right: 0; height: 4px; background: var(--border); border-radius: 2px; pointer-events: none; }
+    .trim-sel { position: absolute; top: 50%; transform: translateY(-50%); height: 4px; background: var(--accent, #60a5fa); border-radius: 2px; pointer-events: none; }
+    .trim-track input[type="range"] {
+      position: absolute; width: 100%; top: 50%; transform: translateY(-50%);
+      margin: 0; padding: 0; height: 4px;
+      -webkit-appearance: none; appearance: none;
+      background: transparent; outline: none; pointer-events: none;
+    }
+    .trim-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; pointer-events: all;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--accent, #60a5fa); border: 2px solid var(--bg, #fff);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; transition: transform 0.1s;
+    }
+    .trim-track input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+    .trim-track input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.1); }
+    .trim-track input[type="range"]::-moz-range-thumb {
+      pointer-events: all; width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent, #60a5fa); border: 2px solid var(--bg, #fff);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab;
+    }
+    #v-start { z-index: 3; }
+    #v-end   { z-index: 4; }
+
+    .trim-times { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
+    .trim-times .tc { color: var(--muted); }
+    .trim-times .ts { font-weight: 600; }
+
+    /* Image grid */
+    .frames-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; margin-top: 0.75rem; }
     .frame-thumb { position: relative; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 1; }
     .frame-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
     .frame-n { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.55); font-size: 0.6rem; color: #fff; text-align: center; padding: 1px 0; }
     .rm-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.65); border: none; color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.1s; line-height: 1; padding: 0; }
     .frame-thumb:hover .rm-btn { opacity: 1; }
 
+    /* Settings */
+    .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    /* Progress / output */
     .prog { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
     .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
-
-    video#vid { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; margin-top: 1rem; }
-    #gif-img { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
-    canvas { display: none; }
-
-    .tool-wrap { max-width: 660px; display: flex; flex-direction: column; gap: 1.25rem; padding-bottom: 4rem; }
-    .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
     .out-area { display: none; flex-direction: column; gap: 0.75rem; }
+
+    .btn-ghost { display: inline-flex; align-items: center; background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.875rem; font-weight: 600; padding: 0.45rem 0.9rem; transition: border-color 0.15s, color 0.15s; }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent, #60a5fa); }
+    .btn-ghost.on { border-color: var(--accent); color: var(--accent, #60a5fa); }
+    .row-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    canvas { display: none; }
+    #gif-img { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
   </style>
 </head>
 <body>
   <header>
     <nav>
-      <a href="/" class="logo"><svg viewBox="-323 -28 2446 296" height="18" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-279.60,-4.00 -298.80,10.40 -123.60,244.00 -104.40,229.60"/><polygon points="-54.00,229.60 -34.80,244.00 140.40,10.40 121.20,-4.00"/><polygon points="210.00,-4.00 190.80,10.40 366.00,244.00 385.20,229.60"/><polygon points="435.60,229.60 454.80,244.00 630.00,10.40 610.80,-4.00"/><polygon points="699.60,-4.00 680.40,10.40 855.60,244.00 874.80,229.60"/><polygon points="925.20,229.60 944.40,244.00 1119.60,10.40 1100.40,-4.00"/><polygon points="1189.20,-4.00 1170.00,10.40 1345.20,244.00 1364.40,229.60"/><polygon points="1414.80,229.60 1434.00,244.00 1609.20,10.40 1590.00,-4.00"/><polygon points="1678.80,-4.00 1659.60,10.40 1834.80,244.00 1854.00,229.60"/><polygon points="1904.40,229.60 1923.60,244.00 2098.80,10.40 2079.60,-4.00"/></svg></a>
+      <a href="/" class="logo">WW</a>
       <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
     </nav>
   </header>
@@ -60,28 +107,45 @@
 
     <div class="tool-wrap">
 
-      <div class="mode-tabs">
-        <button class="mode-tab active" id="tab-video" onclick="setMode('video')">Video clip</button>
-        <button class="mode-tab" id="tab-imgs" onclick="setMode('images')">Image sequence</button>
+      <div class="mode-tabs" role="tablist">
+        <button class="mode-tab active" id="tab-video" onclick="setMode('video')" role="tab">Video clip</button>
+        <button class="mode-tab" id="tab-imgs"  onclick="setMode('images')" role="tab">Image sequence</button>
       </div>
 
-      <!-- Video pane -->
+      <!-- ── Video pane ── -->
       <div id="pane-video">
         <div class="drop-zone" id="vdrop">
           <input type="file" id="vfile" accept="video/*">
           <strong>Drop a video file here</strong>
           <p>MP4, WebM, MOV &mdash; processed locally</p>
         </div>
-        <video id="vid" controls preload="metadata"></video>
-        <div id="vtime" style="display:none; margin-top:1rem">
-          <div class="row">
-            <div class="field"><label>Start (s)</label><input type="number" id="v-start" value="0" min="0" step="0.1"></div>
-            <div class="field"><label>End (s)</label><input type="number" id="v-end" value="3" min="0" step="0.1"></div>
+
+        <div class="vid-wrap" id="vid-wrap">
+          <video id="vid" controls preload="metadata"></video>
+
+          <div class="trim-panel">
+            <div class="trim-head">Trim</div>
+            <div class="trim-track" id="trim-track">
+              <div class="trim-bg"></div>
+              <div class="trim-sel" id="trim-sel"></div>
+              <input type="range" id="v-start" min="0" value="0"  step="0.01" aria-label="Start time">
+              <input type="range" id="v-end"   min="0" value="4"  step="0.01" aria-label="End time">
+            </div>
+            <div class="trim-times">
+              <span class="ts" id="lbl-start"></span>
+              <span class="tc" id="lbl-dur"></span>
+              <span class="ts" id="lbl-end"></span>
+            </div>
+          </div>
+
+          <div class="row-btns">
+            <button class="btn-ghost" id="prev-btn" onclick="togglePreview()">&#9654; Preview loop</button>
+            <button class="btn-ghost" onclick="resetVideo()">&#215; Clear video</button>
           </div>
         </div>
       </div>
 
-      <!-- Images pane -->
+      <!-- ── Images pane ── -->
       <div id="pane-imgs" style="display:none">
         <div class="drop-zone" id="idrop">
           <input type="file" id="ifiles" accept="image/*" multiple>
@@ -89,9 +153,12 @@
           <p>JPG, PNG, WebP &mdash; sorted by filename, so name them in order</p>
         </div>
         <div class="frames-grid" id="fgrid"></div>
+        <div class="row-btns" style="margin-top:0.75rem">
+          <button class="btn-ghost" id="reset-imgs-btn" style="display:none" onclick="resetImages()">&#215; Clear all images</button>
+        </div>
       </div>
 
-      <!-- Settings -->
+      <!-- ── Settings ── -->
       <div class="settings-panel">
         <div class="row">
           <div class="field">
@@ -110,30 +177,30 @@
         </div>
         <div class="row">
           <div class="field">
-            <label>Quality</label>
+            <label>Colours</label>
             <select id="qsel">
-              <option value="2">High (slower)</option>
-              <option value="6" selected>Medium</option>
-              <option value="15">Low (faster)</option>
+              <option value="256">256 &mdash; high quality (slower)</option>
+              <option value="128" selected>128 &mdash; medium</option>
+              <option value="64">64 &mdash; low quality (faster)</option>
             </select>
           </div>
-          <div class="field" style="flex-direction:row; align-items:center; gap:0.5rem; padding-top:1.4rem; justify-content:flex-start">
+          <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;padding-top:1.4rem;justify-content:flex-start">
             <input type="checkbox" id="loop-cb" checked>
-            <label for="loop-cb" style="color:var(--text); font-size:0.9rem; font-weight:400">Loop forever</label>
+            <label for="loop-cb" style="color:var(--text);font-size:0.9rem;font-weight:400">Loop forever</label>
           </div>
         </div>
-        <p id="est" style="font-size:0.8rem; color:var(--muted); margin:0; min-height:1em"></p>
+        <p id="est" style="font-size:0.8rem;color:var(--muted);margin:0;min-height:1em"></p>
       </div>
 
       <button class="btn" id="gen-btn" onclick="generate()" disabled>Generate GIF</button>
 
-      <!-- Output -->
+      <!-- ── Output ── -->
       <div class="out-area" id="out-area">
         <div class="prog"><div class="prog-fill" id="pfill"></div></div>
-        <p id="status-msg" style="font-size:0.875rem; color:var(--muted); margin:0"></p>
+        <p id="status-msg" style="font-size:0.875rem;color:var(--muted);margin:0"></p>
         <img id="gif-img" alt="Generated GIF">
-        <p id="out-meta" style="font-size:0.85rem; color:var(--muted); margin:0"></p>
-        <a class="btn" id="dl-btn" download="animation.gif" style="display:none; align-self:flex-start">&#8595; Download GIF</a>
+        <p id="out-meta" style="font-size:0.85rem;color:var(--muted);margin:0"></p>
+        <a class="btn" id="dl-btn" download="animation.gif" style="display:none;align-self:flex-start">&#8595; Download GIF</a>
       </div>
 
     </div>
@@ -141,31 +208,35 @@
   </main>
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
 
-  <script src="https://unpkg.com/gif.js@0.2.0/dist/gif.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gifenc@1.0.1/dist/gifenc.iife.js"></script>
   <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
   const fpsLbl = document.getElementById('fps-lbl');
 
-  let mode = 'video';
-  let imgFrames = [];
-  let gifWorkerUrl = null;
-  let busy = false;
+  let mode = 'video', imgFrames = [], busy = false;
+  let previewActive = false, outUrl = null, vidUrl = null;
 
-  const vid = document.getElementById('vid');
+  const vid      = document.getElementById('vid');
+  const startEl  = document.getElementById('v-start');
+  const endEl    = document.getElementById('v-end');
+  const trimSel  = document.getElementById('trim-sel');
+  const lblStart = document.getElementById('lbl-start');
+  const lblEnd   = document.getElementById('lbl-end');
+  const lblDur   = document.getElementById('lbl-dur');
 
-  // ── Mode ──────────────────────────────────────────────────────────────
+  // ── Mode ──────────────────────────────────────────────────────────────────
   function setMode(m) {
     mode = m;
     document.getElementById('tab-video').classList.toggle('active', m === 'video');
     document.getElementById('tab-imgs').classList.toggle('active', m === 'images');
     document.getElementById('pane-video').style.display = m === 'video' ? '' : 'none';
-    document.getElementById('pane-imgs').style.display = m === 'images' ? '' : 'none';
+    document.getElementById('pane-imgs').style.display  = m === 'images' ? '' : 'none';
     updateEst(); checkReady();
   }
 
-  // ── Video input ───────────────────────────────────────────────────────
+  // ── Video input ───────────────────────────────────────────────────────────
   const vdrop = document.getElementById('vdrop');
-  document.getElementById('vfile').addEventListener('change', e => loadVideo(e.target.files[0]));
+  document.getElementById('vfile').addEventListener('change', e => { if (e.target.files[0]) loadVideo(e.target.files[0]); });
   vdrop.addEventListener('dragover', e => { e.preventDefault(); vdrop.classList.add('drag-over'); });
   vdrop.addEventListener('dragleave', () => vdrop.classList.remove('drag-over'));
   vdrop.addEventListener('drop', e => {
@@ -175,23 +246,91 @@
   });
 
   function loadVideo(file) {
-    vid.src = URL.createObjectURL(file);
-    vid.style.display = 'block';
+    if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidUrl = URL.createObjectURL(file);
+    vid.src = vidUrl;
     vid.onloadedmetadata = () => {
       const dur = vid.duration;
-      const endEl = document.getElementById('v-end');
-      endEl.value = Math.min(dur, 4).toFixed(1);
-      endEl.max = dur.toFixed(1);
-      document.getElementById('v-start').max = dur.toFixed(1);
-      document.getElementById('vtime').style.display = '';
+      startEl.max = dur; endEl.max = dur;
+      startEl.value = 0;
+      endEl.value   = Math.min(dur, 4).toFixed(2);
+      updateTrimFill();
+      vdrop.style.display = 'none';
+      document.getElementById('vid-wrap').classList.add('visible');
       updateEst(); checkReady();
     };
   }
 
-  ['v-start', 'v-end'].forEach(id =>
-    document.getElementById(id).addEventListener('input', () => { updateEst(); checkReady(); }));
+  function fmtTime(s) {
+    if (s < 60) return s.toFixed(1) + 's';
+    const m = Math.floor(s / 60), r = s % 60;
+    return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1)}`;
+  }
 
-  // ── Image sequence input ──────────────────────────────────────────────
+  function updateTrimFill() {
+    const dur = parseFloat(startEl.max) || 1;
+    let s = parseFloat(startEl.value);
+    let e = parseFloat(endEl.value);
+    // Prevent handles crossing
+    if (s >= e - 0.05) {
+      if (document.activeElement === startEl) { s = Math.max(0, e - 0.05); startEl.value = s; }
+      else { e = Math.min(dur, s + 0.05); endEl.value = e; }
+    }
+    // Raise start z-index so it can be grabbed when at the far right
+    startEl.style.zIndex = (s / dur > 0.95) ? '5' : '3';
+    const sp = s / dur * 100, ep = e / dur * 100;
+    trimSel.style.left  = sp + '%';
+    trimSel.style.width = (ep - sp) + '%';
+    lblStart.textContent = fmtTime(s);
+    lblEnd.textContent   = fmtTime(e);
+    lblDur.textContent   = fmtTime(e - s) + ' selected';
+    updateEst(); checkReady();
+  }
+
+  startEl.addEventListener('input', updateTrimFill);
+  endEl.addEventListener('input',   updateTrimFill);
+
+  // Stop preview if user pauses video manually
+  vid.addEventListener('pause', () => { if (previewActive) stopPreview(); });
+
+  // ── Preview loop ──────────────────────────────────────────────────────────
+  function togglePreview() { previewActive ? stopPreview() : startPreview(); }
+
+  function startPreview() {
+    vid.currentTime = parseFloat(startEl.value);
+    vid.play().catch(() => {});
+    previewActive = true;
+    const btn = document.getElementById('prev-btn');
+    btn.textContent = '⏹ Stop preview'; btn.classList.add('on');
+    vid.addEventListener('timeupdate', onPreviewTick);
+  }
+
+  function stopPreview() {
+    vid.pause();
+    vid.removeEventListener('timeupdate', onPreviewTick);
+    previewActive = false;
+    const btn = document.getElementById('prev-btn');
+    btn.textContent = '▶ Preview loop'; btn.classList.remove('on');
+  }
+
+  function onPreviewTick() {
+    if (vid.currentTime >= parseFloat(endEl.value)) {
+      vid.currentTime = parseFloat(startEl.value);
+    }
+  }
+
+  function resetVideo() {
+    if (previewActive) stopPreview();
+    vid.pause();
+    if (vidUrl) { URL.revokeObjectURL(vidUrl); vidUrl = null; }
+    vid.src = '';
+    document.getElementById('vid-wrap').classList.remove('visible');
+    vdrop.style.display = '';
+    document.getElementById('vfile').value = '';
+    updateEst(); checkReady();
+  }
+
+  // ── Image sequence ────────────────────────────────────────────────────────
   const idrop = document.getElementById('idrop');
   document.getElementById('ifiles').addEventListener('change', e => addImages([...e.target.files]));
   idrop.addEventListener('dragover', e => { e.preventDefault(); idrop.classList.add('drag-over'); });
@@ -202,7 +341,7 @@
   });
 
   function addImages(files) {
-    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    files.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     files.forEach(f => {
       const url = URL.createObjectURL(f);
       const el = new Image(); el.src = url;
@@ -215,33 +354,42 @@
     const g = document.getElementById('fgrid');
     g.innerHTML = '';
     imgFrames.forEach((fr, i) => {
-      const d = document.createElement('div');
-      d.className = 'frame-thumb';
-      d.innerHTML = `<img src="${fr.url}"><span class="frame-n">${i + 1}</span><button class="rm-btn" onclick="rmFrame(${i})">&#215;</button>`;
-      g.appendChild(d);
+      const d = document.createElement('div'); d.className = 'frame-thumb';
+      const img = document.createElement('img'); img.src = fr.url;
+      const n = document.createElement('span'); n.className = 'frame-n'; n.textContent = i + 1;
+      const rm = document.createElement('button'); rm.className = 'rm-btn'; rm.innerHTML = '&#215;';
+      rm.setAttribute('aria-label', `Remove frame ${i+1}`); rm.onclick = () => rmFrame(i);
+      d.append(img, n, rm); g.appendChild(d);
     });
+    document.getElementById('reset-imgs-btn').style.display = imgFrames.length ? '' : 'none';
   }
 
   function rmFrame(i) {
-    URL.revokeObjectURL(imgFrames[i].url);
-    imgFrames.splice(i, 1);
+    URL.revokeObjectURL(imgFrames[i].url); imgFrames.splice(i, 1);
     renderGrid(); updateEst(); checkReady();
   }
 
-  // ── Estimate ──────────────────────────────────────────────────────────
+  function resetImages() {
+    imgFrames.forEach(f => URL.revokeObjectURL(f.url)); imgFrames = [];
+    renderGrid(); updateEst(); checkReady();
+    document.getElementById('ifiles').value = '';
+  }
+
+  // ── Estimate ──────────────────────────────────────────────────────────────
   function updateEst() {
     const fps = parseInt(document.getElementById('fps').value);
     const w   = parseInt(document.getElementById('wsel').value);
     const est = document.getElementById('est');
     if (mode === 'video' && vid.duration > 0) {
-      const dur = parseFloat(document.getElementById('v-end').value) - parseFloat(document.getElementById('v-start').value);
-      if (dur > 0) {
-        const n = Math.floor(dur * fps);
-        est.textContent = `≈ ${n} frame${n !== 1 ? 's' : ''} at ${w} px wide`;
-        if (n > 150) est.textContent += ' — try a shorter clip or lower FPS (max 150)';
+      const sel = parseFloat(endEl.value) - parseFloat(startEl.value);
+      if (sel > 0.05) {
+        const n = Math.floor(sel * fps);
+        est.textContent = `≈ ${n} frame${n !== 1 ? 's' : ''} · ${w} px wide`;
+      } else {
+        est.textContent = 'Adjust the trim handles to select a range';
       }
     } else if (mode === 'images' && imgFrames.length) {
-      est.textContent = `${imgFrames.length} frames · ${Math.round(1000 / fps)} ms each · ${w} px wide`;
+      est.textContent = `${imgFrames.length} frames · ${Math.round(1000/fps)} ms each · ${w} px wide`;
     } else {
       est.textContent = '';
     }
@@ -249,127 +397,125 @@
 
   function checkReady() {
     const ok = mode === 'video'
-      ? (vid.src && vid.duration > 0 &&
-         parseFloat(document.getElementById('v-end').value) > parseFloat(document.getElementById('v-start').value))
+      ? (vid.duration > 0 && parseFloat(endEl.value) > parseFloat(startEl.value) + 0.05)
       : imgFrames.length >= 2;
     document.getElementById('gen-btn').disabled = !ok || busy;
   }
 
-  // ── gif.js worker via blob (avoids same-origin restriction) ──────────
-  async function getWorkerUrl() {
-    if (gifWorkerUrl) return gifWorkerUrl;
-    const r = await fetch('https://unpkg.com/gif.js@0.2.0/dist/gif.worker.js');
-    if (!r.ok) throw new Error('Could not load GIF encoder worker');
-    const txt = await r.text();
-    gifWorkerUrl = URL.createObjectURL(new Blob([txt], { type: 'application/javascript' }));
-    return gifWorkerUrl;
-  }
-
-  // ── UI helpers ────────────────────────────────────────────────────────
+  // ── Status ────────────────────────────────────────────────────────────────
   function setStatus(msg, pct) {
-    const area = document.getElementById('out-area');
-    area.style.display = 'flex';
+    document.getElementById('out-area').style.display = 'flex';
     document.getElementById('status-msg').textContent = msg;
     if (pct != null) document.getElementById('pfill').style.width = (pct * 100) + '%';
   }
 
-  // ── Generate ──────────────────────────────────────────────────────────
+  // ── Seek with 600ms timeout fallback (avoids seeked-event races) ──────────
+  function seekTo(t) {
+    return new Promise(res => {
+      const to = setTimeout(res, 600);
+      vid.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true });
+      vid.currentTime = t;
+    });
+  }
+
+  // ── Generate ──────────────────────────────────────────────────────────────
   async function generate() {
     if (busy) return;
+    if (!window.gifenc) {
+      setStatus('GIF encoder not loaded — check your connection and refresh', null);
+      return;
+    }
+    if (previewActive) stopPreview();
+
     busy = true;
     document.getElementById('gen-btn').disabled = true;
     document.getElementById('gif-img').style.display = 'none';
     document.getElementById('dl-btn').style.display = 'none';
     document.getElementById('out-meta').textContent = '';
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
 
-    const fps   = parseInt(document.getElementById('fps').value);
-    const w     = parseInt(document.getElementById('wsel').value);
-    const qual  = parseInt(document.getElementById('qsel').value);
-    const loop  = document.getElementById('loop-cb').checked;
-    const delay = Math.round(1000 / fps);
-    const cap   = document.getElementById('cap');
-    const ctx   = cap.getContext('2d');
+    const fps    = parseInt(document.getElementById('fps').value);
+    const w      = parseInt(document.getElementById('wsel').value);
+    const colors = parseInt(document.getElementById('qsel').value);
+    const loop   = document.getElementById('loop-cb').checked;
+    const delay  = Math.round(1000 / fps);
+    const cap    = document.getElementById('cap');
+    const ctx    = cap.getContext('2d');
+    const { GIFEncoder, quantize, applyPalette } = gifenc;
 
     try {
-      let frames = [];
+      const frames = [];
 
       if (mode === 'video') {
-        const t0  = parseFloat(document.getElementById('v-start').value) || 0;
-        const t1  = parseFloat(document.getElementById('v-end').value);
+        const t0  = parseFloat(startEl.value) || 0;
+        const t1  = parseFloat(endEl.value);
         const dur = t1 - t0;
         if (dur <= 0) throw new Error('End time must be after start time');
         const nf = Math.floor(dur * fps);
-        if (nf > 150) throw new Error(`${nf} frames exceeds the 150-frame limit — shorten the clip or reduce FPS`);
+        if (nf < 1) throw new Error('No frames — try a longer clip or higher FPS');
 
         cap.width  = w;
-        cap.height = Math.round(vid.videoHeight / vid.videoWidth * w);
-        setStatus(`Extracting ${nf} frames…`, 0);
+        cap.height = Math.round(vid.videoHeight / vid.videoWidth * w) || w;
 
         for (let i = 0; i < nf; i++) {
-          vid.currentTime = t0 + i / fps;
-          await new Promise(res => vid.addEventListener('seeked', res, { once: true }));
+          setStatus(`Extracting frame ${i+1} / ${nf}…`, (i+1) / nf * 0.5);
+          await seekTo(t0 + i / fps);
           ctx.drawImage(vid, 0, 0, cap.width, cap.height);
           frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
-          setStatus(`Extracting frame ${i + 1} / ${nf}…`, (i + 1) / nf * 0.6);
         }
 
       } else {
         await Promise.all(imgFrames.map(f =>
           f.el.complete ? Promise.resolve()
-                        : new Promise(res => { f.el.onload = res; f.el.onerror = res; })));
+                        : new Promise(r => { f.el.onload = r; f.el.onerror = r; })));
 
-        const ref = imgFrames[0].el;
+        const ref  = imgFrames[0].el;
         cap.width  = w;
-        cap.height = Math.round(ref.naturalHeight / ref.naturalWidth * w);
-        setStatus(`Processing ${imgFrames.length} frames…`, 0);
+        cap.height = Math.round(ref.naturalHeight / ref.naturalWidth * w) || w;
 
         for (let i = 0; i < imgFrames.length; i++) {
+          setStatus(`Processing frame ${i+1} / ${imgFrames.length}…`, (i+1) / imgFrames.length * 0.5);
           ctx.clearRect(0, 0, cap.width, cap.height);
           ctx.drawImage(imgFrames[i].el, 0, 0, cap.width, cap.height);
           frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
-          setStatus(`Processing frame ${i + 1} / ${imgFrames.length}…`, (i + 1) / imgFrames.length * 0.6);
+          await new Promise(r => setTimeout(r, 0));
         }
       }
 
-      setStatus('Loading encoder…', 0.62);
-      const wurl = await getWorkerUrl();
+      // Encode
+      const encoder = GIFEncoder();
+      const total   = frames.length;
 
-      const gif = new GIF({
-        workers: 2, quality: qual,
-        width: cap.width, height: cap.height,
-        workerScript: wurl, repeat: loop ? 0 : -1
-      });
-
-      for (const frame of frames) {
-        const tmp = document.createElement('canvas');
-        tmp.width = cap.width; tmp.height = cap.height;
-        tmp.getContext('2d').putImageData(frame, 0, 0);
-        gif.addFrame(tmp, { delay, copy: true });
+      for (let i = 0; i < total; i++) {
+        setStatus(`Encoding ${i+1} / ${total}…`, 0.5 + (i+1) / total * 0.5);
+        const { data, width, height } = frames[i];
+        const palette = quantize(data, colors);
+        const index   = applyPalette(data, palette);
+        const opts = { palette, delay };
+        if (i === 0) opts.repeat = loop ? 0 : -1;
+        encoder.writeFrame(index, width, height, opts);
+        await new Promise(r => setTimeout(r, 0));
       }
 
-      gif.on('progress', p => setStatus('Encoding…', 0.65 + p * 0.35));
+      encoder.finish();
+      const blob = new Blob([encoder.bytesView()], { type: 'image/gif' });
+      outUrl = URL.createObjectURL(blob);
 
-      gif.on('finished', blob => {
-        const url = URL.createObjectURL(blob);
-        const img = document.getElementById('gif-img');
-        img.onload = () => { img.style.display = 'block'; };
-        img.src = url;
-        document.getElementById('out-meta').textContent =
-          `${cap.width} × ${cap.height} px · ${frames.length} frames · ${(blob.size / 1024).toFixed(0)} KB`;
-        const dl = document.getElementById('dl-btn');
-        dl.href = url; dl.style.display = 'inline-flex';
-        setStatus('Done!', 1);
-        busy = false; checkReady();
-      });
-
-      gif.render();
+      const imgEl = document.getElementById('gif-img');
+      imgEl.src = outUrl; imgEl.style.display = 'block';
+      document.getElementById('out-meta').textContent =
+        `${cap.width} × ${cap.height} px · ${total} frames · ${(blob.size/1024).toFixed(0)} KB`;
+      const dl = document.getElementById('dl-btn');
+      dl.href = outUrl; dl.style.display = 'inline-flex';
+      setStatus('Done!', 1);
 
     } catch (err) {
       setStatus('Error: ' + err.message, null);
+    } finally {
       busy = false; checkReady();
     }
   }
   </script>
-<script src="/js/logo.js"></script>
+  <script src="/js/logo.js"></script>
 </body>
 </html>
