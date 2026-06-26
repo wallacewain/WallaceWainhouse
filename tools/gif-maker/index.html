@@ -36,6 +36,11 @@
     /* Trim panel */
     .trim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; touch-action: pan-x pan-y; }
     .trim-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+    /* Minimap — full video bar showing zoomed window + selection */
+    .trim-map { position: relative; height: 6px; background: var(--border); border-radius: 3px; margin-top: 2px; overflow: hidden; }
+    .trim-map-win { position: absolute; top: 0; height: 100%; background: rgba(96,165,250,0.22); }
+    .trim-map-sel { position: absolute; top: 0; height: 100%; background: var(--accent, #60a5fa); opacity: 0.75; border-radius: 1px; }
+    .trim-zoom-hint { font-size: 0.72rem; color: var(--muted); text-align: center; }
 
     /* Dual-handle range slider */
     .trim-track { position: relative; height: 38px; }
@@ -136,6 +141,11 @@
               <span class="tc" id="lbl-dur"></span>
               <span class="ts" id="lbl-end"></span>
             </div>
+            <div class="trim-map" id="trim-map">
+              <div class="trim-map-win" id="map-win"></div>
+              <div class="trim-map-sel" id="map-sel"></div>
+            </div>
+            <div class="trim-zoom-hint" id="zoom-hint" style="display:none">Pinch to zoom &middot; double-tap to reset</div>
           </div>
 
           <div class="row-btns">
@@ -215,6 +225,7 @@
 
   let mode = 'video', imgFrames = [], busy = false;
   let previewActive = false, outUrl = null, vidUrl = null;
+  let viewMin = 0, viewMax = 1; // visible window of the video timeline
 
   const vid      = document.getElementById('vid');
   const startEl  = document.getElementById('v-start');
@@ -251,7 +262,9 @@
     vid.src = vidUrl;
     vid.onloadedmetadata = () => {
       const dur = vid.duration;
-      startEl.max = dur; endEl.max = dur;
+      viewMin = 0; viewMax = dur;
+      startEl.min = 0; startEl.max = dur;
+      endEl.min   = 0; endEl.max   = dur;
       startEl.value = 0;
       endEl.value   = Math.min(dur, 4).toFixed(2);
       updateTrimFill();
@@ -267,59 +280,94 @@
     return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1)}`;
   }
 
+  // Set the visible timeline window; always keeps the selection inside the view
+  function setView(newMin, newMax) {
+    const dur = vid.duration || 1;
+    const s = parseFloat(startEl.value), e = parseFloat(endEl.value);
+    // Never zoom past the selection — clamp view to always include it
+    newMin = Math.min(newMin, s);
+    newMax = Math.max(newMax, e);
+    viewMin = Math.max(0, newMin);
+    viewMax = Math.min(dur, newMax);
+    startEl.min = viewMin; startEl.max = viewMax;
+    endEl.min   = viewMin; endEl.max   = viewMax;
+    updateTrimFill();
+  }
+
   function updateTrimFill() {
-    const dur = parseFloat(startEl.max) || 1;
+    const dur  = vid.duration || 1;
+    const span = viewMax - viewMin || 1;
     let s = parseFloat(startEl.value);
     let e = parseFloat(endEl.value);
     // Prevent handles crossing
     if (s >= e - 0.05) {
-      if (document.activeElement === startEl) { s = Math.max(0, e - 0.05); startEl.value = s; }
-      else { e = Math.min(dur, s + 0.05); endEl.value = e; }
+      if (document.activeElement === startEl) { s = Math.max(viewMin, e - 0.05); startEl.value = s; }
+      else { e = Math.min(viewMax, s + 0.05); endEl.value = e; }
     }
-    // Raise start z-index so it can be grabbed when at the far right
-    startEl.style.zIndex = (s / dur > 0.95) ? '5' : '3';
-    const sp = s / dur * 100, ep = e / dur * 100;
+    // Raise start z-index when near the right so it can still be grabbed
+    startEl.style.zIndex = ((s - viewMin) / span > 0.95) ? '5' : '3';
+    // Fill relative to the current view window
+    const sp = (s - viewMin) / span * 100;
+    const ep = (e - viewMin) / span * 100;
     trimSel.style.left  = sp + '%';
     trimSel.style.width = (ep - sp) + '%';
     lblStart.textContent = fmtTime(s);
     lblEnd.textContent   = fmtTime(e);
     lblDur.textContent   = fmtTime(e - s) + ' selected';
+    // Minimap — positions relative to full video duration
+    document.getElementById('map-win').style.left  = (viewMin / dur * 100) + '%';
+    document.getElementById('map-win').style.width = (span / dur * 100) + '%';
+    document.getElementById('map-sel').style.left  = (s / dur * 100) + '%';
+    document.getElementById('map-sel').style.width = ((e - s) / dur * 100) + '%';
+    // Show hint when zoomed in
+    const zoomed = viewMin > 0.001 || viewMax < dur - 0.001;
+    document.getElementById('zoom-hint').style.display = zoomed ? '' : 'none';
     updateEst(); checkReady();
   }
 
   startEl.addEventListener('input', updateTrimFill);
   endEl.addEventListener('input',   updateTrimFill);
 
-  // ── Pinch to expand / contract trim range ─────────────────────────────────
-  let pinch0 = null;
+  // ── Pinch to zoom timeline view (not the handles) ────────────────────────
+  // Spread = zoom in (finer control); squeeze = zoom out; double-tap = reset
+  let pinch0 = null, lastTap = 0;
   const trimPanel = document.querySelector('.trim-panel');
 
   trimPanel.addEventListener('touchstart', e => {
-    if (e.touches.length !== 2) return;
-    e.preventDefault(); // must happen at touchstart to block browser pinch-zoom on Android
-    const [a, b] = e.touches;
-    pinch0 = {
-      d:     Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
-      start: parseFloat(startEl.value),
-      end:   parseFloat(endEl.value),
-    };
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const [a, b] = e.touches;
+      pinch0 = {
+        d:       Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
+        viewMin: viewMin,
+        viewMax: viewMax,
+      };
+    }
   }, { passive: false });
 
   trimPanel.addEventListener('touchmove', e => {
     if (e.touches.length !== 2 || !pinch0) return;
     e.preventDefault();
     const [a, b] = e.touches;
-    const d     = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-    const scale = d / pinch0.d;
-    const dur   = parseFloat(startEl.max) || 1;
-    const mid   = (pinch0.start + pinch0.end) / 2;
-    const half  = (pinch0.end - pinch0.start) / 2 * scale;
-    startEl.value = Math.max(0,   mid - half).toFixed(3);
-    endEl.value   = Math.min(dur, mid + half).toFixed(3);
-    updateTrimFill();
+    const d    = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    // Invert: spread (d grows) → scale < 1 → smaller window = zoom in
+    const scale  = pinch0.d / d;
+    const mid    = (pinch0.viewMin + pinch0.viewMax) / 2;
+    const half   = (pinch0.viewMax - pinch0.viewMin) / 2 * scale;
+    const MIN_WIN = 0.2; // don't zoom in past 0.2 s window
+    if (half * 2 < MIN_WIN) return;
+    setView(mid - half, mid + half);
   }, { passive: false });
 
-  trimPanel.addEventListener('touchend', () => { pinch0 = null; }, { passive: true });
+  trimPanel.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinch0 = null;
+    // Double-tap resets zoom to full video
+    if (e.changedTouches.length === 1 && e.touches.length === 0) {
+      const now = Date.now();
+      if (now - lastTap < 280) setView(0, vid.duration || 1);
+      lastTap = now;
+    }
+  }, { passive: true });
 
   // Stop preview if user pauses video manually
   vid.addEventListener('pause', () => { if (previewActive) stopPreview(); });
