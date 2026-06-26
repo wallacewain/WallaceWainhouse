@@ -34,7 +34,7 @@
     video#vid { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: block; background: #000; max-height: 380px; object-fit: contain; }
 
     /* Trim panel */
-    .trim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .trim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; touch-action: pan-x pan-y; }
     .trim-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
 
     /* Dual-handle range slider */
@@ -296,13 +296,14 @@
 
   trimPanel.addEventListener('touchstart', e => {
     if (e.touches.length !== 2) return;
+    e.preventDefault(); // must happen at touchstart to block browser pinch-zoom on Android
     const [a, b] = e.touches;
     pinch0 = {
       d:     Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
       start: parseFloat(startEl.value),
       end:   parseFloat(endEl.value),
     };
-  }, { passive: true });
+  }, { passive: false });
 
   trimPanel.addEventListener('touchmove', e => {
     if (e.touches.length !== 2 || !pinch0) return;
