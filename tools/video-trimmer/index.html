@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser — nothing is uploaded.">
-  <title>Animated GIF Maker &mdash; Wallace Wainhouse</title>
-  <link rel="canonical" href="https://wallacewainhouse.com/tools/gif-maker/">
+  <meta name="description" content="Trim a video clip losslessly in your browser, or export the selection as an animated GIF. Nothing is uploaded.">
+  <title>Video Trimmer &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/video-trimmer/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
-  <meta property="og:url" content="https://wallacewainhouse.com/tools/gif-maker/">
-  <meta property="og:title" content="Animated GIF Maker &mdash; Wallace Wainhouse">
-  <meta property="og:description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser.">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/video-trimmer/">
+  <meta property="og:title" content="Video Trimmer &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Trim a video clip losslessly in your browser, or export the selection as an animated GIF.">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Animated GIF Maker &mdash; Wallace Wainhouse">
-  <meta name="twitter:description" content="Make animated GIFs from a video clip or image sequence. Runs entirely in your browser.">
+  <meta name="twitter:title" content="Video Trimmer &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Trim a video clip losslessly in your browser, or export the selection as an animated GIF.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,6 +83,13 @@
     /* Settings */
     .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
 
+    /* Segmented format switch */
+    .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 0.3rem; }
+    .seg-btn { flex: 1; padding: 0.5rem 0.75rem; background: none; border: none; border-right: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 500; color: var(--muted); transition: background 0.15s, color 0.15s; }
+    .seg-btn:last-child { border-right: none; }
+    .seg-btn.active { background: var(--accent, #60a5fa); color: #fff; }
+    .hint { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0; }
+
     /* Progress / output */
     .prog { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
     .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
@@ -94,7 +101,7 @@
     .row-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
     canvas { display: none; }
-    #gif-img { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
+    #gif-img, #out-vid { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: none; }
   </style>
 </head>
 <body>
@@ -106,8 +113,8 @@
   </header>
   <main>
     <section class="hero" style="padding-bottom:1.5rem">
-      <h1>Animated GIF Maker</h1>
-      <p>Create animated GIFs from a video clip or image sequence. Everything runs in your browser &mdash; nothing is uploaded.</p>
+      <h1>Video Trimmer</h1>
+      <p>Trim a video clip down to the part you want &mdash; losslessly, keeping the original quality and audio &mdash; or export your selection as an animated GIF. Everything runs in your browser; nothing is uploaded.</p>
     </section>
 
     <div class="tool-wrap">
@@ -170,47 +177,59 @@
 
       <!-- ── Settings ── -->
       <div class="settings-panel">
-        <div class="row">
-          <div class="field">
-            <label>FPS &mdash; <span id="fps-lbl">12</span></label>
-            <input type="range" id="fps" min="1" max="25" value="12" oninput="fpsLbl.textContent=this.value;updateEst()">
+        <div class="field" id="format-field">
+          <label>Export as</label>
+          <div class="seg" id="format-seg">
+            <button type="button" class="seg-btn active" data-fmt="video" onclick="setFormat('video')">Trimmed video</button>
+            <button type="button" class="seg-btn" data-fmt="gif" onclick="setFormat('gif')">Animated GIF</button>
           </div>
-          <div class="field">
-            <label>Width</label>
-            <select id="wsel" onchange="updateEst()">
-              <option value="240">240 px</option>
-              <option value="320" selected>320 px</option>
-              <option value="480">480 px</option>
-              <option value="640">640 px</option>
-            </select>
-          </div>
+          <p class="hint" id="fmt-hint"></p>
         </div>
-        <div class="row">
-          <div class="field">
-            <label>Colours</label>
-            <select id="qsel">
-              <option value="2">High quality (slower)</option>
-              <option value="8" selected>Medium</option>
-              <option value="20">Low quality (faster)</option>
-            </select>
+
+        <div id="gif-settings" style="display:none;flex-direction:column;gap:1rem">
+          <div class="row">
+            <div class="field">
+              <label>FPS &mdash; <span id="fps-lbl">12</span></label>
+              <input type="range" id="fps" min="1" max="25" value="12" oninput="fpsLbl.textContent=this.value;updateEst()">
+            </div>
+            <div class="field">
+              <label>Width</label>
+              <select id="wsel" onchange="updateEst()">
+                <option value="240">240 px</option>
+                <option value="320" selected>320 px</option>
+                <option value="480">480 px</option>
+                <option value="640">640 px</option>
+              </select>
+            </div>
           </div>
-          <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;padding-top:1.4rem;justify-content:flex-start">
-            <input type="checkbox" id="loop-cb" checked>
-            <label for="loop-cb" style="color:var(--text);font-size:0.9rem;font-weight:400">Loop forever</label>
+          <div class="row">
+            <div class="field">
+              <label>Quality</label>
+              <select id="qsel">
+                <option value="2">High quality (slower)</option>
+                <option value="8" selected>Medium</option>
+                <option value="20">Low quality (faster)</option>
+              </select>
+            </div>
+            <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;padding-top:1.4rem;justify-content:flex-start">
+              <input type="checkbox" id="loop-cb" checked>
+              <label for="loop-cb" style="color:var(--text);font-size:0.9rem;font-weight:400">Loop forever</label>
+            </div>
           </div>
         </div>
         <p id="est" style="font-size:0.8rem;color:var(--muted);margin:0;min-height:1em"></p>
       </div>
 
-      <button class="btn" id="gen-btn" onclick="generate()" disabled>Generate GIF</button>
+      <button class="btn" id="gen-btn" onclick="generate()" disabled>Trim video</button>
 
       <!-- ── Output ── -->
       <div class="out-area" id="out-area">
         <div class="prog"><div class="prog-fill" id="pfill"></div></div>
         <p id="status-msg" style="font-size:0.875rem;color:var(--muted);margin:0"></p>
         <img id="gif-img" alt="Generated GIF">
+        <video id="out-vid" controls playsinline></video>
         <p id="out-meta" style="font-size:0.85rem;color:var(--muted);margin:0"></p>
-        <a class="btn" id="dl-btn" download="animation.gif" style="display:none;align-self:flex-start">&#8595; Download GIF</a>
+        <a class="btn" id="dl-btn" download="trimmed.mp4" style="display:none;align-self:flex-start">&#8595; Download</a>
       </div>
 
     </div>
@@ -223,11 +242,11 @@
   document.getElementById('yr').textContent = new Date().getFullYear();
   const fpsLbl = document.getElementById('fps-lbl');
 
-  let mode = 'video', imgFrames = [], busy = false;
-  let previewActive = false, outUrl = null, vidUrl = null;
+  let mode = 'video', format = 'video', imgFrames = [], busy = false;
+  let previewActive = false, outUrl = null, vidUrl = null, vidFile = null;
   let viewMin = 0, viewMax = 1; // visible window of the video timeline
 
-  // Preload the gif.js worker as a blob URL immediately so it's ready when needed
+  // Preload the gif.js worker as a blob URL so it's ready when needed
   let workerUrl = null;
   const workerReady = fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
     .then(r => r.ok ? r.text() : Promise.reject())
@@ -242,14 +261,31 @@
   const lblEnd   = document.getElementById('lbl-end');
   const lblDur   = document.getElementById('lbl-dur');
 
-  // ── Mode ──────────────────────────────────────────────────────────────────
+  // ── Mode (input source) ─────────────────────────────────────────────────────
   function setMode(m) {
     mode = m;
     document.getElementById('tab-video').classList.toggle('active', m === 'video');
     document.getElementById('tab-imgs').classList.toggle('active', m === 'images');
     document.getElementById('pane-video').style.display = m === 'video' ? '' : 'none';
     document.getElementById('pane-imgs').style.display  = m === 'images' ? '' : 'none';
+    // Image sequences can only produce a GIF
+    if (m === 'images') { format = 'gif'; document.getElementById('format-field').style.display = 'none'; }
+    else { document.getElementById('format-field').style.display = ''; }
+    applyFormatUI();
     updateEst(); checkReady();
+  }
+
+  // ── Export format (video vs gif) ────────────────────────────────────────────
+  function setFormat(f) { format = f; applyFormatUI(); updateEst(); checkReady(); }
+
+  function applyFormatUI() {
+    document.querySelectorAll('#format-seg .seg-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.fmt === format));
+    document.getElementById('gif-settings').style.display = format === 'gif' ? 'flex' : 'none';
+    document.getElementById('gen-btn').textContent = format === 'gif' ? 'Generate GIF' : 'Trim video';
+    document.getElementById('fmt-hint').textContent = format === 'gif'
+      ? 'Re-encodes the selection into an animated GIF at the size and frame rate you choose.'
+      : 'Lossless cut — keeps the original quality, resolution and audio. The start snaps to the nearest keyframe.';
   }
 
   // ── Video input ───────────────────────────────────────────────────────────
@@ -265,6 +301,7 @@
 
   function loadVideo(file) {
     if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidFile = file;
     vidUrl = URL.createObjectURL(file);
     vid.src = vidUrl;
     vid.onloadedmetadata = () => {
@@ -291,8 +328,7 @@
   function setView(newMin, newMax) {
     const dur = vid.duration || 1;
     const s = parseFloat(startEl.value), e = parseFloat(endEl.value);
-    // Never zoom past the selection — clamp view to always include it
-    newMin = Math.min(newMin, s);
+    newMin = Math.min(newMin, s);   // never zoom past the selection
     newMax = Math.max(newMax, e);
     viewMin = Math.max(0, newMin);
     viewMax = Math.min(dur, newMax);
@@ -360,13 +396,11 @@
     const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
     const newMidX = (a.clientX + b.clientX) / 2;
 
-    // Zoom: spread = zoom in (invert so larger distance = smaller window)
-    const scale    = pinch0.d / newDist;
+    const scale    = pinch0.d / newDist; // spread → smaller window (zoom in)
     const viewSpan = pinch0.viewMax - pinch0.viewMin;
     const half     = viewSpan / 2 * scale;
     if (half * 2 < 0.2) return; // don't zoom past 0.2s window
 
-    // Pan: midpoint shift in pixels → time offset (drag right = earlier content)
     const trackW  = trimPanel.getBoundingClientRect().width || 1;
     const panTime = -(newMidX - pinch0.midX) / trackW * viewSpan;
 
@@ -376,7 +410,6 @@
 
   trimPanel.addEventListener('touchend', e => {
     if (e.touches.length < 2) pinch0 = null;
-    // Double-tap resets zoom to full video
     if (e.changedTouches.length === 1 && e.touches.length === 0) {
       const now = Date.now();
       if (now - lastTap < 280) setView(0, vid.duration || 1);
@@ -384,7 +417,6 @@
     }
   }, { passive: true });
 
-  // Stop preview if user pauses video manually
   vid.addEventListener('pause', () => { if (previewActive) stopPreview(); });
 
   // ── Preview loop ──────────────────────────────────────────────────────────
@@ -417,7 +449,7 @@
     if (previewActive) stopPreview();
     vid.pause();
     if (vidUrl) { URL.revokeObjectURL(vidUrl); vidUrl = null; }
-    vid.src = '';
+    vid.src = ''; vidFile = null;
     document.getElementById('vid-wrap').classList.remove('visible');
     vdrop.style.display = '';
     document.getElementById('vfile').value = '';
@@ -471,19 +503,22 @@
 
   // ── Estimate ──────────────────────────────────────────────────────────────
   function updateEst() {
-    const fps = parseInt(document.getElementById('fps').value);
-    const w   = parseInt(document.getElementById('wsel').value);
     const est = document.getElementById('est');
     if (mode === 'video' && vid.duration > 0) {
       const sel = parseFloat(endEl.value) - parseFloat(startEl.value);
-      if (sel > 0.05) {
-        const n = Math.floor(sel * fps);
-        est.textContent = `≈ ${n} frame${n !== 1 ? 's' : ''} · ${w} px wide`;
+      if (sel <= 0.05) { est.textContent = 'Adjust the trim handles to select a range'; return; }
+      if (format === 'video') {
+        est.textContent = `Lossless trim · ${fmtTime(sel)} selected · original quality & audio kept`;
       } else {
-        est.textContent = 'Adjust the trim handles to select a range';
+        const fps = parseInt(document.getElementById('fps').value);
+        const w   = parseInt(document.getElementById('wsel').value);
+        const n   = Math.floor(sel * fps);
+        est.textContent = `≈ ${n} frame${n !== 1 ? 's' : ''} · ${w} px wide`;
       }
     } else if (mode === 'images' && imgFrames.length) {
-      est.textContent = `${imgFrames.length} frames · ${Math.round(1000/fps)} ms each · ${w} px wide`;
+      const fps = parseInt(document.getElementById('fps').value);
+      const w   = parseInt(document.getElementById('wsel').value);
+      est.textContent = `${imgFrames.length} frames · ${Math.round(1000/fps)} ms each · ${w} px wide`;
     } else {
       est.textContent = '';
     }
@@ -503,6 +538,14 @@
     if (pct != null) document.getElementById('pfill').style.width = (pct * 100) + '%';
   }
 
+  function resetOutput() {
+    document.getElementById('gif-img').style.display = 'none';
+    document.getElementById('out-vid').style.display = 'none';
+    document.getElementById('dl-btn').style.display = 'none';
+    document.getElementById('out-meta').textContent = '';
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+  }
+
   // ── Seek with 600ms timeout fallback (avoids seeked-event races) ──────────
   function seekTo(t) {
     return new Promise(res => {
@@ -512,18 +555,104 @@
     });
   }
 
-  // ── Generate ──────────────────────────────────────────────────────────────
+  // ── Generate / dispatch ─────────────────────────────────────────────────────
   async function generate() {
     if (busy) return;
     if (previewActive) stopPreview();
-
     busy = true;
     document.getElementById('gen-btn').disabled = true;
-    document.getElementById('gif-img').style.display = 'none';
-    document.getElementById('dl-btn').style.display = 'none';
-    document.getElementById('out-meta').textContent = '';
-    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+    resetOutput();
+    try {
+      if (mode === 'video' && format === 'video') await trimVideo();
+      else await makeGif();
+    } catch (err) {
+      setStatus('Error: ' + err.message, null);
+    } finally {
+      busy = false; checkReady();
+    }
+  }
 
+  // ── Lossless trim via ffmpeg.wasm (stream copy) ─────────────────────────────
+  let _ff = null, _ffLibsLoaded = false;
+
+  function injectScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function loadFFmpeg() {
+    if (_ff) return _ff;
+    if (!_ffLibsLoaded) {
+      await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js');
+      await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+      _ffLibsLoaded = true;
+    }
+    const { FFmpeg }    = window.FFmpegWASM;
+    const { toBlobURL } = window.FFmpegUtil;
+    const ff = new FFmpeg();
+    ff.on('progress', ({ progress }) => {
+      if (progress > 0 && progress <= 1) setStatus('Trimming…', 0.35 + progress * 0.6);
+    });
+    const ffBase   = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+    await ff.load({
+      classWorkerURL: await toBlobURL(`${ffBase}/814.ffmpeg.js`, 'text/javascript'),
+      coreURL:        await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL:        await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+    _ff = ff;
+    return ff;
+  }
+
+  async function trimVideo() {
+    if (!vidFile) throw new Error('Load a video first');
+    const t0 = parseFloat(startEl.value), t1 = parseFloat(endEl.value);
+    const sel = t1 - t0;
+    if (sel <= 0) throw new Error('End time must be after start time');
+
+    setStatus('Loading trimmer… (first run downloads ~32 MB, then it is cached)', 0.1);
+    let ff;
+    try { ff = await loadFFmpeg(); }
+    catch (e) { throw new Error('Could not load the video trimmer — check your connection'); }
+
+    const ext     = (vidFile.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+    const inName  = 'input.' + ext;
+    const outName = 'output.' + ext;
+
+    setStatus('Reading video…', 0.25);
+    await ff.writeFile(inName, new Uint8Array(await vidFile.arrayBuffer()));
+
+    setStatus('Trimming…', 0.35);
+    // -ss before -i = fast keyframe-accurate seek; -c copy = no re-encode (lossless)
+    await ff.exec([
+      '-ss', t0.toFixed(3),
+      '-i', inName,
+      '-t', sel.toFixed(3),
+      '-c', 'copy',
+      '-avoid_negative_ts', 'make_zero',
+      outName,
+    ]);
+
+    const data = await ff.readFile(outName);
+    try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch (e) {}
+
+    const blob = new Blob([data.buffer], { type: vidFile.type || 'video/mp4' });
+    outUrl = URL.createObjectURL(blob);
+
+    const outVid = document.getElementById('out-vid');
+    outVid.src = outUrl; outVid.style.display = 'block';
+    document.getElementById('out-meta').textContent =
+      `${fmtTime(sel)} clip · ${(blob.size/1024/1024).toFixed(1)} MB · lossless`;
+    const dl = document.getElementById('dl-btn');
+    dl.href = outUrl; dl.download = 'trimmed.' + ext; dl.style.display = 'inline-flex';
+    setStatus('Done!', 1);
+  }
+
+  // ── Animated GIF via gif.js ─────────────────────────────────────────────────
+  async function makeGif() {
     const fps    = parseInt(document.getElementById('fps').value);
     const w      = parseInt(document.getElementById('wsel').value);
     const colors = parseInt(document.getElementById('qsel').value);
@@ -532,88 +661,77 @@
     const cap    = document.getElementById('cap');
     const ctx    = cap.getContext('2d');
 
-    try {
-      const frames = [];
+    const frames = [];
 
-      if (mode === 'video') {
-        const t0  = parseFloat(startEl.value) || 0;
-        const t1  = parseFloat(endEl.value);
-        const dur = t1 - t0;
-        if (dur <= 0) throw new Error('End time must be after start time');
-        const nf = Math.floor(dur * fps);
-        if (nf < 1) throw new Error('No frames — try a longer clip or higher FPS');
+    if (mode === 'video') {
+      const t0  = parseFloat(startEl.value) || 0;
+      const t1  = parseFloat(endEl.value);
+      const dur = t1 - t0;
+      if (dur <= 0) throw new Error('End time must be after start time');
+      const nf = Math.floor(dur * fps);
+      if (nf < 1) throw new Error('No frames — try a longer clip or higher FPS');
 
-        cap.width  = w;
-        cap.height = Math.round(vid.videoHeight / vid.videoWidth * w) || w;
+      cap.width  = w;
+      cap.height = Math.round(vid.videoHeight / vid.videoWidth * w) || w;
 
-        for (let i = 0; i < nf; i++) {
-          setStatus(`Extracting frame ${i+1} / ${nf}…`, (i+1) / nf * 0.5);
-          await seekTo(t0 + i / fps);
-          ctx.drawImage(vid, 0, 0, cap.width, cap.height);
-          frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
-        }
-
-      } else {
-        await Promise.all(imgFrames.map(f =>
-          f.el.complete ? Promise.resolve()
-                        : new Promise(r => { f.el.onload = r; f.el.onerror = r; })));
-
-        const ref  = imgFrames[0].el;
-        cap.width  = w;
-        cap.height = Math.round(ref.naturalHeight / ref.naturalWidth * w) || w;
-
-        for (let i = 0; i < imgFrames.length; i++) {
-          setStatus(`Processing frame ${i+1} / ${imgFrames.length}…`, (i+1) / imgFrames.length * 0.5);
-          ctx.clearRect(0, 0, cap.width, cap.height);
-          ctx.drawImage(imgFrames[i].el, 0, 0, cap.width, cap.height);
-          frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
-          await new Promise(r => setTimeout(r, 0));
-        }
+      for (let i = 0; i < nf; i++) {
+        setStatus(`Extracting frame ${i+1} / ${nf}…`, (i+1) / nf * 0.5);
+        await seekTo(t0 + i / fps);
+        ctx.drawImage(vid, 0, 0, cap.width, cap.height);
+        frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
       }
 
-      // Encode with gif.js
-      setStatus('Preparing encoder…', 0.55);
-      await workerReady;
-      if (!workerUrl) throw new Error('GIF worker not available — check your connection');
+    } else {
+      await Promise.all(imgFrames.map(f =>
+        f.el.complete ? Promise.resolve()
+                      : new Promise(r => { f.el.onload = r; f.el.onerror = r; })));
 
-      const blob = await new Promise((resolve, reject) => {
-        const gif = new GIF({
-          workers: 2,
-          quality: colors,
-          width: cap.width,
-          height: cap.height,
-          workerScript: workerUrl,
-          repeat: loop ? 0 : -1,
-        });
+      const ref  = imgFrames[0].el;
+      cap.width  = w;
+      cap.height = Math.round(ref.naturalHeight / ref.naturalWidth * w) || w;
 
-        for (const imgData of frames) {
-          const tmp = document.createElement('canvas');
-          tmp.width = imgData.width;
-          tmp.height = imgData.height;
-          tmp.getContext('2d').putImageData(imgData, 0, 0);
-          gif.addFrame(tmp, { delay, copy: true });
-        }
-
-        gif.on('progress', p => setStatus('Encoding…', 0.6 + p * 0.4));
-        gif.on('finished', blob => resolve(blob));
-        gif.render();
-      });
-      outUrl = URL.createObjectURL(blob);
-
-      const imgEl = document.getElementById('gif-img');
-      imgEl.src = outUrl; imgEl.style.display = 'block';
-      document.getElementById('out-meta').textContent =
-        `${cap.width} × ${cap.height} px · ${frames.length} frames · ${(blob.size/1024).toFixed(0)} KB`;
-      const dl = document.getElementById('dl-btn');
-      dl.href = outUrl; dl.style.display = 'inline-flex';
-      setStatus('Done!', 1);
-
-    } catch (err) {
-      setStatus('Error: ' + err.message, null);
-    } finally {
-      busy = false; checkReady();
+      for (let i = 0; i < imgFrames.length; i++) {
+        setStatus(`Processing frame ${i+1} / ${imgFrames.length}…`, (i+1) / imgFrames.length * 0.5);
+        ctx.clearRect(0, 0, cap.width, cap.height);
+        ctx.drawImage(imgFrames[i].el, 0, 0, cap.width, cap.height);
+        frames.push(ctx.getImageData(0, 0, cap.width, cap.height));
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
+
+    setStatus('Preparing encoder…', 0.55);
+    await workerReady;
+    if (!workerUrl) throw new Error('GIF worker not available — check your connection');
+
+    const blob = await new Promise((resolve) => {
+      const gif = new GIF({
+        workers: 2, quality: colors,
+        width: cap.width, height: cap.height,
+        workerScript: workerUrl, repeat: loop ? 0 : -1,
+      });
+      for (const imgData of frames) {
+        const tmp = document.createElement('canvas');
+        tmp.width = imgData.width; tmp.height = imgData.height;
+        tmp.getContext('2d').putImageData(imgData, 0, 0);
+        gif.addFrame(tmp, { delay, copy: true });
+      }
+      gif.on('progress', p => setStatus('Encoding…', 0.6 + p * 0.4));
+      gif.on('finished', b => resolve(b));
+      gif.render();
+    });
+    outUrl = URL.createObjectURL(blob);
+
+    const imgEl = document.getElementById('gif-img');
+    imgEl.src = outUrl; imgEl.style.display = 'block';
+    document.getElementById('out-meta').textContent =
+      `${cap.width} × ${cap.height} px · ${frames.length} frames · ${(blob.size/1024).toFixed(0)} KB`;
+    const dl = document.getElementById('dl-btn');
+    dl.href = outUrl; dl.download = 'animation.gif'; dl.style.display = 'inline-flex';
+    setStatus('Done!', 1);
   }
+
+  // Initial UI state
+  applyFormatUI();
   </script>
   <script src="/js/logo.js"></script>
 </body>
