@@ -72,6 +72,24 @@
     .trim-times .tc { color: var(--muted); }
     .trim-times .ts { font-weight: 600; }
 
+    /* Big top-of-screen readout shown while dragging the trim handles
+       (the small labels sit under your fingers on touch screens) */
+    .scrub-overlay {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      display: flex; justify-content: center; gap: clamp(1.5rem, 12vw, 4rem);
+      padding: 1.1rem 1rem 1.6rem;
+      background: linear-gradient(rgba(0,0,0,0.82), rgba(0,0,0,0));
+      color: #fff; pointer-events: none;
+      opacity: 0; transform: translateY(-10px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .scrub-overlay.show { opacity: 1; transform: none; }
+    .scrub-item { text-align: center; opacity: 0.5; transition: opacity 0.15s; }
+    .scrub-item.active { opacity: 1; }
+    .scrub-lbl { display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.85; }
+    .scrub-t { display: block; font-size: clamp(2rem, 11vw, 3rem); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .scrub-item.active .scrub-t { color: var(--accent, #60a5fa); }
+
     /* Image grid */
     .frames-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; margin-top: 0.75rem; }
     .frame-thumb { position: relative; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 1; }
@@ -105,6 +123,10 @@
   </style>
 </head>
 <body>
+  <div class="scrub-overlay" id="scrub-overlay" aria-hidden="true">
+    <div class="scrub-item" id="scrub-start"><span class="scrub-lbl">Start</span><span class="scrub-t" id="scrub-start-t">0.0s</span></div>
+    <div class="scrub-item" id="scrub-end"><span class="scrub-lbl">End</span><span class="scrub-t" id="scrub-end-t">0.0s</span></div>
+  </div>
   <header>
     <nav>
       <a href="/" class="logo">WW</a>
@@ -368,8 +390,24 @@
     updateEst(); checkReady();
   }
 
-  startEl.addEventListener('input', updateTrimFill);
-  endEl.addEventListener('input',   updateTrimFill);
+  startEl.addEventListener('input', () => { updateTrimFill(); showScrub('start'); });
+  endEl.addEventListener('input',   () => { updateTrimFill(); showScrub('end'); });
+
+  // ── Big top-of-screen time readout while dragging ──────────────────────────
+  let scrubTimer = null;
+  function updateScrub() {
+    document.getElementById('scrub-start-t').textContent = fmtTime(parseFloat(startEl.value));
+    document.getElementById('scrub-end-t').textContent   = fmtTime(parseFloat(endEl.value));
+  }
+  function showScrub(active) {
+    updateScrub();
+    const ov = document.getElementById('scrub-overlay');
+    ov.classList.add('show');
+    document.getElementById('scrub-start').classList.toggle('active', active === 'start');
+    document.getElementById('scrub-end').classList.toggle('active', active === 'end');
+    clearTimeout(scrubTimer);
+    scrubTimer = setTimeout(() => ov.classList.remove('show'), 900);
+  }
 
   // ── Pinch to zoom timeline view (not the handles) ────────────────────────
   // Spread = zoom in (finer control); squeeze = zoom out; double-tap = reset
