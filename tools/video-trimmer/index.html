@@ -583,16 +583,6 @@
     });
   }
 
-  // Fetch a file and hand it back as a same-origin blob URL (needed because
-  // cross-origin workers/wasm can't be loaded directly). Reports the exact
-  // URL + status on failure so problems are diagnosable.
-  async function fetchBlobURL(url, type) {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
-    const buf = await r.arrayBuffer();
-    return URL.createObjectURL(new Blob([buf], { type }));
-  }
-
   async function loadFFmpeg() {
     if (_ff) return _ff;
     if (!_ffLibsLoaded) {
@@ -607,12 +597,22 @@
     ff.on('progress', ({ progress }) => {
       if (progress > 0 && progress <= 1) setStatus('Trimming…', 0.35 + progress * 0.6);
     });
-    const ffBase   = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
-    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+
+    // Cross-origin loading (e.g. GitHub Pages): when classWorkerURL is supplied
+    // the library spins up a *module* worker, so it needs the ESM worker + ESM
+    // core. A Worker can't point at another origin directly, so wrap the CDN
+    // worker in a same-origin blob that simply imports it (its own relative
+    // imports then resolve against the CDN). Core/wasm are fetched with CORS by
+    // the worker, so they can be plain CDN URLs.
+    const esmBase  = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+    const workerBlob = URL.createObjectURL(
+      new Blob([`import "${esmBase}/worker.js";`], { type: 'text/javascript' }));
+
     await ff.load({
-      classWorkerURL: await fetchBlobURL(`${ffBase}/814.ffmpeg.js`, 'text/javascript'),
-      coreURL:        await fetchBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL:        await fetchBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
+      classWorkerURL: workerBlob,
+      coreURL:        `${coreBase}/ffmpeg-core.js`,
+      wasmURL:        `${coreBase}/ffmpeg-core.wasm`,
     });
     _ff = ff;
     return ff;
