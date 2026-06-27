@@ -583,15 +583,26 @@
     });
   }
 
+  // Fetch a file and hand it back as a same-origin blob URL (needed because
+  // cross-origin workers/wasm can't be loaded directly). Reports the exact
+  // URL + status on failure so problems are diagnosable.
+  async function fetchBlobURL(url, type) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
+    const buf = await r.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type }));
+  }
+
   async function loadFFmpeg() {
     if (_ff) return _ff;
     if (!_ffLibsLoaded) {
-      await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js');
       await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
       _ffLibsLoaded = true;
     }
-    const { FFmpeg }    = window.FFmpegWASM;
-    const { toBlobURL } = window.FFmpegUtil;
+    if (!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg) {
+      throw new Error('ffmpeg library did not initialise');
+    }
+    const { FFmpeg } = window.FFmpegWASM;
     const ff = new FFmpeg();
     ff.on('progress', ({ progress }) => {
       if (progress > 0 && progress <= 1) setStatus('Trimming…', 0.35 + progress * 0.6);
@@ -599,9 +610,9 @@
     const ffBase   = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
     const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
     await ff.load({
-      classWorkerURL: await toBlobURL(`${ffBase}/814.ffmpeg.js`, 'text/javascript'),
-      coreURL:        await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL:        await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
+      classWorkerURL: await fetchBlobURL(`${ffBase}/814.ffmpeg.js`, 'text/javascript'),
+      coreURL:        await fetchBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL:        await fetchBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
     });
     _ff = ff;
     return ff;
@@ -616,7 +627,7 @@
     setStatus('Loading trimmer… (first run downloads ~32 MB, then it is cached)', 0.1);
     let ff;
     try { ff = await loadFFmpeg(); }
-    catch (e) { throw new Error('Could not load the video trimmer — check your connection'); }
+    catch (e) { throw new Error('Could not load the video trimmer (' + e.message + ')'); }
 
     const ext     = (vidFile.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
     const inName  = 'input.' + ext;
