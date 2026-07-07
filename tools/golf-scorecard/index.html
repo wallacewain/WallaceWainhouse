@@ -70,6 +70,17 @@
     table.sc input.sc-in:focus { outline: none; border-color: var(--accent, #60a5fa); box-shadow: 0 0 0 2px rgba(96,165,250,0.25); }
     table.sc tfoot td { font-weight: 800; font-size: 1rem; border-top: 2px solid var(--border); border-bottom: none; padding-top: 0.6rem; }
     table.sc tfoot td.hole-col { font-weight: 700; color: var(--text); }
+    table.sc th.par-col, table.sc td.par-col { color: var(--muted); font-weight: 600; }
+    table.sc input.par-in {
+      width: 42px; text-align: center; padding: 0.3rem 0.15rem; font-size: 0.85rem;
+      border: 1px dashed var(--border); border-radius: 8px; background: var(--bg); color: var(--muted);
+      font-family: var(--font); -moz-appearance: textfield; appearance: textfield;
+    }
+    table.sc input.par-in::-webkit-outer-spin-button,
+    table.sc input.par-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    table.sc input.par-in:focus { outline: none; border-color: var(--accent, #60a5fa); color: var(--text); }
+    table.sc tfoot tr.topar-row td { font-size: 0.85rem; font-weight: 700; border-top: none; padding-top: 0.15rem; }
+    .par-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; color: var(--text); cursor: pointer; }
 
     /* Leaderboard */
     .lb-list { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -154,6 +165,7 @@
           <button type="button" class="step-btn" id="hole-plus" aria-label="Add a hole">+</button>
           <span class="holes-count" id="holes-count"></span>
         </div>
+        <label class="par-check"><input type="checkbox" id="par-toggle"> Track par (show over/under)</label>
       </div>
 
       <!-- Scorecard -->
@@ -224,7 +236,8 @@
       if (old && Array.isArray(old.players)) {
         rounds.push({ id: uid(), startedAt: new Date().toISOString(), title: '',
                       location: null, place: null, players: old.players,
-                      holes: old.holes || 18, scores: old.scores || {} });
+                      holes: old.holes || 18, scores: old.scores || {},
+                      parOn: false, pars: {} });
       }
     } catch {}
     return { rounds, currentId: rounds[0] ? rounds[0].id : null };
@@ -243,7 +256,8 @@
     const players = (carryPlayers && prev) ? prev.players.map(p => ({ id: uid(), name: p.name })) : [];
     const r = { id: uid(), startedAt: new Date().toISOString(), title: '',
                 location: null, place: null, players,
-                holes: prev ? prev.holes : 18, scores: {} };
+                holes: prev ? prev.holes : 18, scores: {},
+                parOn: prev ? !!prev.parOn : false, pars: (prev && prev.pars) ? { ...prev.pars } : {} };
     players.forEach(p => { r.scores[p.id] = {}; });
     db.rounds.unshift(r);
     db.currentId = r.id;
@@ -383,12 +397,16 @@
     b.addEventListener('click', () => setHoles(parseInt(b.dataset.holes))));
   document.getElementById('hole-plus').addEventListener('click', () => setHoles((R() ? R().holes : 18) + 1));
   document.getElementById('hole-minus').addEventListener('click', () => setHoles((R() ? R().holes : 18) - 1));
+  document.getElementById('par-toggle').addEventListener('change', e => {
+    ensureRound(); R().parOn = e.target.checked; persist(); renderAll();
+  });
 
   function renderHolesControl() {
     const holes = R() ? R().holes : 18;
     document.getElementById('holes-count').textContent = holes + ' holes';
     document.getElementById('holes-seg').querySelectorAll('button').forEach(b =>
       b.classList.toggle('active', parseInt(b.dataset.holes) === holes));
+    document.getElementById('par-toggle').checked = !!(R() && R().parOn);
   }
 
   // ── Scores ──────────────────────────────────────────────────────────────────
@@ -404,6 +422,22 @@
     for (let h = 1; h <= r.holes; h++) if (s[h] != null && s[h] !== '') c++;
     return c;
   }
+  function parTotal(r) {
+    const p = r.pars || {};
+    let t = 0;
+    for (let h = 1; h <= r.holes; h++) t += Number(p[h]) || 0;
+    return t;
+  }
+  // Strokes relative to par, over holes where both a par and a score exist
+  function toPar(r, id) {
+    const s = r.scores[id] || {}, p = r.pars || {};
+    let d = 0;
+    for (let h = 1; h <= r.holes; h++) {
+      if (p[h] != null && p[h] !== '' && s[h] != null && s[h] !== '') d += Number(s[h]) - Number(p[h]);
+    }
+    return d;
+  }
+  function fmtToPar(n) { return n === 0 ? 'E' : (n > 0 ? '+' + n : '' + n); }
 
   function renderTable() {
     const r = R();
@@ -412,13 +446,21 @@
     if (!r || !r.players.length) { card.style.display = 'none'; return; }
     card.style.display = '';
 
-    let thead = '<thead><tr><th class="hole-col">Hole</th>';
+    const parOn = !!r.parOn;
+    const parCol = parOn ? '<th class="par-col">Par</th>' : '';
+
+    let thead = '<thead><tr><th class="hole-col">Hole</th>' + parCol;
     r.players.forEach(p => { thead += `<th>${escapeHtml(p.name)}</th>`; });
     thead += '</tr></thead>';
 
     let tbody = '<tbody>';
     for (let h = 1; h <= r.holes; h++) {
       tbody += `<tr><td class="hole-col">${h}</td>`;
+      if (parOn) {
+        const pv = (r.pars && r.pars[h] != null) ? r.pars[h] : '';
+        tbody += `<td class="par-col"><input class="par-in" type="number" inputmode="numeric" min="1" max="9" ` +
+                 `value="${pv}" data-hole="${h}" aria-label="Par for hole ${h}"></td>`;
+      }
       r.players.forEach(p => {
         const v = (r.scores[p.id] && r.scores[p.id][h] != null) ? r.scores[p.id][h] : '';
         tbody += `<td><input class="sc-in" type="number" inputmode="numeric" min="1" max="99" ` +
@@ -429,8 +471,15 @@
     tbody += '</tbody>';
 
     let tfoot = '<tfoot><tr><td class="hole-col">Total</td>';
+    if (parOn) tfoot += `<td class="par-col" id="par-tot">${parTotal(r)}</td>`;
     r.players.forEach(p => { tfoot += `<td id="tot-${p.id}">${totalFor(r, p.id)}</td>`; });
-    tfoot += '</tr></tfoot>';
+    tfoot += '</tr>';
+    if (parOn) {
+      tfoot += '<tr class="topar-row"><td class="hole-col">To par</td><td class="par-col"></td>';
+      r.players.forEach(p => { tfoot += `<td id="topar-${p.id}">${fmtToPar(toPar(r, p.id))}</td>`; });
+      tfoot += '</tr>';
+    }
+    tfoot += '</tfoot>';
 
     table.innerHTML = thead + tbody + tfoot;
 
@@ -446,10 +495,34 @@
         else cur.scores[pid][h] = parseInt(val);
         const totCell = document.getElementById('tot-' + pid);
         if (totCell) totCell.textContent = totalFor(cur, pid);
+        if (cur.parOn) {
+          const tp = document.getElementById('topar-' + pid);
+          if (tp) tp.textContent = fmtToPar(toPar(cur, pid));
+        }
         persist();               // save after every input
         renderLeaderboard();
         renderRounds();
         renderStats();
+      });
+    });
+
+    table.querySelectorAll('input.par-in').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const cur = R(); if (!cur) return;
+        if (!cur.pars) cur.pars = {};
+        const h = inp.dataset.hole;
+        let val = inp.value.replace(/[^0-9]/g, '').slice(0, 2);
+        if (inp.value !== val) inp.value = val;
+        if (val === '') delete cur.pars[h];
+        else cur.pars[h] = parseInt(val);
+        const pt = document.getElementById('par-tot');
+        if (pt) pt.textContent = parTotal(cur);
+        cur.players.forEach(p => {
+          const tp = document.getElementById('topar-' + p.id);
+          if (tp) tp.textContent = fmtToPar(toPar(cur, p.id));
+        });
+        persist();
+        renderLeaderboard();
       });
     });
   }
@@ -463,19 +536,22 @@
     if (!scored.length) { card.style.display = 'none'; return; }
     card.style.display = '';
 
+    const parOn = !!r.parOn;
     const ranked = scored
-      .map(p => ({ name: p.name, total: totalFor(r, p.id), played: holesPlayed(r, p.id) }))
+      .map(p => ({ name: p.name, total: totalFor(r, p.id), played: holesPlayed(r, p.id), toPar: toPar(r, p.id) }))
       .sort((a, b) => a.total - b.total);
 
     list.innerHTML = '';
     let lastTotal = null, rank = 0;
     ranked.forEach((row, i) => {
       if (row.total !== lastTotal) { rank = i + 1; lastTotal = row.total; }
+      const sub = `${row.played} hole${row.played !== 1 ? 's' : ''}` +
+                  (parOn ? ` · ${fmtToPar(row.toPar)} to par` : '');
       const el = document.createElement('div');
       el.className = 'lb-row' + (rank === 1 ? ' lead' : '');
       el.innerHTML =
         `<span class="lb-rank">${rank}</span>` +
-        `<span class="lb-name">${escapeHtml(row.name)} <span class="lb-sub">${row.played} hole${row.played !== 1 ? 's' : ''}</span></span>` +
+        `<span class="lb-name">${escapeHtml(row.name)} <span class="lb-sub">${sub}</span></span>` +
         `<span class="lb-total">${row.total}</span>`;
       list.appendChild(el);
     });
@@ -641,6 +717,8 @@
                  : [],
       holes: Math.max(1, Math.min(36, parseInt(r.holes) || 18)),
       scores: (r.scores && typeof r.scores === 'object') ? r.scores : {},
+      parOn: !!r.parOn,
+      pars: (r.pars && typeof r.pars === 'object') ? r.pars : {},
     };
   }
 
