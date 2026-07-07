@@ -91,6 +91,15 @@
     .round-info .rs { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .round-acts { display: flex; gap: 0.35rem; flex-shrink: 0; }
 
+    /* Stats */
+    .stats-summary { font-size: 0.83rem; color: var(--muted); margin: 0; }
+    table.stats { border-collapse: collapse; width: 100%; min-width: max-content; font-size: 0.88rem; }
+    table.stats th, table.stats td { padding: 0.4rem 0.55rem; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    table.stats th:first-child, table.stats td:first-child { text-align: left; }
+    table.stats thead th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; }
+    table.stats td.name { font-weight: 600; }
+    table.stats td.best { color: var(--accent, #60a5fa); font-weight: 600; }
+
     .btn-sm { background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; transition: border-color 0.15s, color 0.15s; }
     .btn-sm:hover { border-color: var(--accent); color: var(--accent, #60a5fa); }
     .btn-sm.danger:hover { border-color: #f87171; color: #f87171; }
@@ -169,6 +178,26 @@
       <div class="card" id="rounds-card" style="display:none">
         <div class="card-title">Past rounds</div>
         <div class="rounds-list" id="rounds-list"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card" id="stats-card" style="display:none">
+        <div class="card-title">Stats &mdash; all rounds</div>
+        <p class="stats-summary" id="stats-summary"></p>
+        <div class="card-scroll">
+          <table class="stats" id="stats-table"></table>
+        </div>
+      </div>
+
+      <!-- Data / backup -->
+      <div class="card">
+        <div class="card-title">Backup &amp; transfer</div>
+        <div class="row-btns">
+          <button type="button" class="btn-ghost" id="export-db">&#8595; Download backup</button>
+          <button type="button" class="btn-ghost" id="import-db">&#8593; Load backup</button>
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </div>
+        <p class="empty-hint">Save every round to a file, or load it onto another device. Loading <strong>merges</strong> with what's already here &mdash; it won't wipe your current rounds.</p>
       </div>
 
     </div>
@@ -420,6 +449,7 @@
         persist();               // save after every input
         renderLeaderboard();
         renderRounds();
+        renderStats();
       });
     });
   }
@@ -513,6 +543,129 @@
     });
   }
 
+  // ── Stats across all rounds ─────────────────────────────────────────────────
+  function computeStats() {
+    const byName = {};
+    const courses = new Set();
+    let roundsWithScores = 0, minD = null, maxD = null;
+    db.rounds.forEach(r => {
+      const scored = r.players.filter(p => holesPlayed(r, p.id) > 0);
+      if (scored.length) roundsWithScores++;
+      if (locLabel(r)) courses.add(r.place || locLabel(r));
+      const d = new Date(r.startedAt);
+      if (!minD || d < minD) minD = d;
+      if (!maxD || d > maxD) maxD = d;
+      let lead = Infinity;
+      scored.forEach(p => { const t = totalFor(r, p.id); if (t < lead) lead = t; });
+      scored.forEach(p => {
+        const key = p.name.trim(), k = key.toLowerCase();
+        const e = byName[k] || (byName[k] = { name: key, rounds: 0, strokes: 0, holes: 0, wins: 0, best: null });
+        const hp = holesPlayed(r, p.id), tot = totalFor(r, p.id);
+        e.rounds++; e.strokes += tot; e.holes += hp;
+        if (tot === lead) e.wins++;
+        const avg = tot / hp;
+        if (e.best == null || avg < e.best.avg) e.best = { avg, total: tot, holes: hp };
+      });
+    });
+    return { byName, courses: courses.size, roundsWithScores, minD, maxD };
+  }
+
+  function renderStats() {
+    const card = document.getElementById('stats-card');
+    const s = computeStats();
+    const players = Object.values(s.byName);
+    if (!s.roundsWithScores || !players.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+
+    const range = (s.minD && s.maxD)
+      ? (s.minD.toDateString() === s.maxD.toDateString()
+          ? fmtDateShort(s.minD.toISOString())
+          : fmtDateShort(s.minD.toISOString()) + ' – ' + fmtDateShort(s.maxD.toISOString()))
+      : '';
+    document.getElementById('stats-summary').textContent =
+      `${s.roundsWithScores} round${s.roundsWithScores !== 1 ? 's' : ''} · ` +
+      `${s.courses} location${s.courses !== 1 ? 's' : ''}` + (range ? ` · ${range}` : '');
+
+    players.sort((a, b) => (a.strokes / a.holes) - (b.strokes / b.holes));
+
+    let html = '<thead><tr><th>Player</th><th>Rounds</th><th>Avg / hole</th><th>Won</th><th>Best round</th></tr></thead><tbody>';
+    players.forEach(p => {
+      const avg = (p.strokes / p.holes).toFixed(2);
+      const best = p.best ? `${p.best.total} (${p.best.holes}h)` : '—';
+      html += `<tr><td class="name">${escapeHtml(p.name)}</td><td>${p.rounds}</td>` +
+              `<td>${avg}</td><td>${p.wins}</td><td class="best">${best}</td></tr>`;
+    });
+    html += '</tbody>';
+    document.getElementById('stats-table').innerHTML = html;
+  }
+
+  // ── Backup: export / import ─────────────────────────────────────────────────
+  document.getElementById('export-db').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'golf-rounds-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  document.getElementById('import-db').addEventListener('click', () =>
+    document.getElementById('import-file').click());
+
+  document.getElementById('import-file').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const incoming = Array.isArray(data.rounds) ? data.rounds : (Array.isArray(data) ? data : null);
+      if (!incoming) throw new Error('not a golf backup file');
+      const added = mergeRounds(incoming);
+      alert(added ? `Loaded ${added} round${added !== 1 ? 's' : ''} from the backup.`
+                  : 'That backup had no new rounds — everything was already here.');
+    } catch (err) {
+      alert('Could not load that file: ' + err.message);
+    }
+    e.target.value = '';
+  });
+
+  function normalizeRound(r) {
+    return {
+      id: typeof r.id === 'string' ? r.id : uid(),
+      startedAt: r.startedAt || new Date().toISOString(),
+      title: typeof r.title === 'string' ? r.title : '',
+      location: (r.location && typeof r.location.lat === 'number' && typeof r.location.lon === 'number')
+                  ? { lat: r.location.lat, lon: r.location.lon } : null,
+      place: r.place || null,
+      players: Array.isArray(r.players)
+                 ? r.players.filter(p => p && p.id && typeof p.name === 'string').map(p => ({ id: p.id, name: p.name }))
+                 : [],
+      holes: Math.max(1, Math.min(36, parseInt(r.holes) || 18)),
+      scores: (r.scores && typeof r.scores === 'object') ? r.scores : {},
+    };
+  }
+
+  function mergeRounds(incoming) {
+    const have = new Set(db.rounds.map(r => r.id));
+    let added = 0;
+    incoming.forEach(raw => {
+      if (!raw || !Array.isArray(raw.players)) return;
+      const r = normalizeRound(raw);
+      if (have.has(r.id)) return;         // skip rounds we already have
+      db.rounds.push(r); have.add(r.id); added++;
+    });
+    if (added) {
+      db.rounds.sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+      // If we're sitting on an empty round, jump to the newest one that has players
+      const cur = R();
+      if (!cur || !cur.players.length) {
+        const played = db.rounds.find(r => r.players.length);
+        if (played) db.currentId = played.id;
+      }
+      persist(); renderAll();
+    }
+    return added;
+  }
+
   // ── New round ──────────────────────────────────────────────────────────────
   document.getElementById('new-round').addEventListener('click', () => {
     const cur = R();
@@ -535,6 +688,7 @@
     renderTable();
     renderLeaderboard();
     renderRounds();
+    renderStats();
   }
 
   ensureRound();
