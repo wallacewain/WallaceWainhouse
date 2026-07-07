@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="A dead-simple golf scorecard. Add players, enter strokes per hole, and see a live total leaderboard. No pars, no fuss — runs entirely in your browser.">
+  <meta name="description" content="A dead-simple golf scorecard. Add players, enter strokes per hole, and see a live total leaderboard. Every round is saved by date and location — browse and reload past rounds. No pars, runs in your browser.">
   <title>Golf Scorecard &mdash; Wallace Wainhouse</title>
   <link rel="canonical" href="https://wallacewainhouse.com/tools/golf-scorecard/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/tools/golf-scorecard/">
   <meta property="og:title" content="Golf Scorecard &mdash; Wallace Wainhouse">
-  <meta property="og:description" content="A dead-simple golf scorecard. Add players, enter strokes per hole, and see a live total leaderboard.">
+  <meta property="og:description" content="A dead-simple golf scorecard with a live total leaderboard. Every round saved by date and location.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Golf Scorecard &mdash; Wallace Wainhouse">
-  <meta name="twitter:description" content="A dead-simple golf scorecard. Add players, enter strokes per hole, and see a live total leaderboard.">
+  <meta name="twitter:description" content="A dead-simple golf scorecard with a live total leaderboard. Every round saved by date and location.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,6 +23,16 @@
     .tool-wrap { max-width: 760px; display: flex; flex-direction: column; gap: 1.25rem; padding-bottom: 4rem; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
     .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+    .card-title-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+
+    /* Current round header */
+    .round-head { display: flex; flex-direction: column; gap: 0.5rem; }
+    .round-name-in { font-size: 1.15rem; font-weight: 700; border: none; background: none; color: var(--text); font-family: var(--font); padding: 0.15rem 0; width: 100%; }
+    .round-name-in:focus { outline: none; border-bottom: 1px solid var(--accent, #60a5fa); }
+    .round-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.83rem; color: var(--muted); align-items: center; }
+    .round-meta a { color: var(--accent, #60a5fa); text-decoration: none; }
+    .loc-btn { background: none; border: 1px solid var(--border); border-radius: 99px; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.7rem; }
+    .loc-btn:hover { border-color: var(--accent); color: var(--accent, #60a5fa); }
 
     /* Players */
     .add-row { display: flex; gap: 0.5rem; }
@@ -71,6 +81,19 @@
     .lb-sub { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
     .lb-total { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 
+    /* Past rounds */
+    .rounds-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .round-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius); }
+    .round-row.current { border-color: var(--accent, #60a5fa); background: rgba(96,165,250,0.06); }
+    .round-info { flex: 1; min-width: 0; }
+    .round-info .rn { font-weight: 600; font-size: 0.92rem; display: flex; align-items: center; gap: 0.4rem; }
+    .round-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent, #60a5fa); border: 1px solid rgba(96,165,250,0.4); border-radius: 4px; padding: 0.05rem 0.35rem; }
+    .round-info .rs { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .round-acts { display: flex; gap: 0.35rem; flex-shrink: 0; }
+
+    .btn-sm { background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; transition: border-color 0.15s, color 0.15s; }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent, #60a5fa); }
+    .btn-sm.danger:hover { border-color: #f87171; color: #f87171; }
     .btn-ghost { display: inline-flex; align-items: center; background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.875rem; font-weight: 600; padding: 0.5rem 1rem; transition: border-color 0.15s, color 0.15s; }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent, #60a5fa); }
     .row-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -86,10 +109,18 @@
   <main>
     <section class="hero" style="padding-bottom:1.5rem">
       <h1>Golf Scorecard</h1>
-      <p>Add your players, pick how many holes, and tap in the strokes. It totals everyone up into a live leaderboard as you go. No pars, no handicaps &mdash; just scores. Your round is saved in this browser.</p>
+      <p>Add your players, pick how many holes, and tap in the strokes for a live leaderboard. No pars or handicaps &mdash; just scores. Every round is saved automatically with its date and location, so you can browse and reload past rounds any time.</p>
     </section>
 
     <div class="tool-wrap">
+
+      <!-- Current round header -->
+      <div class="card">
+        <div class="round-head">
+          <input type="text" class="round-name-in" id="round-name" placeholder="Name this round&hellip;" maxlength="60" aria-label="Round name">
+          <div class="round-meta" id="round-meta"></div>
+        </div>
+      </div>
 
       <!-- Players -->
       <div class="card">
@@ -131,7 +162,13 @@
       </div>
 
       <div class="row-btns">
-        <button type="button" class="btn-ghost" id="new-round">&#8635; New round</button>
+        <button type="button" class="btn" id="new-round">&#43; Start new round</button>
+      </div>
+
+      <!-- Past rounds -->
+      <div class="card" id="rounds-card" style="display:none">
+        <div class="card-title">Past rounds</div>
+        <div class="rounds-list" id="rounds-list"></div>
       </div>
 
     </div>
@@ -141,16 +178,130 @@
   <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  const LS_KEY = 'ww-golf-scorecard';
-  let state = load() || { players: [], holes: 18, scores: {} };
+  const LS_KEY = 'ww-golf-rounds';
+  const OLD_KEY = 'ww-golf-scorecard';
+  let db = loadDB();
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch { return null; }
+  // ── Storage ────────────────────────────────────────────────────────────────
+  function loadDB() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LS_KEY));
+      if (raw && Array.isArray(raw.rounds)) return raw;
+    } catch {}
+    // Migrate an old single-slot round, if present
+    let rounds = [];
+    try {
+      const old = JSON.parse(localStorage.getItem(OLD_KEY));
+      if (old && Array.isArray(old.players)) {
+        rounds.push({ id: uid(), startedAt: new Date().toISOString(), title: '',
+                      location: null, place: null, players: old.players,
+                      holes: old.holes || 18, scores: old.scores || {} });
+      }
+    } catch {}
+    return { rounds, currentId: rounds[0] ? rounds[0].id : null };
   }
-  function save() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
-  }
+  function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch {} }
   function uid() { return Math.random().toString(36).slice(2, 9); }
+
+  function R() { return db.rounds.find(r => r.id === db.currentId) || null; }
+
+  function ensureRound() {
+    if (!R()) createRound(false, false);
+  }
+
+  function createRound(carryPlayers, tagLocation) {
+    const prev = R();
+    const players = (carryPlayers && prev) ? prev.players.map(p => ({ id: uid(), name: p.name })) : [];
+    const r = { id: uid(), startedAt: new Date().toISOString(), title: '',
+                location: null, place: null, players,
+                holes: prev ? prev.holes : 18, scores: {} };
+    players.forEach(p => { r.scores[p.id] = {}; });
+    db.rounds.unshift(r);
+    db.currentId = r.id;
+    persist();
+    if (tagLocation) captureLocation(r);
+    renderAll();
+  }
+
+  // ── Location (best-effort) ──────────────────────────────────────────────────
+  function captureLocation(r) {
+    if (!navigator.geolocation) { alert('This device has no location support.'); return; }
+    const meta = document.getElementById('round-meta');
+    if (r === R()) meta.dataset.locating = '1';
+    renderRoundHead();
+    navigator.geolocation.getCurrentPosition(pos => {
+      r.location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      r.place = null;
+      persist(); renderRoundHead(); renderRounds();
+      reverseGeocode(r);
+    }, () => {
+      if (r === R()) delete meta.dataset.locating;
+      renderRoundHead();
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+  }
+
+  // Turn coordinates into a place name via OpenStreetMap (best-effort; the only
+  // thing that ever leaves your device, and only the coordinates, for the name).
+  async function reverseGeocode(r) {
+    if (!r.location) return;
+    try {
+      const { lat, lon } = r.location;
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&lat=${lat}&lon=${lon}`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const j = await res.json();
+      const a = j.address || {};
+      const place = a.leisure || a.golf_course || a.club || j.name ||
+                    a.hamlet || a.village || a.suburb || a.town || a.city || a.county ||
+                    (j.display_name ? j.display_name.split(',')[0] : null);
+      if (place) { r.place = place; persist(); renderRoundHead(); renderRounds(); }
+    } catch {}
+  }
+
+  // ── Round header ────────────────────────────────────────────────────────────
+  const nameEl = document.getElementById('round-name');
+  nameEl.addEventListener('input', () => { const r = R(); if (r) { r.title = nameEl.value; persist(); renderRounds(); } });
+
+  function fmtDateTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) +
+           ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  function fmtDateShort(iso) {
+    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function roundTitle(r) {
+    if (r.title && r.title.trim()) return r.title.trim();
+    if (r.place) return r.place;
+    return fmtDateShort(r.startedAt);
+  }
+  function locLabel(r) {
+    if (r.place) return r.place;
+    if (r.location) return r.location.lat.toFixed(4) + ', ' + r.location.lon.toFixed(4);
+    return null;
+  }
+
+  function renderRoundHead() {
+    const r = R();
+    const meta = document.getElementById('round-meta');
+    if (!r) { meta.innerHTML = ''; nameEl.value = ''; return; }
+    if (document.activeElement !== nameEl) nameEl.value = r.title || '';
+    nameEl.placeholder = r.place ? r.place : 'Name this round…';
+
+    let html = `<span>📅 ${fmtDateTime(r.startedAt)}</span>`;
+    if (r.location) {
+      const label = locLabel(r);
+      const link = `https://www.openstreetmap.org/?mlat=${r.location.lat}&mlon=${r.location.lon}#map=16/${r.location.lat}/${r.location.lon}`;
+      html += `<span>📍 <a href="${link}" target="_blank" rel="noopener">${escapeHtml(label)}</a></span>`;
+    } else if (meta.dataset.locating) {
+      html += `<span>📍 Locating…</span>`;
+    } else {
+      html += `<button type="button" class="loc-btn" id="tag-loc">📍 Tag location</button>`;
+    }
+    meta.innerHTML = html;
+    const tag = document.getElementById('tag-loc');
+    if (tag) tag.onclick = () => captureLocation(r);
+  }
 
   // ── Players ────────────────────────────────────────────────────────────────
   const nameInput = document.getElementById('player-name');
@@ -158,24 +309,28 @@
     e.preventDefault();
     const name = nameInput.value.trim();
     if (!name) return;
+    ensureRound();
+    const r = R();
     const id = uid();
-    state.players.push({ id, name });
-    state.scores[id] = {};
+    r.players.push({ id, name });
+    r.scores[id] = {};
     nameInput.value = '';
-    save(); renderAll();
+    persist(); renderAll();
     nameInput.focus();
   });
 
   function removePlayer(id) {
-    state.players = state.players.filter(p => p.id !== id);
-    delete state.scores[id];
-    save(); renderAll();
+    const r = R(); if (!r) return;
+    r.players = r.players.filter(p => p.id !== id);
+    delete r.scores[id];
+    persist(); renderAll();
   }
 
   function renderPlayers() {
+    const r = R();
     const wrap = document.getElementById('players-chips');
     wrap.innerHTML = '';
-    state.players.forEach(p => {
+    (r ? r.players : []).forEach(p => {
       const chip = document.createElement('span');
       chip.className = 'pchip';
       chip.append(document.createTextNode(p.name));
@@ -186,56 +341,57 @@
       chip.appendChild(x);
       wrap.appendChild(chip);
     });
-    document.getElementById('players-empty').style.display = state.players.length ? 'none' : '';
+    document.getElementById('players-empty').style.display = (r && r.players.length) ? 'none' : '';
   }
 
   // ── Holes ──────────────────────────────────────────────────────────────────
   function setHoles(n) {
-    state.holes = Math.max(1, Math.min(36, n));
-    save(); renderAll();
+    ensureRound();
+    R().holes = Math.max(1, Math.min(36, n));
+    persist(); renderAll();
   }
   document.getElementById('holes-seg').querySelectorAll('button').forEach(b =>
     b.addEventListener('click', () => setHoles(parseInt(b.dataset.holes))));
-  document.getElementById('hole-plus').addEventListener('click', () => setHoles(state.holes + 1));
-  document.getElementById('hole-minus').addEventListener('click', () => setHoles(state.holes - 1));
+  document.getElementById('hole-plus').addEventListener('click', () => setHoles((R() ? R().holes : 18) + 1));
+  document.getElementById('hole-minus').addEventListener('click', () => setHoles((R() ? R().holes : 18) - 1));
 
   function renderHolesControl() {
-    document.getElementById('holes-count').textContent = state.holes + ' holes';
+    const holes = R() ? R().holes : 18;
+    document.getElementById('holes-count').textContent = holes + ' holes';
     document.getElementById('holes-seg').querySelectorAll('button').forEach(b =>
-      b.classList.toggle('active', parseInt(b.dataset.holes) === state.holes));
+      b.classList.toggle('active', parseInt(b.dataset.holes) === holes));
   }
 
-  // ── Scorecard table ──────────────────────────────────────────────────────────
-  function totalFor(id) {
-    const s = state.scores[id] || {};
+  // ── Scores ──────────────────────────────────────────────────────────────────
+  function totalFor(r, id) {
+    const s = r.scores[id] || {};
     let t = 0;
-    for (let h = 1; h <= state.holes; h++) t += Number(s[h]) || 0;
+    for (let h = 1; h <= r.holes; h++) t += Number(s[h]) || 0;
     return t;
   }
-  function holesPlayed(id) {
-    const s = state.scores[id] || {};
+  function holesPlayed(r, id) {
+    const s = r.scores[id] || {};
     let c = 0;
-    for (let h = 1; h <= state.holes; h++) if (s[h] != null && s[h] !== '') c++;
+    for (let h = 1; h <= r.holes; h++) if (s[h] != null && s[h] !== '') c++;
     return c;
   }
 
   function renderTable() {
+    const r = R();
     const table = document.getElementById('sc-table');
     const card = document.getElementById('scorecard-card');
-    if (!state.players.length) { card.style.display = 'none'; return; }
+    if (!r || !r.players.length) { card.style.display = 'none'; return; }
     card.style.display = '';
 
-    // Header
     let thead = '<thead><tr><th class="hole-col">Hole</th>';
-    state.players.forEach(p => { thead += `<th>${escapeHtml(p.name)}</th>`; });
+    r.players.forEach(p => { thead += `<th>${escapeHtml(p.name)}</th>`; });
     thead += '</tr></thead>';
 
-    // Body — one row per hole
     let tbody = '<tbody>';
-    for (let h = 1; h <= state.holes; h++) {
+    for (let h = 1; h <= r.holes; h++) {
       tbody += `<tr><td class="hole-col">${h}</td>`;
-      state.players.forEach(p => {
-        const v = (state.scores[p.id] && state.scores[p.id][h] != null) ? state.scores[p.id][h] : '';
+      r.players.forEach(p => {
+        const v = (r.scores[p.id] && r.scores[p.id][h] != null) ? r.scores[p.id][h] : '';
         tbody += `<td><input class="sc-in" type="number" inputmode="numeric" min="1" max="99" ` +
                  `value="${v}" data-pid="${p.id}" data-hole="${h}" aria-label="${escapeHtml(p.name)} hole ${h}"></td>`;
       });
@@ -243,62 +399,127 @@
     }
     tbody += '</tbody>';
 
-    // Footer — totals
     let tfoot = '<tfoot><tr><td class="hole-col">Total</td>';
-    state.players.forEach(p => { tfoot += `<td id="tot-${p.id}">${totalFor(p.id)}</td>`; });
+    r.players.forEach(p => { tfoot += `<td id="tot-${p.id}">${totalFor(r, p.id)}</td>`; });
     tfoot += '</tr></tfoot>';
 
     table.innerHTML = thead + tbody + tfoot;
 
-    // Wire score inputs (no full re-render on typing, so focus is kept)
     table.querySelectorAll('input.sc-in').forEach(inp => {
       inp.addEventListener('input', () => {
+        const cur = R(); if (!cur) return;
         const pid = inp.dataset.pid, h = inp.dataset.hole;
         let val = inp.value.replace(/[^0-9]/g, '');
         if (val.length > 2) val = val.slice(0, 2);
         if (inp.value !== val) inp.value = val;
-        if (!state.scores[pid]) state.scores[pid] = {};
-        if (val === '') delete state.scores[pid][h];
-        else state.scores[pid][h] = parseInt(val);
-        document.getElementById('tot-' + pid).textContent = totalFor(pid);
-        save(); renderLeaderboard();
+        if (!cur.scores[pid]) cur.scores[pid] = {};
+        if (val === '') delete cur.scores[pid][h];
+        else cur.scores[pid][h] = parseInt(val);
+        const totCell = document.getElementById('tot-' + pid);
+        if (totCell) totCell.textContent = totalFor(cur, pid);
+        persist();               // save after every input
+        renderLeaderboard();
+        renderRounds();
       });
     });
   }
 
   // ── Leaderboard ────────────────────────────────────────────────────────────
   function renderLeaderboard() {
+    const r = R();
     const card = document.getElementById('leaderboard-card');
     const list = document.getElementById('lb-list');
-    const scored = state.players.filter(p => holesPlayed(p.id) > 0);
+    const scored = r ? r.players.filter(p => holesPlayed(r, p.id) > 0) : [];
     if (!scored.length) { card.style.display = 'none'; return; }
     card.style.display = '';
 
     const ranked = scored
-      .map(p => ({ name: p.name, total: totalFor(p.id), played: holesPlayed(p.id) }))
+      .map(p => ({ name: p.name, total: totalFor(r, p.id), played: holesPlayed(r, p.id) }))
       .sort((a, b) => a.total - b.total);
 
     list.innerHTML = '';
     let lastTotal = null, rank = 0;
-    ranked.forEach((r, i) => {
-      if (r.total !== lastTotal) { rank = i + 1; lastTotal = r.total; }
-      const row = document.createElement('div');
-      row.className = 'lb-row' + (rank === 1 ? ' lead' : '');
-      row.innerHTML =
+    ranked.forEach((row, i) => {
+      if (row.total !== lastTotal) { rank = i + 1; lastTotal = row.total; }
+      const el = document.createElement('div');
+      el.className = 'lb-row' + (rank === 1 ? ' lead' : '');
+      el.innerHTML =
         `<span class="lb-rank">${rank}</span>` +
-        `<span class="lb-name">${escapeHtml(r.name)} <span class="lb-sub">${r.played} hole${r.played !== 1 ? 's' : ''}</span></span>` +
-        `<span class="lb-total">${r.total}</span>`;
+        `<span class="lb-name">${escapeHtml(row.name)} <span class="lb-sub">${row.played} hole${row.played !== 1 ? 's' : ''}</span></span>` +
+        `<span class="lb-total">${row.total}</span>`;
+      list.appendChild(el);
+    });
+  }
+
+  // ── Past rounds ────────────────────────────────────────────────────────────
+  function roundSummary(r) {
+    const scored = r.players.filter(p => holesPlayed(r, p.id) > 0);
+    const parts = [];
+    if (locLabel(r)) parts.push('📍 ' + locLabel(r));
+    parts.push(r.players.length + ' player' + (r.players.length !== 1 ? 's' : ''));
+    if (scored.length) {
+      const best = scored.map(p => ({ name: p.name, total: totalFor(r, p.id) }))
+                         .sort((a, b) => a.total - b.total)[0];
+      parts.push('leader ' + best.name + ' (' + best.total + ')');
+    }
+    return parts.join(' · ');
+  }
+
+  function loadRound(id) {
+    db.currentId = id;
+    persist(); renderAll();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function deleteRound(id) {
+    const r = db.rounds.find(x => x.id === id);
+    if (!confirm('Delete this round?\n\n' + roundTitle(r) + '\n' + fmtDateShort(r.startedAt) + '\n\nThis cannot be undone.')) return;
+    db.rounds = db.rounds.filter(x => x.id !== id);
+    if (db.currentId === id) db.currentId = db.rounds[0] ? db.rounds[0].id : null;
+    persist();
+    ensureRound();
+    renderAll();
+  }
+
+  function renderRounds() {
+    const card = document.getElementById('rounds-card');
+    const list = document.getElementById('rounds-list');
+    if (db.rounds.length <= 1) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    list.innerHTML = '';
+    db.rounds.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'round-row' + (r.id === db.currentId ? ' current' : '');
+      const info = document.createElement('div');
+      info.className = 'round-info';
+      info.innerHTML =
+        `<div class="rn">${escapeHtml(roundTitle(r))}` +
+        (r.id === db.currentId ? ' <span class="round-badge">Playing</span>' : '') + `</div>` +
+        `<div class="rs">${escapeHtml(fmtDateShort(r.startedAt) + ' · ' + roundSummary(r))}</div>`;
+      const acts = document.createElement('div');
+      acts.className = 'round-acts';
+      if (r.id !== db.currentId) {
+        const load = document.createElement('button');
+        load.className = 'btn-sm'; load.textContent = 'Load';
+        load.onclick = () => loadRound(r.id);
+        acts.appendChild(load);
+      }
+      const del = document.createElement('button');
+      del.className = 'btn-sm danger'; del.innerHTML = '&times;';
+      del.setAttribute('aria-label', 'Delete round');
+      del.onclick = () => deleteRound(r.id);
+      acts.appendChild(del);
+      row.append(info, acts);
       list.appendChild(row);
     });
   }
 
   // ── New round ──────────────────────────────────────────────────────────────
   document.getElementById('new-round').addEventListener('click', () => {
-    const keepPlayers = state.players.length &&
-      confirm('Clear all scores for this round?\n\nOK = keep the same players, wipe scores.\nCancel = leave everything as it is.');
-    if (!keepPlayers) return;
-    state.players.forEach(p => { state.scores[p.id] = {}; });
-    save(); renderAll();
+    const cur = R();
+    const carry = cur && cur.players.length &&
+      confirm('Start a new round.\n\nOK = keep the same players (scores start fresh).\nCancel = start with no players.');
+    createRound(!!carry, true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -308,12 +529,15 @@
   }
 
   function renderAll() {
+    renderRoundHead();
     renderPlayers();
     renderHolesControl();
     renderTable();
     renderLeaderboard();
+    renderRounds();
   }
 
+  ensureRound();
   renderAll();
   </script>
   <script src="/js/logo.js"></script>
