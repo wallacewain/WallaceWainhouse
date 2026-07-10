@@ -3,28 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Free QR code generator — no ads, no tracking. Generate a QR code from any text or URL and download as PNG. Runs entirely in your browser.">
+  <meta name="description" content="Free QR code generator — no ads, no tracking. Generate a QR code from any text or URL, or a halftone QR that hides a picture inside the pattern. Runs entirely in your browser.">
   <title>QR Code Generator &mdash; Wallace Wainhouse</title>
   <link rel="canonical" href="https://wallacewainhouse.com/tools/qr-code/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/tools/qr-code/">
   <meta property="og:title" content="QR Code Generator &mdash; Wallace Wainhouse">
-  <meta property="og:description" content="Free QR code generator. No ads, no tracking. Runs entirely in your browser.">
+  <meta property="og:description" content="Free QR code generator. Plain or halftone-image QR codes. No ads, no tracking. Runs entirely in your browser.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="QR Code Generator &mdash; Wallace Wainhouse">
-  <meta name="twitter:description" content="Free QR code generator. No ads, no tracking. Runs entirely in your browser.">
+  <meta name="twitter:description" content="Free QR code generator. Plain or halftone-image QR codes. Runs entirely in your browser.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
   <style>
-    .tool-layout { display: grid; grid-template-columns: 360px 1fr; gap: 3rem; align-items: start; padding: 2rem 0 4rem; }
+    .tool-layout { display: grid; grid-template-columns: 380px 1fr; gap: 3rem; align-items: start; padding: 2rem 0 4rem; }
     .controls { display: flex; flex-direction: column; gap: 1.25rem; }
-    .qr-output { display: flex; flex-direction: column; gap: 1rem; }
-    #qr { border-radius: var(--radius); display: block; image-rendering: pixelated; }
-    .qr-placeholder { width: 256px; height: 256px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; }
-    @media (max-width: 720px) { .tool-layout { grid-template-columns: 1fr; gap: 2rem; } }
+    .qr-output { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 1.5rem; }
+    #qr { border-radius: var(--radius); display: block; max-width: 340px; height: auto; }
+    #qr.plain { image-rendering: pixelated; }
+    .qr-placeholder { width: 256px; height: 256px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
+    @media (max-width: 720px) { .tool-layout { grid-template-columns: 1fr; gap: 2rem; } .qr-output { position: static; } }
+
+    .toggle-row { display: flex; align-items: center; gap: 0.6rem; }
+    .toggle-row input { width: 18px; height: 18px; }
+    .toggle-row label { font-weight: 600; color: var(--text); cursor: pointer; }
+
+    .adv { display: none; flex-direction: column; gap: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; background: var(--surface); }
+    .adv.open { display: flex; }
+    .adv-note { font-size: 0.78rem; color: var(--muted); margin: 0; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { background: none; border: none; border-right: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; color: var(--muted); padding: 0.45rem 0.9rem; }
+    .seg button:last-child { border-right: none; }
+    .seg button.active { background: var(--accent, #60a5fa); color: #fff; }
+    .slider-val { color: var(--muted); font-weight: 400; }
+    .color-row { display: flex; gap: 1rem; }
+    .color-row .field { flex: 1; }
+    .color-row input[type=color] { width: 100%; height: 38px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); cursor: pointer; }
+
+    .hstatus { font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
+    .hstatus.ok { color: #16a34a; border-color: rgba(22,163,74,0.4); background: rgba(22,163,74,0.08); }
+    .hstatus.warn { color: #d97706; border-color: rgba(217,119,6,0.4); background: rgba(217,119,6,0.08); }
+    .hstatus.busy { color: var(--muted); }
+    .img-drop.mini { padding: 0.85rem; }
+    .img-drop.mini strong { font-size: 0.85rem; }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -33,7 +56,7 @@
   <main>
     <section class="hero" style="padding-bottom:1.5rem">
       <h1>QR Code Generator</h1>
-      <p>Generates a QR code from any text or URL. Runs in your browser &mdash; nothing is sent anywhere.</p>
+      <p>Generate a QR code from any text or URL &mdash; or switch on <strong>halftone mode</strong> to hide a picture inside the pattern. Runs in your browser; nothing is sent anywhere.</p>
     </section>
     <div class="tool-layout">
       <div class="controls">
@@ -42,10 +65,64 @@
           <div class="field"><label for="qr-size">Output size</label><select id="qr-size"><option value="128">128 px</option><option value="256" selected>256 px</option><option value="512">512 px</option><option value="1024">1024 px</option></select></div>
           <div class="field"><label for="qr-level">Error correction</label><select id="qr-level"><option value="L">L &mdash; 7%</option><option value="M" selected>M &mdash; 15%</option><option value="Q">Q &mdash; 25%</option><option value="H">H &mdash; 30%</option></select></div>
         </div>
+
+        <div class="toggle-row">
+          <input type="checkbox" id="halftone-toggle">
+          <label for="halftone-toggle">Halftone image mode</label>
+        </div>
+
+        <div class="adv" id="adv-panel">
+          <p class="adv-note">Keeps a solid centre in every module so it still scans, and fills the rest with dots that recreate your image. A shorter URL leaves more room for the picture.</p>
+
+          <div class="img-drop drop-zone" id="img-drop">
+            <input type="file" id="img-file" accept="image/*">
+            <strong>Drop an image</strong>
+            <p>PNG, JPG, SVG &mdash; recreated in the QR pattern</p>
+          </div>
+
+          <div class="field">
+            <label>Dot shape</label>
+            <div class="seg" id="shape-seg">
+              <button type="button" data-shape="circle" class="active">Circle</button>
+              <button type="button" data-shape="square">Square</button>
+              <button type="button" data-shape="custom">Custom&hellip;</button>
+            </div>
+          </div>
+
+          <div class="img-drop drop-zone mini" id="dot-drop" style="display:none">
+            <input type="file" id="dot-file" accept="image/*">
+            <strong>Drop a dot image</strong>
+            <p>Small PNG/SVG used as the repeating dot</p>
+          </div>
+
+          <div class="field">
+            <label>Minimum dot size &mdash; <span class="slider-val" id="mindot-val">0%</span></label>
+            <input type="range" id="mindot" min="0" max="60" value="0" step="5">
+          </div>
+          <div class="field">
+            <label>Image strength &mdash; <span class="slider-val" id="strength-val">100%</span></label>
+            <input type="range" id="strength" min="20" max="150" value="100" step="5">
+          </div>
+          <div class="field">
+            <label>Resolution</label>
+            <select id="hres">
+              <option value="12">Standard</option>
+              <option value="21" selected>Large (clearer)</option>
+              <option value="30">Extra large</option>
+            </select>
+          </div>
+          <div class="color-row">
+            <div class="field"><label for="dot-color">Dot colour</label><input type="color" id="dot-color" value="#000000"></div>
+            <div class="field"><label for="bg-color">Background</label><input type="color" id="bg-color" value="#ffffff"></div>
+          </div>
+
+          <div class="hstatus busy" id="hstatus" style="display:none"></div>
+        </div>
+
         <button class="btn" id="download-btn" disabled>Download PNG</button>
       </div>
       <div class="qr-output">
-        <canvas id="qr" style="display:none"></canvas>
+        <canvas id="qr" class="plain" style="display:none"></canvas>
         <div class="qr-placeholder" id="qr-placeholder">Enter text to generate</div>
       </div>
     </div>
@@ -53,14 +130,292 @@
   <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <script>
-    document.getElementById('yr').textContent = new Date().getFullYear();
-    const input=document.getElementById('qr-input'),sizeSelect=document.getElementById('qr-size'),levelSelect=document.getElementById('qr-level'),canvas=document.getElementById('qr'),placeholder=document.getElementById('qr-placeholder'),downloadBtn=document.getElementById('download-btn');
-    let qr=null,timer=null;
-    function generate(){const value=input.value.trim();if(!value){canvas.style.display='none';placeholder.style.display='flex';downloadBtn.disabled=true;return;}const size=parseInt(sizeSelect.value),level=levelSelect.value;if(!qr)qr=new QRious({element:canvas,value,size,level});else qr.set({value,size,level});const d=Math.min(size,256);canvas.style.width=d+'px';canvas.style.height=d+'px';canvas.style.display='block';placeholder.style.display='none';downloadBtn.disabled=false;}
-    input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(generate,200);});
-    sizeSelect.addEventListener('change',generate);levelSelect.addEventListener('change',generate);
-    downloadBtn.addEventListener('click',()=>{if(!input.value.trim())return;const a=document.createElement('a');a.download='qrcode.png';a.href=canvas.toDataURL('image/png');a.click();});
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  const input        = document.getElementById('qr-input');
+  const sizeSelect   = document.getElementById('qr-size');
+  const levelSelect  = document.getElementById('qr-level');
+  const canvas       = document.getElementById('qr');
+  const ctx          = canvas.getContext('2d');
+  const placeholder  = document.getElementById('qr-placeholder');
+  const downloadBtn  = document.getElementById('download-btn');
+
+  const htToggle = document.getElementById('halftone-toggle');
+  const advPanel = document.getElementById('adv-panel');
+
+  let qr = null, timer = null, busy = false;
+
+  // ── Mode toggle ─────────────────────────────────────────────────────────────
+  htToggle.addEventListener('change', () => {
+    advPanel.classList.toggle('open', htToggle.checked);
+    canvas.classList.toggle('plain', !htToggle.checked);
+    generate();
+  });
+
+  // ── Plain QR (QRious) ───────────────────────────────────────────────────────
+  function generatePlain() {
+    const value = input.value.trim();
+    if (!value) { showPlaceholder('Enter text to generate'); return; }
+    const size = parseInt(sizeSelect.value), level = levelSelect.value;
+    canvas.classList.add('plain');
+    if (!qr) qr = new QRious({ element: canvas, value, size, level });
+    else qr.set({ value, size, level });
+    const d = Math.min(size, 256);
+    canvas.style.width = d + 'px'; canvas.style.height = d + 'px';
+    canvas.style.display = 'block'; placeholder.style.display = 'none';
+    downloadBtn.disabled = false;
+  }
+
+  function showPlaceholder(msg) {
+    canvas.style.display = 'none';
+    placeholder.textContent = msg;
+    placeholder.style.display = 'flex';
+    downloadBtn.disabled = true;
+  }
+
+  // ── Dispatch ────────────────────────────────────────────────────────────────
+  function generate() {
+    if (htToggle.checked) generateHalftone();
+    else generatePlain();
+  }
+
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(generate, 250); });
+  sizeSelect.addEventListener('change', generate);
+  levelSelect.addEventListener('change', generate);
+
+  downloadBtn.addEventListener('click', () => {
+    if (downloadBtn.disabled) return;
+    const a = document.createElement('a');
+    a.download = htToggle.checked ? 'halftone-qr.png' : 'qrcode.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  Halftone mode
+  // ════════════════════════════════════════════════════════════════════════════
+  const mindotEl   = document.getElementById('mindot');
+  const strengthEl = document.getElementById('strength');
+  const hresEl     = document.getElementById('hres');
+  const dotColorEl = document.getElementById('dot-color');
+  const bgColorEl  = document.getElementById('bg-color');
+  const hstatus    = document.getElementById('hstatus');
+
+  let shape = 'circle';
+  let srcImg = null;   // the image to recreate
+  let dotImg = null;   // optional custom dot stamp
+
+  mindotEl.addEventListener('input',   () => { document.getElementById('mindot-val').textContent   = mindotEl.value + '%';   scheduleHalftone(); });
+  strengthEl.addEventListener('input', () => { document.getElementById('strength-val').textContent = strengthEl.value + '%'; scheduleHalftone(); });
+  hresEl.addEventListener('change',    generate);
+  dotColorEl.addEventListener('input', scheduleHalftone);
+  bgColorEl.addEventListener('input',  scheduleHalftone);
+
+  document.querySelectorAll('#shape-seg button').forEach(b =>
+    b.addEventListener('click', () => {
+      shape = b.dataset.shape;
+      document.querySelectorAll('#shape-seg button').forEach(x => x.classList.toggle('active', x === b));
+      document.getElementById('dot-drop').style.display = (shape === 'custom') ? '' : 'none';
+      scheduleHalftone();
+    }));
+
+  // Image inputs
+  setupImageInput('img-drop', 'img-file', img => { srcImg = img; generate(); });
+  setupImageInput('dot-drop', 'dot-file', img => { dotImg = img; if (shape === 'custom') scheduleHalftone(); });
+
+  function setupImageInput(dropId, fileId, cb) {
+    const drop = document.getElementById(dropId);
+    const file = document.getElementById(fileId);
+    file.addEventListener('change', e => { if (e.target.files[0]) loadImg(e.target.files[0], cb); });
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('drag-over');
+      const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+      if (f) loadImg(f, cb);
+    });
+  }
+  function loadImg(file, cb) {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { cb(im); };
+    im.onerror = () => { URL.revokeObjectURL(url); alert('Could not load that image.'); };
+    im.src = url;
+  }
+
+  let htTimer = null;
+  function scheduleHalftone() {
+    if (!htToggle.checked) return;
+    clearTimeout(htTimer);
+    htTimer = setTimeout(generateHalftone, 120);
+  }
+
+  // Lazy-load the two libraries only when halftone mode is used
+  let libsReady = false;
+  function injectScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureLibs() {
+    if (libsReady) return;
+    await injectScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');
+    await injectScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');
+    if (typeof window.qrcode !== 'function' || typeof window.jsQR !== 'function')
+      throw new Error('libraries unavailable');
+    libsReady = true;
+  }
+
+  function setStatus(kind, msg) {
+    hstatus.style.display = '';
+    hstatus.className = 'hstatus ' + kind;
+    hstatus.textContent = msg;
+  }
+
+  // Function-pattern (finder + separator) test — these stay solid for reliability
+  function isFinder(r, c, n) {
+    return (r < 8 && c < 8) || (r < 8 && c >= n - 8) || (r >= n - 8 && c < 8);
+  }
+
+  // Build a per-sub-cell darkness map (0 = light, 1 = dark) from the source image
+  function buildDarkness(img, S) {
+    const oc = document.createElement('canvas'); oc.width = S; oc.height = S;
+    const octx = oc.getContext('2d');
+    octx.fillStyle = '#fff'; octx.fillRect(0, 0, S, S);
+    const ar = img.width / img.height;
+    let dw = S, dh = S, dx = 0, dy = 0;      // cover-fit into a square
+    if (ar > 1) { dh = S; dw = S * ar; dx = (S - dw) / 2; }
+    else { dw = S; dh = S / ar; dy = (S - dh) / 2; }
+    octx.drawImage(img, dx, dy, dw, dh);
+    const data = octx.getImageData(0, 0, S, S).data;
+    const dark = new Float32Array(S * S);
+    for (let i = 0; i < S * S; i++) {
+      const lum = (0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2]) / 255;
+      dark[i] = 1 - lum;
+    }
+    return dark;
+  }
+
+  let mat = null, matN = 0, darkMap = null, mapS = 0;
+
+  function drawDot(x, y, size) {
+    if (size <= 0) return;
+    if (shape === 'circle') {
+      ctx.beginPath(); ctx.arc(x, y, size / 2, 0, Math.PI * 2); ctx.fill();
+    } else if (shape === 'square') {
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    } else if (shape === 'custom' && dotImg) {
+      ctx.drawImage(dotImg, x - size / 2, y - size / 2, size, size);
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, size / 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawHalftone(strength, minDot, cell) {
+    const n = matN, M = 4, sub = cell / 3;
+    const px = (n + 2 * M) * cell;
+    canvas.width = px; canvas.height = px;
+    ctx.fillStyle = bgColorEl.value; ctx.fillRect(0, 0, px, px);
+    const dotCol = dotColorEl.value;
+
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const B = mat.isDark(r, c);
+        const x0 = (c + M) * cell, y0 = (r + M) * cell;
+
+        if (isFinder(r, c, n)) {                         // finders/separators: solid
+          ctx.fillStyle = B ? dotCol : bgColorEl.value;
+          ctx.fillRect(x0, y0, cell, cell);
+          continue;
+        }
+
+        // Centre sub-cell holds the true module value (this is what a scanner samples)
+        if (B) { ctx.fillStyle = dotCol; ctx.fillRect(x0 + sub, y0 + sub, sub, sub); }
+
+        // Surrounding 8 sub-cells recreate the image as dots
+        if (strength > 0 || minDot > 0) {
+          ctx.fillStyle = dotCol;
+          for (let sr = 0; sr < 3; sr++) {
+            for (let sc = 0; sc < 3; sc++) {
+              if (sr === 1 && sc === 1) continue;
+              const dval = darkMap[(r * 3 + sr) * mapS + (c * 3 + sc)];
+              let frac = minDot + (1 - minDot) * dval * strength;
+              if (frac <= 0) continue;
+              if (frac > 1) frac = 1;
+              drawDot(x0 + sc * sub + sub / 2, y0 + sr * sub + sub / 2, frac * sub);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function verify(value) {
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = window.jsQR(img.data, canvas.width, canvas.height);
+      return !!code && code.data === value;
+    } catch { return false; }
+  }
+
+  async function generateHalftone() {
+    const value = input.value.trim();
+    if (!value) { showPlaceholder('Enter text to generate'); return; }
+    if (!srcImg) { showPlaceholder('Upload an image to build a halftone QR'); return; }
+    if (busy) return;
+    busy = true;
+    setStatus('busy', 'Building…');
+    downloadBtn.disabled = true;
+
+    try {
+      await ensureLibs();
+
+      // Build the QR matrix at the strongest error correction for maximum tolerance
+      mat = window.qrcode(0, 'H');
+      mat.addData(value);
+      mat.make();
+      matN = mat.getModuleCount();
+
+      // Resolution (px per module), capped so the canvas stays reasonable
+      let cell = parseInt(hresEl.value);
+      const M = 4, maxPx = 1600;
+      while ((matN + 2 * M) * cell > maxPx && cell > 6) cell -= 3;
+
+      mapS = matN * 3;
+      darkMap = buildDarkness(srcImg, mapS);
+
+      const minDot = parseInt(mindotEl.value) / 100;
+      let strength = parseInt(strengthEl.value) / 100;
+
+      // Draw, then verify with a real decoder — ease the image until it scans
+      let eased = false, ok = false;
+      for (let i = 0; i < 7; i++) {
+        drawHalftone(strength, minDot, cell);
+        if (verify(value)) { ok = true; break; }
+        eased = true; strength *= 0.7;
+        if (strength < 0.05) { drawHalftone(0, 0, cell); ok = verify(value); break; }
+      }
+
+      canvas.classList.remove('plain');
+      canvas.style.width = Math.min(canvas.width, 340) + 'px';
+      canvas.style.height = 'auto';
+      canvas.style.display = 'block';
+      placeholder.style.display = 'none';
+      downloadBtn.disabled = !ok;
+
+      if (ok && !eased)      setStatus('ok', '✓ Scannable — verified with a decoder');
+      else if (ok && eased)  setStatus('ok', '✓ Scannable — image eased slightly so it still reads');
+      else                   setStatus('warn', '⚠ Couldn’t verify a clean scan. Try a shorter URL, higher contrast image, or larger resolution.');
+    } catch (err) {
+      setStatus('warn', 'Could not build it: ' + err.message);
+      showPlaceholder('Halftone unavailable — check your connection');
+    } finally {
+      busy = false;
+    }
+  }
   </script>
-<script src="/js/logo.js"></script>
+  <script src="/js/logo.js"></script>
 </body>
 </html>
