@@ -46,6 +46,9 @@
     .hstatus.ok { color: #16a34a; border-color: rgba(22,163,74,0.4); background: rgba(22,163,74,0.08); }
     .hstatus.warn { color: #d97706; border-color: rgba(217,119,6,0.4); background: rgba(217,119,6,0.08); }
     .hstatus.busy { color: var(--muted); }
+    .btn-ghost { display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.9rem; font-weight: 600; padding: 0.6rem 1rem; transition: border-color 0.15s, color 0.15s; }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent, #60a5fa); }
+    .btn-ghost:disabled { opacity: 0.5; cursor: default; }
     .img-drop.mini { padding: 0.85rem; }
     .img-drop.mini strong { font-size: 0.85rem; }
     .img-drop.has-img { display: flex; align-items: center; gap: 0.85rem; text-align: left; }
@@ -110,6 +113,16 @@
             <input type="range" id="strength" min="20" max="160" value="100" step="5">
           </div>
           <div class="field">
+            <label>Detail (more dots)</label>
+            <select id="detail">
+              <option value="auto" selected>Auto (fewest)</option>
+              <option value="more">More dots</option>
+              <option value="lots">Lots of dots</option>
+              <option value="max">Maximum</option>
+            </select>
+            <p class="adv-note" style="margin-top:0.35rem">Packs the same link into a bigger QR so there are more dots to draw with.</p>
+          </div>
+          <div class="field">
             <label>Output resolution</label>
             <select id="hres">
               <option value="14">Standard</option>
@@ -129,6 +142,7 @@
         </div>
 
         <button class="btn" id="download-btn" disabled>Download PNG</button>
+        <button class="btn-ghost" id="download-svg" style="display:none" disabled>Download SVG (vector)</button>
       </div>
       <div class="qr-output">
         <canvas id="qr" class="plain" style="display:none"></canvas>
@@ -158,6 +172,7 @@
   htToggle.addEventListener('change', () => {
     advPanel.classList.toggle('open', htToggle.checked);
     canvas.classList.toggle('plain', !htToggle.checked);
+    document.getElementById('download-svg').style.display = htToggle.checked ? '' : 'none';
     generate();
   });
 
@@ -206,6 +221,7 @@
   const mindotEl   = document.getElementById('mindot');
   const strengthEl = document.getElementById('strength');
   const hresEl     = document.getElementById('hres');
+  const detailEl   = document.getElementById('detail');
   const dotColorEl = document.getElementById('dot-color');
   const bgColorEl  = document.getElementById('bg-color');
   const hstatus    = document.getElementById('hstatus');
@@ -213,10 +229,12 @@
   let shape = 'circle';
   let srcImg = null;   // the image to recreate
   let dotImg = null;   // optional custom dot stamp
+  let lastStrength = 1, lastMin = 0.34, svgReady = false;   // for the vector export
 
   mindotEl.addEventListener('input',   () => { document.getElementById('mindot-val').textContent   = mindotEl.value + '%';   scheduleHalftone(); });
   strengthEl.addEventListener('input', () => { document.getElementById('strength-val').textContent = strengthEl.value + '%'; scheduleHalftone(); });
   hresEl.addEventListener('change',    generate);
+  detailEl.addEventListener('change',  generate);
   dotColorEl.addEventListener('input', scheduleHalftone);
   bgColorEl.addEventListener('input',  scheduleHalftone);
 
@@ -306,6 +324,20 @@
     hstatus.textContent = msg;
   }
 
+  // Build the matrix, optionally forcing a higher QR version for more dots
+  function buildMatrix(value) {
+    const base = window.qrcode(0, 'H'); base.addData(value); base.make();
+    const naturalV = (base.getModuleCount() - 17) / 4;
+    let ver = naturalV;
+    const d = detailEl.value;
+    if (d === 'more')      ver = Math.min(40, naturalV + 2);
+    else if (d === 'lots') ver = Math.min(40, naturalV + 5);
+    else if (d === 'max')  ver = 40;
+    if (ver === naturalV) return base;
+    try { const q = window.qrcode(ver, 'H'); q.addData(value); q.make(); return q; }
+    catch (e) { return base; }
+  }
+
   // Function-pattern (finder + separator) test — these stay solid for reliability
   function isFinder(r, c, n) {
     return (r < 8 && c < 8) || (r < 8 && c >= n - 8) || (r >= n - 8 && c < 8);
@@ -377,6 +409,45 @@
     } catch { return false; }
   }
 
+  // Build the exact same halftone as vector SVG (resolution-independent)
+  function buildSVG() {
+    const n = matN, M = 4, cell = 10, px = (n + 2 * M) * cell, rMax = 0.72;
+    const dotCol = dotColorEl.value, bg = bgColorEl.value;
+    let defs = '';
+    if (shape === 'custom' && dotImg) {
+      const dc = document.createElement('canvas'); dc.width = dc.height = 96;
+      dc.getContext('2d').drawImage(dotImg, 0, 0, 96, 96);
+      defs = `<defs><symbol id="d" viewBox="0 0 1 1" preserveAspectRatio="none">` +
+             `<image href="${dc.toDataURL()}" width="1" height="1"/></symbol></defs>`;
+    }
+    let body = '';
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const B = mat.isDark(r, c);
+        const x0 = (c + M) * cell, y0 = (r + M) * cell;
+        if (isFinder(r, c, n)) { if (B) body += `<rect x="${x0}" y="${y0}" width="${cell}" height="${cell}"/>`; continue; }
+        if (!B) continue;
+        const d = darkMap[r * n + c];
+        const rad = (lastMin + (rMax - lastMin) * Math.min(1, d * lastStrength)) * cell;
+        const cx = x0 + cell / 2, cy = y0 + cell / 2, s = rad * 2;
+        if (shape === 'square') body += `<rect x="${(cx-rad).toFixed(2)}" y="${(cy-rad).toFixed(2)}" width="${s.toFixed(2)}" height="${s.toFixed(2)}"/>`;
+        else if (shape === 'custom' && dotImg) body += `<use href="#d" x="${(cx-rad).toFixed(2)}" y="${(cy-rad).toFixed(2)}" width="${s.toFixed(2)}" height="${s.toFixed(2)}"/>`;
+        else body += `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${rad.toFixed(2)}"/>`;
+      }
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${px} ${px}">` +
+           `${defs}<rect width="${px}" height="${px}" fill="${bg}"/><g fill="${dotCol}">${body}</g></svg>`;
+  }
+
+  document.getElementById('download-svg').addEventListener('click', () => {
+    if (!svgReady) return;
+    const blob = new Blob([buildSVG()], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.download = 'halftone-qr.svg'; a.href = URL.createObjectURL(blob);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
   async function generateHalftone() {
     const value = input.value.trim();
     if (!value) { showPlaceholder('Enter text to generate'); return; }
@@ -385,14 +456,14 @@
     busy = true;
     setStatus('busy', 'Building…');
     downloadBtn.disabled = true;
+    svgReady = false; document.getElementById('download-svg').disabled = true;
 
     try {
       await ensureLibs();
 
-      // Build the QR matrix at the strongest error correction for maximum tolerance
-      mat = window.qrcode(0, 'H');
-      mat.addData(value);
-      mat.make();
+      // Build the QR matrix at the strongest error correction. "Detail" packs the
+      // same data into a bigger QR version → more modules → more dots to draw with.
+      mat = buildMatrix(value);
       matN = mat.getModuleCount();
 
       darkMap = buildDarkness(srcImg, matN);
@@ -426,6 +497,8 @@
       canvas.style.display = 'block';
       placeholder.style.display = 'none';
       downloadBtn.disabled = !ok;
+      lastStrength = finalStrength; lastMin = finalMin; svgReady = ok;
+      document.getElementById('download-svg').disabled = !ok;
       document.getElementById('hsize').textContent =
         'Output: ' + canvas.width + ' × ' + canvas.height + ' px' +
         (canvas.width > 340 ? ' (preview shrunk to fit)' : '');
