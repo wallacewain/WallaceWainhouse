@@ -110,12 +110,15 @@
             <input type="range" id="strength" min="20" max="160" value="100" step="5">
           </div>
           <div class="field">
-            <label>Resolution</label>
+            <label>Output resolution</label>
             <select id="hres">
-              <option value="12">Standard</option>
-              <option value="21" selected>Large (clearer)</option>
-              <option value="30">Extra large</option>
+              <option value="14">Standard</option>
+              <option value="24" selected>Large (clearer)</option>
+              <option value="40">Extra large</option>
+              <option value="70">Huge</option>
+              <option value="110">Ludicrous</option>
             </select>
+            <p class="adv-note" id="hsize" style="margin-top:0.35rem"></p>
           </div>
           <div class="color-row">
             <div class="field"><label for="dot-color">Dot colour</label><input type="color" id="dot-color" value="#000000"></div>
@@ -392,24 +395,30 @@
       mat.make();
       matN = mat.getModuleCount();
 
-      // Resolution (px per module), capped so the canvas stays reasonable
-      let cell = parseInt(hresEl.value);
-      const M = 4, maxPx = 1600;
-      while ((matN + 2 * M) * cell > maxPx && cell > 6) cell -= 3;
-
       darkMap = buildDarkness(srcImg, matN);
-
+      const M = 4;
       const rMinDark = parseInt(mindotEl.value) / 100;
       let strength = parseInt(strengthEl.value) / 100;
 
-      // Draw, then verify with a real decoder — ease the image until it scans
-      let eased = false, ok = false;
+      // Find settings that decode, checking at a small fast size. The dot
+      // geometry is scale-invariant, so whatever scans here scans at any size.
+      const vCell = 10;
+      let eased = false, ok = false, finalStrength = strength, finalMin = rMinDark;
       for (let i = 0; i < 7; i++) {
-        drawHalftone(strength, rMinDark, cell);
-        if (verify(value)) { ok = true; break; }
+        drawHalftone(strength, rMinDark, vCell);
+        if (verify(value)) { ok = true; finalStrength = strength; break; }
         eased = true; strength *= 0.7;
-        if (strength < 0.05) { drawHalftone(0, Math.max(rMinDark, 0.5), cell); ok = verify(value); break; }
+        if (strength < 0.05) {
+          finalStrength = 0; finalMin = Math.max(rMinDark, 0.5);
+          drawHalftone(finalStrength, finalMin, vCell); ok = verify(value); break;
+        }
       }
+
+      // Render the final image at the chosen resolution (can be very large)
+      let cell = parseInt(hresEl.value);
+      const maxOut = 5000;
+      while ((matN + 2 * M) * cell > maxOut && cell > 4) cell -= 1;
+      drawHalftone(finalStrength, finalMin, cell);
 
       canvas.classList.remove('plain');
       canvas.style.width = Math.min(canvas.width, 340) + 'px';
@@ -417,6 +426,9 @@
       canvas.style.display = 'block';
       placeholder.style.display = 'none';
       downloadBtn.disabled = !ok;
+      document.getElementById('hsize').textContent =
+        'Output: ' + canvas.width + ' × ' + canvas.height + ' px' +
+        (canvas.width > 340 ? ' (preview shrunk to fit)' : '');
 
       if (ok && !eased)      setStatus('ok', '✓ Scannable — verified with a decoder');
       else if (ok && eased)  setStatus('ok', '✓ Scannable — image eased slightly so it still reads');
