@@ -48,6 +48,11 @@
     .hstatus.busy { color: var(--muted); }
     .img-drop.mini { padding: 0.85rem; }
     .img-drop.mini strong { font-size: 0.85rem; }
+    .img-drop.has-img { display: flex; align-items: center; gap: 0.85rem; text-align: left; }
+    .drop-preview { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); flex-shrink: 0; image-rendering: auto; }
+    .drop-label { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .drop-label strong { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drop-label span { font-size: 0.78rem; color: var(--muted); }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -76,9 +81,10 @@
 
           <div class="img-drop drop-zone" id="img-drop">
             <input type="file" id="img-file" accept="image/*">
-            <strong>Drop an image</strong>
-            <p>PNG, JPG, SVG &mdash; recreated in the QR pattern</p>
+            <img class="drop-preview" id="img-preview" alt="" style="display:none">
+            <div class="drop-label" id="img-label"><strong>Drop an image</strong><span>PNG, JPG, SVG &mdash; recreated in the QR pattern</span></div>
           </div>
+          <p class="adv-note" id="crop-note" style="display:none">Preview shows the square crop that will be used.</p>
 
           <div class="field">
             <label>Dot shape</label>
@@ -91,17 +97,17 @@
 
           <div class="img-drop drop-zone mini" id="dot-drop" style="display:none">
             <input type="file" id="dot-file" accept="image/*">
-            <strong>Drop a dot image</strong>
-            <p>Small PNG/SVG used as the repeating dot</p>
+            <img class="drop-preview" id="dot-preview" alt="" style="display:none">
+            <div class="drop-label" id="dot-label"><strong>Drop a dot image</strong><span>Small PNG/SVG used as the repeating dot</span></div>
           </div>
 
           <div class="field">
-            <label>Minimum dot size &mdash; <span class="slider-val" id="mindot-val">0%</span></label>
-            <input type="range" id="mindot" min="0" max="60" value="0" step="5">
+            <label>Minimum dot size &mdash; <span class="slider-val" id="mindot-val">34%</span></label>
+            <input type="range" id="mindot" min="30" max="60" value="34" step="2">
           </div>
           <div class="field">
             <label>Image strength &mdash; <span class="slider-val" id="strength-val">100%</span></label>
-            <input type="range" id="strength" min="20" max="150" value="100" step="5">
+            <input type="range" id="strength" min="20" max="160" value="100" step="5">
           </div>
           <div class="field">
             <label>Resolution</label>
@@ -219,29 +225,52 @@
       scheduleHalftone();
     }));
 
-  // Image inputs
-  setupImageInput('img-drop', 'img-file', img => { srcImg = img; generate(); });
-  setupImageInput('dot-drop', 'dot-file', img => { dotImg = img; if (shape === 'custom') scheduleHalftone(); });
+  // Cover-fit an image into a square canvas (this is the crop that gets used)
+  function cropToSquare(img, S) {
+    const oc = document.createElement('canvas'); oc.width = S; oc.height = S;
+    const c = oc.getContext('2d');
+    c.fillStyle = '#fff'; c.fillRect(0, 0, S, S);
+    const ar = img.width / img.height;
+    let dw = S, dh = S, dx = 0, dy = 0;
+    if (ar > 1) { dh = S; dw = S * ar; dx = (S - dw) / 2; }
+    else { dw = S; dh = S / ar; dy = (S - dh) / 2; }
+    c.drawImage(img, dx, dy, dw, dh);
+    return oc;
+  }
 
-  function setupImageInput(dropId, fileId, cb) {
-    const drop = document.getElementById(dropId);
-    const file = document.getElementById(fileId);
-    file.addEventListener('change', e => { if (e.target.files[0]) loadImg(e.target.files[0], cb); });
+  // Image inputs — show the crop thumbnail + filename once chosen
+  setupImageInput('img-drop', 'img-file', 'img-preview', 'img-label',
+    'Recreated in the QR pattern', (img) => { srcImg = img; document.getElementById('crop-note').style.display = ''; generate(); });
+  setupImageInput('dot-drop', 'dot-file', 'dot-preview', 'dot-label',
+    'Repeating dot shape', (img) => { dotImg = img; if (shape === 'custom') scheduleHalftone(); });
+
+  function setupImageInput(dropId, fileId, previewId, labelId, sub, cb) {
+    const drop = document.getElementById(dropId), file = document.getElementById(fileId);
+    const accept = f => loadImg(f, (im, name) => {
+      const pv = document.getElementById(previewId);
+      pv.src = cropToSquare(im, 96).toDataURL(); pv.style.display = '';
+      drop.classList.add('has-img');
+      document.getElementById(labelId).innerHTML =
+        '<strong>' + escapeName(name) + '</strong><span>' + sub + ' · tap to change</span>';
+      cb(im, name);
+    });
+    file.addEventListener('change', e => { if (e.target.files[0]) accept(e.target.files[0]); });
     drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
     drop.addEventListener('drop', e => {
       e.preventDefault(); drop.classList.remove('drag-over');
       const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
-      if (f) loadImg(f, cb);
+      if (f) accept(f);
     });
   }
   function loadImg(file, cb) {
     const url = URL.createObjectURL(file);
     const im = new Image();
-    im.onload = () => { cb(im); };
+    im.onload = () => cb(im, file.name);
     im.onerror = () => { URL.revokeObjectURL(url); alert('Could not load that image.'); };
     im.src = url;
   }
+  function escapeName(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
   let htTimer = null;
   function scheduleHalftone() {
@@ -279,26 +308,18 @@
     return (r < 8 && c < 8) || (r < 8 && c >= n - 8) || (r >= n - 8 && c < 8);
   }
 
-  // Build a per-sub-cell darkness map (0 = light, 1 = dark) from the source image
-  function buildDarkness(img, S) {
-    const oc = document.createElement('canvas'); oc.width = S; oc.height = S;
-    const octx = oc.getContext('2d');
-    octx.fillStyle = '#fff'; octx.fillRect(0, 0, S, S);
-    const ar = img.width / img.height;
-    let dw = S, dh = S, dx = 0, dy = 0;      // cover-fit into a square
-    if (ar > 1) { dh = S; dw = S * ar; dx = (S - dw) / 2; }
-    else { dw = S; dh = S / ar; dy = (S - dh) / 2; }
-    octx.drawImage(img, dx, dy, dw, dh);
-    const data = octx.getImageData(0, 0, S, S).data;
-    const dark = new Float32Array(S * S);
-    for (let i = 0; i < S * S; i++) {
+  // One darkness value per QR module (0 = light, 1 = dark) — the halftone grid
+  function buildDarkness(img, n) {
+    const data = cropToSquare(img, n).getContext('2d').getImageData(0, 0, n, n).data;
+    const dark = new Float32Array(n * n);
+    for (let i = 0; i < n * n; i++) {
       const lum = (0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2]) / 255;
       dark[i] = 1 - lum;
     }
     return dark;
   }
 
-  let mat = null, matN = 0, darkMap = null, mapS = 0;
+  let mat = null, matN = 0, darkMap = null;
 
   function drawDot(x, y, size) {
     if (size <= 0) return;
@@ -313,41 +334,34 @@
     }
   }
 
-  function drawHalftone(strength, minDot, cell) {
-    const n = matN, M = 4, sub = cell / 3;
-    const px = (n + 2 * M) * cell;
+  // Each module is a single dot. Its SIZE is the halftone: dark modules range
+  // from rMinDark (guaranteed readable) up to full/overlapping in dark image
+  // areas; light modules stay empty except a small dot in the darkest areas.
+  function drawHalftone(strength, rMinDark, cell) {
+    const n = matN, M = 4, px = (n + 2 * M) * cell;
     canvas.width = px; canvas.height = px;
     ctx.fillStyle = bgColorEl.value; ctx.fillRect(0, 0, px, px);
     const dotCol = dotColorEl.value;
+    ctx.fillStyle = dotCol;
+    const rMax = 0.72;
 
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const B = mat.isDark(r, c);
         const x0 = (c + M) * cell, y0 = (r + M) * cell;
 
-        if (isFinder(r, c, n)) {                         // finders/separators: solid
-          ctx.fillStyle = B ? dotCol : bgColorEl.value;
-          ctx.fillRect(x0, y0, cell, cell);
+        if (isFinder(r, c, n)) {                 // finder eyes: solid squares
+          if (B) ctx.fillRect(x0, y0, cell, cell);
           continue;
         }
 
-        // Centre sub-cell holds the true module value (this is what a scanner samples)
-        if (B) { ctx.fillStyle = dotCol; ctx.fillRect(x0 + sub, y0 + sub, sub, sub); }
+        if (!B) continue;                        // light modules stay empty (keeps centres readable)
 
-        // Surrounding 8 sub-cells recreate the image as dots
-        if (strength > 0 || minDot > 0) {
-          ctx.fillStyle = dotCol;
-          for (let sr = 0; sr < 3; sr++) {
-            for (let sc = 0; sc < 3; sc++) {
-              if (sr === 1 && sc === 1) continue;
-              const dval = darkMap[(r * 3 + sr) * mapS + (c * 3 + sc)];
-              let frac = minDot + (1 - minDot) * dval * strength;
-              if (frac <= 0) continue;
-              if (frac > 1) frac = 1;
-              drawDot(x0 + sc * sub + sub / 2, y0 + sr * sub + sub / 2, frac * sub);
-            }
-          }
-        }
+        // Dark module: one dot, size modulated by the image's local darkness.
+        // Lighter image → smaller dot (down to the safe minimum); darker image → larger, merging dot.
+        const d = darkMap[r * n + c];
+        const rad = (rMinDark + (rMax - rMinDark) * Math.min(1, d * strength)) * cell;
+        drawDot(x0 + cell / 2, y0 + cell / 2, rad * 2);
       }
     }
   }
@@ -383,19 +397,18 @@
       const M = 4, maxPx = 1600;
       while ((matN + 2 * M) * cell > maxPx && cell > 6) cell -= 3;
 
-      mapS = matN * 3;
-      darkMap = buildDarkness(srcImg, mapS);
+      darkMap = buildDarkness(srcImg, matN);
 
-      const minDot = parseInt(mindotEl.value) / 100;
+      const rMinDark = parseInt(mindotEl.value) / 100;
       let strength = parseInt(strengthEl.value) / 100;
 
       // Draw, then verify with a real decoder — ease the image until it scans
       let eased = false, ok = false;
       for (let i = 0; i < 7; i++) {
-        drawHalftone(strength, minDot, cell);
+        drawHalftone(strength, rMinDark, cell);
         if (verify(value)) { ok = true; break; }
         eased = true; strength *= 0.7;
-        if (strength < 0.05) { drawHalftone(0, 0, cell); ok = verify(value); break; }
+        if (strength < 0.05) { drawHalftone(0, Math.max(rMinDark, 0.5), cell); ok = verify(value); break; }
       }
 
       canvas.classList.remove('plain');
