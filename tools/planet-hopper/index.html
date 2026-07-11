@@ -90,9 +90,10 @@
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   const CFG = {
-    G: 130, BOOST: 250, SHIP_R: 8, TURN: 14,
-    FUEL_MAX: 100, FUEL_DRAIN: 30, FUEL_REGEN: 18,
-    START_DIST: 700, DIST_PER_LEVEL: 90,
+    G: 135, BOOST: 210, SHIP_R: 8, TURN: 14,
+    FUEL_MAX: 44, FUEL_DRAIN: 33, FUEL_REGEN: 15,
+    START_DIST: 620, DIST_PER_LEVEL: 120,
+    LANE: 102, HAZ_MASS: 1.5,
     SUBSTEPS: 4,
   };
 
@@ -129,6 +130,14 @@
 
   function rand(a, b) { return a + Math.random() * (b - a); }
 
+  // Distance from a point to the start→target segment (used to keep a clear lane)
+  function laneDist(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
+    let t = ((px - ax) * dx + (py - ay) * dy) / L2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
   function makeStars() {
     stars = [];
     for (let i = 0; i < 140; i++) stars.push({ x: rand(-2000, 2000), y: rand(-2000, 2000), z: rand(0.2, 1) });
@@ -147,21 +156,27 @@
     target.mass = target.r * target.r;
     planets.push(start, target);
 
-    const nHaz = Math.min(2 + lv, 10);
+    // Keep a clear lane straight to the target — hazards sit BESIDE the route,
+    // tugging you with gravity, never blocking the direct line.
+    const LANE = CFG.LANE;
+    const nHaz = Math.min(lv, 9);
     let tries = 0;
-    while (planets.length < nHaz + 2 && tries < 400) {
+    while (planets.length < nHaz + 2 && tries < 500) {
       tries++;
-      const t = rand(0.15, 0.9);
-      const spread = dist * 0.55;
+      const t = rand(0.12, 0.92);
+      const spread = dist * 0.5;
       const hx = target.x * t + rand(-spread, spread);
       const hy = target.y * t + rand(-spread, spread);
-      const hr = rand(24, 30 + Math.min(38, lv * 3));
-      if (Math.hypot(hx, hy) < start.r + hr + 150) continue;                 // clear of launch pad
-      if (Math.hypot(hx - target.x, hy - target.y) < target.r + hr + 130) continue; // clear of target
+      const hr = rand(24, 28 + Math.min(40, lv * 3));
+      const moving = lv >= 3 && Math.random() < 0.4;
+      const reach = moving ? hr + rand(50, 120) : hr;          // include orbit swing
+      if (Math.hypot(hx, hy) < start.r + hr + 160) continue;                       // clear of launch pad
+      if (Math.hypot(hx - target.x, hy - target.y) < target.r + hr + 150) continue; // clear of target
+      if (laneDist(hx, hy, start.x, start.y, target.x, target.y) < reach + LANE) continue; // keep the lane open
       if (planets.some(p => Math.hypot(p.x - hx, p.y - hy) < p.r + hr + 60)) continue;
-      const p = { x: hx, y: hy, r: hr, mass: hr * hr, kind: 'hazard', color: '#f87171' };
-      if (lv >= 3 && Math.random() < 0.45) {                                 // moving hazards
-        p.cx = hx; p.cy = hy; p.orbitR = rand(50, 130);
+      const p = { x: hx, y: hy, r: hr, mass: hr * hr * CFG.HAZ_MASS, kind: 'hazard', color: '#f87171' };
+      if (moving) {
+        p.cx = hx; p.cy = hy; p.orbitR = reach - hr;
         p.orbitSpd = rand(0.3, 0.8) * (Math.random() < 0.5 ? 1 : -1);
         p.phase = rand(0, Math.PI * 2);
         p.x = p.cx + Math.cos(p.phase) * p.orbitR;
@@ -169,10 +184,11 @@
       }
       planets.push(p);
     }
-    if (lv >= 6) {   // a heavy sun sitting near the route
-      const t = 0.5, sx = target.x * t + rand(-120, 120), sy = target.y * t + rand(-120, 120);
-      if (Math.hypot(sx, sy) > 260 && Math.hypot(sx - target.x, sy - target.y) > 260)
-        planets.push({ x: sx, y: sy, r: 70, mass: 70 * 70 * 2.2, kind: 'hazard', color: '#fbbf24', sun: true });
+    if (lv >= 6) {   // a heavy sun set off to one side of the route
+      const ux = target.x / dist, uy = target.y / dist, px = -uy, py = ux;
+      const side = Math.random() < 0.5 ? 1 : -1, off = rand(260, 340);
+      const sx = target.x * 0.5 + px * side * off, sy = target.y * 0.5 + py * side * off;
+      planets.push({ x: sx, y: sy, r: 70, mass: 70 * 70 * 2.2, kind: 'hazard', color: '#fbbf24', sun: true });
     }
     boundR = dist * 1.9 + 1200;
   }
@@ -257,7 +273,7 @@
     // collisions
     for (const p of planets) {
       const d = Math.hypot(p.x - ship.x, p.y - ship.y);
-      if (p === target) { if (d < p.r + CFG.SHIP_R) { hop(); return true; } }
+      if (p === target) { if (d < p.r + CFG.SHIP_R * 2) { hop(); return true; } }
       else if (p === start) {
         const min = p.r + CFG.SHIP_R;
         if (d < min) {                       // rest on the launch pad
