@@ -57,7 +57,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>One button. Your rocket points itself at the glowing planet &mdash; you just <strong>boost</strong>. Ride gravity, slingshot around worlds, and hop as far as you can. It gets harder every jump.</p>
+      <p>One button. Your rocket always points <strong>away from the nearest planet</strong> &mdash; hold to boost and push off it. Whip around worlds to sling toward the glowing target, then <strong>coast in</strong> (you can't boost straight at it). Line up the slingshot and hop as far as you can &mdash; it gets harder every jump.</p>
     </section>
 
     <div class="game-wrap">
@@ -72,7 +72,7 @@
         </div>
         <div class="overlay" id="overlay">
           <h2>Planet Hopper</h2>
-          <p><strong>Hold</strong> anywhere (or press <strong>Space</strong>) to fire the booster. The ship aims itself &mdash; use gravity to swing into the glowing planet. Don't smash into the others.</p>
+          <p>The ship points <strong>away from the nearest planet</strong>. <strong>Hold</strong> anywhere (or <strong>Space</strong>) to boost off it — swing around planets to sling toward the blue target, then release and coast in. The dashed line shows where you'll drift. Don't smash into the red ones.</p>
           <button class="play-btn" id="play-btn">Launch</button>
         </div>
       </div>
@@ -90,10 +90,10 @@
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   const CFG = {
-    G: 135, BOOST: 210, SHIP_R: 8, TURN: 14,
-    FUEL_MAX: 44, FUEL_DRAIN: 33, FUEL_REGEN: 15,
-    START_DIST: 620, DIST_PER_LEVEL: 120,
-    LANE: 102, HAZ_MASS: 1.5,
+    G: 120, BOOST: 240, SHIP_R: 8, TURN: 14,
+    FUEL_MAX: 70, FUEL_DRAIN: 30, FUEL_REGEN: 16,
+    START_DIST: 560, DIST_PER_LEVEL: 110,
+    LANE: 76, HAZ_MASS: 1.0, TARGET_MASS: 4,
     SUBSTEPS: 4,
   };
 
@@ -150,10 +150,10 @@
     const dist = CFG.START_DIST + (lv - 1) * CFG.DIST_PER_LEVEL;
     target = {
       x: Math.cos(ang) * dist, y: Math.sin(ang) * dist,
-      r: Math.max(28, 46 - lv * 0.7), kind: 'target', color: '#60a5fa',
+      r: Math.max(30, 48 - lv * 0.6), kind: 'target', color: '#60a5fa',
     };
     start.mass = start.r * start.r;
-    target.mass = target.r * target.r;
+    target.mass = target.r * target.r * CFG.TARGET_MASS;   // stronger pull rewards a good coast-in
     planets.push(start, target);
 
     // Keep a clear lane straight to the target — hazards sit BESIDE the route,
@@ -230,6 +230,12 @@
   }
 
   // ── Physics ─────────────────────────────────────────────────────────────────
+  function nearestPlanet(x, y) {
+    let best = planets[0], bd = Infinity;
+    for (const p of planets) { const d = Math.hypot(p.x - x, p.y - y) - p.r; if (d < bd) { bd = d; best = p; } }
+    return best;
+  }
+
   function gravityAt(x, y) {
     let ax = 0, ay = 0;
     for (const p of planets) {
@@ -252,8 +258,9 @@
       p.y = p.cy + Math.sin(p.phase) * p.orbitR;
     }
 
-    // auto-orient toward target
-    const desired = Math.atan2(target.y - ship.y, target.x - ship.x);
+    // auto-orient AWAY from the nearest planet — boost pushes you off it
+    const nb = nearestPlanet(ship.x, ship.y);
+    const desired = Math.atan2(ship.y - nb.y, ship.x - nb.x);
     let da = desired - ship.angle;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     ship.angle += da * Math.min(1, CFG.TURN * dt);
