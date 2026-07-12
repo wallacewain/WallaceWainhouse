@@ -61,7 +61,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. The <strong>green line is the ideal slingshot</strong>: whip behind the moving purple planet to steal speed for free, then coast to the zone with fuel to spare. Land with fuel past the <strong>⛽ mark</strong> and it sets down softly; below it, you crash.</p>
+      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. Launch once, then let each planet's gravity <strong>curve you around for free</strong> instead of spending fuel to turn &mdash; the <strong>green line</strong> is the fuel-saving route. Reach the zone with fuel past the <strong>⛽ mark</strong> and it auto-lands.</p>
     </section>
 
     <div class="game-wrap">
@@ -77,14 +77,14 @@
         </div>
         <div class="overlay" id="overlay">
           <h2>Planet Hopper</h2>
-          <p><strong>Hold and drag</strong> &mdash; the rocket flies toward your finger, burning fuel. Follow the <strong>green ideal path</strong>: it whips behind the moving purple planet for a free speed boost, then coasts to the zone. Land with fuel above the <strong>⛽ mark</strong> for a soft touchdown. The dotted line is your live drift.</p>
+          <p><strong>Hold and drag</strong> &mdash; the rocket flies toward your finger, burning fuel. Burn once to launch, then follow the <strong>green route</strong>: each planet's gravity curves you around for free, saving fuel for the corners. Land with fuel above the <strong>⛽ mark</strong>. The dotted line is your live drift.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">build 14 &mdash; slingshot chains</div>
+        <div class="build">build 15 &mdash; static slingshots</div>
       </div>
       <div class="legend">
         <span>🟢 <b>Start</b></span>
-        <span>🟣 <b>Slingshot planet</b> (ride its gravity)</span>
+        <span>🟣 <b>Slingshot planet</b> (curve around it)</span>
         <span>🔵 <b>Landing zone</b> (auto-lands)</span>
         <span>🔴 <b>Hazard</b></span>
         <span>⛽ <b>fuel to land</b> &mdash; stay above it</span>
@@ -200,19 +200,17 @@
   function rinfOf(p){ return p.r * CFG.INF * (p.big ? 1.15 : p.kind === 'target' ? 1.25 : 1); }
 
   // Simulate one segment: from `state`, burn toward `thr` for `Tb`s then coast, past the
-  // moving `sl` (orbiting from phase0 at absolute time). Ends after rounding the planet.
-  function simSeg(state, sl, phase0, T0, thr, Tb, withStart) {
+  // STATIC planet `sl`. Gravity bends the path for free. Ends after rounding the planet.
+  function simSeg(state, sl, thr, Tb, withStart) {
     let x = state.x, y = state.y, vx = state.vx, vy = state.vy, fuel = state.fuel;
     const path = [], sdt = 0.02; let md = 1e9;
+    const bodies = withStart ? [start, sl] : [sl];
     for (let i = 0; i < 700; i++) {
-      const t = T0 + i * sdt, sph = phase0 + sl.orbitSpeed * t;
-      sl.x = sl.cx + Math.cos(sph) * sl.orbitR; sl.y = sl.cy + Math.sin(sph) * sl.orbitR;
       if (i * sdt < Tb && fuel > 0) { vx += Math.cos(thr) * CFG.BOOST * sdt; vy += Math.sin(thr) * CFG.BOOST * sdt; fuel -= CFG.FUEL_DRAIN * sdt; }
       let ax = 0, ay = 0;
-      const bodies = withStart ? [[start.x,start.y,start.r,start.gs,start.rinf],[sl.x,sl.y,sl.r,sl.gs,sl.rinf]] : [[sl.x,sl.y,sl.r,sl.gs,sl.rinf]];
-      for (const [bx,by,br,bgs,brinf] of bodies) {
-        if (brinf <= br) continue; const dx = bx - x, dy = by - y, d = Math.hypot(dx, dy) || 1; if (d >= brinf) continue;
-        const fr = Math.max(0, (brinf - Math.max(d, br)) / (brinf - br)); const a = bgs * Math.pow(fr, CFG.EXP); ax += a * dx / d; ay += a * dy / d;
+      for (const b of bodies) {
+        if (b.rinf <= b.r) continue; const dx = b.x - x, dy = b.y - y, d = Math.hypot(dx, dy) || 1; if (d >= b.rinf) continue;
+        const fr = Math.max(0, (b.rinf - Math.max(d, b.r)) / (b.rinf - b.r)); const a = b.gs * Math.pow(fr, CFG.EXP); ax += a * dx / d; ay += a * dy / d;
       }
       vx += ax * sdt; vy += ay * sdt; x += vx * sdt; y += vy * sdt; path.push([x, y]);
       const dd = Math.hypot(sl.x - x, sl.y - y); md = Math.min(md, dd - sl.r);
@@ -228,30 +226,28 @@
     start.gs = gsOf(start); start.rinf = rinfOf(start);
 
     const N = Math.min(4, 1 + Math.floor((lv - 1) / 2));   // more slingshots every 2 levels (up to 4)
-    const slings = [], path = []; let T = 0, launchThr = 0;
+    const slings = [], path = []; let launchThr = 0;
     let dir = rand(0, TAU);
     let state = { x: Math.cos(dir) * (start.r + CFG.SHIP_R + 1), y: Math.sin(dir) * (start.r + CFG.SHIP_R + 1), vx: 0, vy: 0, fuel: CFG.FUEL_MAX };
 
     for (let k = 0; k < N; k++) {
       const head = k === 0 ? dir : Math.atan2(state.vy, state.vx);
-      const distC = rand(430, 560), perp = head + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1), poff = rand(90, 170);
-      const sl = { cx: state.x + Math.cos(head) * distC + Math.cos(perp) * poff, cy: state.y + Math.sin(head) * distC + Math.sin(perp) * poff,
-                   r: rand(48, 58), kind: 'sling', big: true, color: '#c084fc', orbitR: rand(110, 150), orbitSpeed: rand(0.55, 0.85) * (Math.random() < 0.5 ? 1 : -1) };
+      const distC = rand(420, 560), perp = head + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1), poff = rand(90, 175);
+      const sl = { x: state.x + Math.cos(head) * distC + Math.cos(perp) * poff, y: state.y + Math.sin(head) * distC + Math.sin(perp) * poff,
+                   r: rand(48, 58), kind: 'sling', big: true, color: '#c084fc' };
       sl.gs = gsOf(sl); sl.rinf = rinfOf(sl);
       let best = null;
-      for (let ai = 0; ai < 10; ai++) { const thr = head + rand(-0.5, 0.5);
-        for (const Tb of (k === 0 ? [0.5, 0.8, 1.1] : [0, 0.3, 0.6])) { for (let pi = 0; pi < 8; pi++) { const ph0 = pi / 8 * TAU;
-          const r = simSeg(state, sl, ph0, T, thr, Tb, k === 0); if (!r || r.crash) continue;
+      for (let ai = 0; ai < 12; ai++) { const thr = head + rand(-0.6, 0.6);
+        for (const Tb of (k === 0 ? [0.5, 0.8, 1.1] : [0, 0.25, 0.5, 0.8])) {
+          const r = simSeg(state, sl, thr, Tb, k === 0); if (!r || r.crash) continue;
           if (r.md < 12 || r.md > 150) continue;
-          const sp = Math.hypot(r.end.vx, r.end.vy), score = sp - (CFG.FUEL_MAX - r.end.fuel) * 4;
-          if (!best || score > best.score) best = { score, r, ph0, thr };
-        } } }
+          const endD = Math.hypot(r.end.x, r.end.y), score = endD - (CFG.FUEL_MAX - r.end.fuel) * 8;
+          if (!best || score > best.score) best = { score, r, thr };
+        } }
       if (!best) return (attempt < 25) ? spawn(lv, attempt + 1) : null;
-      sl.phase0 = best.ph0; sl.phase = best.ph0;
-      sl.x = sl.cx + Math.cos(best.ph0) * sl.orbitR; sl.y = sl.cy + Math.sin(best.ph0) * sl.orbitR;
       slings.push(sl);
       for (const p of best.r.path) path.push(p);
-      state = best.r.end; T += best.r.dur;
+      state = best.r.end;
       if (k === 0) launchThr = best.thr;
     }
     sling = slings[slings.length - 1];
@@ -275,7 +271,7 @@
       if (dream.some(q => Math.hypot(q[0] - hx, q[1] - hy) < hr + 54)) continue;
       if (planets.some(p => Math.hypot(p.x - hx, p.y - hy) < p.r + hr + 44)) continue;
       if (Math.hypot(hx, hy) < start.r + 130) continue;
-      if (slings.some(s => Math.hypot(hx - s.cx, hy - s.cy) < s.orbitR + hr + 40)) continue;
+      if (slings.some(s => Math.hypot(hx - s.x, hy - s.y) < s.rinf + hr + 30)) continue;
       planets.push({ x: hx, y: hy, r: hr, kind: 'hazard', color: '#fb7185', gs: 0, rinf: 0 });
     }
 
@@ -283,7 +279,6 @@
     fuel = CFG.FUEL_MAX;
 
     let ext = 0;
-    for (const s of slings) ext = Math.max(ext, Math.hypot(s.cx, s.cy) + s.orbitR + s.r);
     for (const q of path) ext = Math.max(ext, Math.hypot(q[0], q[1]));
     for (const p of planets) ext = Math.max(ext, Math.hypot(p.x, p.y) + p.r);
     boundR = ext + 1100;
@@ -315,16 +310,7 @@
   }
   function pointerWorld() { return [(ptr.sx - W / 2) / cam.s + cam.x, (ptr.sy - H / 2) / cam.s + cam.y]; }
 
-  function advanceOrbits(dt) {
-    for (const p of planets) if (p.orbitR != null) {
-      p.phase += p.orbitSpeed * dt;
-      p.x = p.cx + Math.cos(p.phase) * p.orbitR;
-      p.y = p.cy + Math.sin(p.phase) * p.orbitR;
-    }
-  }
-
   function step(dt) {
-    advanceOrbits(dt);
     ship.thrusting = false;
     const dtx = target.x - ship.x, dty = target.y - ship.y, dT = Math.hypot(dtx, dty);
 
@@ -389,18 +375,14 @@
   }
 
   function predict() {
-    // advance a saved copy of the orbiting bodies so the drift line accounts for their motion
-    const orb = planets.filter(p => p.orbitR != null).map(p => ({ p, x: p.x, y: p.y, ph: p.phase }));
     let x = ship.x, y = ship.y, vx = ship.vx, vy = ship.vy; const pts = [], sdt = CFG.PREDICT_DT;
     for (let i = 0; i < 130; i++) {
-      for (const o of orb) { o.p.phase += o.p.orbitSpeed * sdt; o.p.x = o.p.cx + Math.cos(o.p.phase) * o.p.orbitR; o.p.y = o.p.cy + Math.sin(o.p.phase) * o.p.orbitR; }
       const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt; x += vx * sdt; y += vy * sdt;
       if (i % 2 === 0) pts.push([x, y]);
       let hit = false;
       for (const p of planets) if (p !== start && Math.hypot(p.x - x, p.y - y) < p.r) { hit = true; break; }
       if (hit) break;
     }
-    for (const o of orb) { o.p.x = o.x; o.p.y = o.y; o.p.phase = o.ph; }   // restore
     return pts;
   }
 
@@ -461,17 +443,6 @@
     ctx.fillStyle = hexA(darken(p.color, 0.25), 0.5);
     for (let i = 0; i < 3; i++) { const a = i * 2.1 + p.x * 0.03, rr = r * (0.16 + 0.07 * i), dd = r * 0.5;
       ctx.beginPath(); ctx.arc(sx + Math.cos(a) * dd, sy + Math.sin(a) * dd, rr, 0, TAU); ctx.fill(); }
-    if (p.kind === 'sling') {
-      const [ccx, ccy] = w2s(p.cx, p.cy);
-      ctx.strokeStyle = hexA('#c084fc', 0.28); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(ccx, ccy, p.orbitR * cam.s, 0, TAU); ctx.stroke();      // orbit path
-      const va = p.phase + (p.orbitSpeed >= 0 ? Math.PI / 2 : -Math.PI / 2);            // motion direction
-      const hx = sx + Math.cos(va) * (r + 22), hy = sy + Math.sin(va) * (r + 22);
-      ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(sx + Math.cos(va) * r, sy + Math.sin(va) * r); ctx.lineTo(hx, hy); ctx.stroke();
-      ctx.save(); ctx.translate(hx, hy); ctx.rotate(va); ctx.fillStyle = '#e9d5ff';
-      ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill(); ctx.restore();
-    }
     if (p === target) {
       const pulse = 1 + Math.sin(t / 280) * 0.12;
       ctx.beginPath(); ctx.arc(sx, sy, r * 1.7 * pulse, 0, TAU); ctx.fillStyle = hexA(p.color, 0.14); ctx.fill();
