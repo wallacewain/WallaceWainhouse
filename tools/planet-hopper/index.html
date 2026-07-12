@@ -33,9 +33,11 @@
     .hud { position: absolute; inset: 0; pointer-events: none; padding: 0.75rem 0.9rem; display: flex; flex-direction: column; justify-content: space-between; color: #eef1ff; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
     .hud-top { display: flex; justify-content: space-between; align-items: flex-start; font-size: 0.95rem; }
     .hud-top .tag { font-size: 0.68rem; font-weight: 600; color: #9fb0e0; display: block; text-transform: uppercase; letter-spacing: 0.07em; }
-    .fuel { align-self: stretch; height: 8px; background: rgba(255,255,255,0.14); border-radius: 5px; overflow: hidden; }
-    .fuel-fill { height: 100%; width: 100%; background: linear-gradient(90deg,#34d399,#a3e635); transition: width 0.06s linear; }
+    .fuel { position: relative; align-self: stretch; height: 9px; background: rgba(255,255,255,0.14); border-radius: 5px; }
+    .fuel-fill { height: 100%; width: 100%; background: linear-gradient(90deg,#34d399,#a3e635); transition: width 0.06s linear; border-radius: 5px; }
     .fuel-fill.low { background: linear-gradient(90deg,#fb7185,#f59e0b); }
+    .fuel-reserve { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.9); left: 0%; display: none; }
+    .fuel-reserve::after { content: '⛽'; position: absolute; top: -15px; left: -6px; font-size: 10px; }
 
     .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; text-align: center; padding: 1.5rem; background: rgba(6,6,20,0.68); backdrop-filter: blur(2px); color: #fff; }
     .overlay.hidden { display: none; }
@@ -59,7 +61,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>Hold and drag anywhere &mdash; your rocket thrusts <strong>toward your finger</strong>. Use the planets' gravity to <strong>slingshot</strong> (it saves fuel), follow the glowing route, and touch down in the <strong>landing zone</strong>. Every hop is farther and trickier.</p>
+      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. <strong>Slingshot</strong> around a planet to pick up speed for free instead of burning it. Arrive with enough fuel in reserve (the <strong>⛽ mark</strong> on the gauge) and it <strong>auto-lands</strong> softly &mdash; too little and it's a crash.</p>
     </section>
 
     <div class="game-wrap">
@@ -71,21 +73,21 @@
             <span><span class="tag">Level</span><span id="hud-level">1</span></span>
             <span style="text-align:right"><span class="tag">Best hops</span><span id="hud-best">0</span></span>
           </div>
-          <div class="fuel"><div class="fuel-fill" id="fuel-fill"></div></div>
+          <div class="fuel"><div class="fuel-fill" id="fuel-fill"></div><div class="fuel-reserve" id="fuel-reserve"></div></div>
         </div>
         <div class="overlay" id="overlay">
           <h2>Planet Hopper</h2>
-          <p><strong>Hold and drag</strong> anywhere &mdash; the rocket flies toward your finger. Let gravity swing you around the purple planet to save fuel, and coast into the blue landing zone. The dotted line shows where you'll drift if you let go.</p>
+          <p><strong>Hold and drag</strong> &mdash; the rocket flies toward your finger and burns fuel doing it. Swing past a planet to gain speed for free, then let go and coast. Reach the blue zone with fuel past the <strong>⛽ mark</strong> and it auto-lands; below it, you crash. The dotted line is your drift.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">control build 10 &mdash; thrust to finger</div>
+        <div class="build">build 11 &mdash; fuel &amp; auto-land</div>
       </div>
       <div class="legend">
         <span>🟢 <b>Start</b></span>
         <span>🟣 <b>Slingshot planet</b> (ride its gravity)</span>
-        <span>🔵 <b>Landing zone</b></span>
+        <span>🔵 <b>Landing zone</b> (auto-lands)</span>
         <span>🔴 <b>Hazard</b></span>
-        <span>— route &nbsp; ┈ your drift</span>
+        <span>⛽ <b>fuel to land</b> &mdash; stay above it</span>
       </div>
     </div>
   </main>
@@ -95,9 +97,10 @@
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   const CFG = {
-    G: 78, INF: 6, EXP: 1.0, BOOST: 300, SHIP_R: 8,
-    FUEL_MAX: 100, FUEL_DRAIN: 20, FUEL_REGEN: 13,
-    DIST0: 560, DIST_PER_LEVEL: 70, SUBSTEPS: 4, ZOOM: 780, PREDICT_DT: 0.045,
+    G: 82, INF: 7, EXP: 1.0, BOOST: 300, SHIP_R: 8,
+    FUEL_MAX: 100, FUEL_DRAIN: 26,          // fuel only depletes — slingshots save it
+    DIST0: 560, DIST_PER_LEVEL: 80, SUBSTEPS: 4, ZOOM: 820, PREDICT_DT: 0.045,
+    LAND_BAND: 80, LAND_SPEED: 55, LAND_MARGIN: 1.3,
   };
 
   const stage = document.getElementById('stage');
@@ -107,6 +110,7 @@
   const hudLevel = document.getElementById('hud-level');
   const hudBest = document.getElementById('hud-best');
   const fuelFill = document.getElementById('fuel-fill');
+  const fuelReserve = document.getElementById('fuel-reserve');
 
   let W = 0, H = 0, DPR = 1;
 
@@ -276,17 +280,33 @@
   function pointerWorld() { return [(ptr.sx - W / 2) / cam.s + cam.x, (ptr.sy - H / 2) / cam.s + cam.y]; }
 
   function step(dt) {
-    const thrust = boosting && fuel > 0;
-    if (thrust) {
+    ship.thrusting = false;
+    const dtx = target.x - ship.x, dty = target.y - ship.y, dT = Math.hypot(dtx, dty);
+
+    // engage auto-landing once inside the band on the zone side
+    if (!ship.landing && dT < target.r + CFG.LAND_BAND) {
+      let ad = Math.atan2(ship.y - target.y, ship.x - target.x) - target.zoneA; ad = Math.atan2(Math.sin(ad), Math.cos(ad));
+      if (Math.abs(ad) < target.zoneHalf) ship.landing = true;
+    }
+
+    if (ship.landing) {
+      // auto retro-burn: kill speed, then ease onto the pad — costs fuel
+      const speed = Math.hypot(ship.vx, ship.vy);
+      if (speed > CFG.LAND_SPEED && fuel > 0) {
+        const a = Math.atan2(-ship.vy, -ship.vx); ship.angle = a; ship.thrusting = true;
+        ship.vx += Math.cos(a) * CFG.BOOST * dt; ship.vy += Math.sin(a) * CFG.BOOST * dt;
+        fuel = Math.max(0, fuel - CFG.FUEL_DRAIN * dt);
+      } else if (fuel > 0 && dT > target.r + CFG.SHIP_R + 3) {
+        const a = Math.atan2(dty, dtx); ship.angle = a; ship.thrusting = true;
+        ship.vx += Math.cos(a) * CFG.BOOST * 0.4 * dt; ship.vy += Math.sin(a) * CFG.BOOST * 0.4 * dt;
+        fuel = Math.max(0, fuel - CFG.FUEL_DRAIN * 0.4 * dt);
+      }
+    } else if (boosting && fuel > 0) {
       const [wx, wy] = pointerWorld();
-      const a = Math.atan2(wy - ship.y, wx - ship.x);
-      ship.angle = a;
+      const a = Math.atan2(wy - ship.y, wx - ship.x); ship.angle = a; ship.thrusting = true;
       ship.vx += Math.cos(a) * CFG.BOOST * dt; ship.vy += Math.sin(a) * CFG.BOOST * dt;
       fuel = Math.max(0, fuel - CFG.FUEL_DRAIN * dt);
-    } else {
-      fuel = Math.min(CFG.FUEL_MAX, fuel + CFG.FUEL_REGEN * dt);
-      if (ship.vx || ship.vy) ship.angle = Math.atan2(ship.vy, ship.vx);
-    }
+    } else if (ship.vx || ship.vy) { ship.angle = Math.atan2(ship.vy, ship.vx); }
 
     const [gx, gy] = gravityAt(ship.x, ship.y);
     ship.vx += gx * dt; ship.vy += gy * dt;
@@ -296,9 +316,11 @@
       const dx = ship.x - p.x, dy = ship.y - p.y, d = Math.hypot(dx, dy);
       if (p === target) {
         if (d < p.r + CFG.SHIP_R) {
+          const speed = Math.hypot(ship.vx, ship.vy);
           let ad = Math.atan2(dy, dx) - p.zoneA; ad = Math.atan2(Math.sin(ad), Math.cos(ad));
-          if (Math.abs(ad) < p.zoneHalf) { hop(); return true; }
-          bounce(p, dx, dy, d);
+          if (ship.landing && Math.abs(ad) < p.zoneHalf && speed < CFG.LAND_SPEED * 1.5) { hop(); return true; }
+          if (ship.landing) { die('Hard landing — out of fuel'); return true; }
+          bounce(p, dx, dy, d);                 // clipped the target off-zone; come around again
         }
       } else if (p === start) {
         if (d < p.r + CFG.SHIP_R) bounce(p, dx, dy, d);   // start is a safe pad
@@ -371,7 +393,15 @@
     if (ship) drawShip();
     if (flashT > 0) { ctx.fillStyle = `rgba(163,230,53,${flashT * 0.4})`; ctx.fillRect(0, 0, W, H); }
     fuelFill.style.width = (fuel / CFG.FUEL_MAX * 100) + '%';
-    fuelFill.classList.toggle('low', fuel < CFG.FUEL_MAX * 0.35);
+    if (state === 'fly' && ship) {
+      const speed = Math.hypot(ship.vx, ship.vy);
+      const needed = CFG.FUEL_DRAIN * Math.max(0, speed - CFG.LAND_SPEED) / CFG.BOOST * CFG.LAND_MARGIN;
+      const rFrac = Math.min(1, needed / CFG.FUEL_MAX);
+      const short = fuel / CFG.FUEL_MAX < rFrac;
+      fuelReserve.style.display = ''; fuelReserve.style.left = (rFrac * 100) + '%';
+      fuelReserve.style.background = short ? '#fb7185' : '#fff';
+      fuelFill.classList.toggle('low', short);
+    } else { fuelReserve.style.display = 'none'; fuelFill.classList.toggle('low', fuel < CFG.FUEL_MAX * 0.3); }
   }
 
   function drawPlanet(p, t) {
@@ -396,7 +426,7 @@
     const [sx, sy] = w2s(ship.x, ship.y);
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(ship.angle);
     const R = Math.max(8, CFG.SHIP_R * cam.s * 1.15);
-    if (boosting && fuel > 0 && state === 'fly') {
+    if (ship.thrusting && fuel > 0) {
       ctx.beginPath(); ctx.moveTo(-R, -R * 0.5); ctx.lineTo(-R - R * (1.3 + Math.random() * 0.7), 0); ctx.lineTo(-R, R * 0.5); ctx.closePath();
       const fg = ctx.createLinearGradient(-R, 0, -R * 2.6, 0); fg.addColorStop(0, '#fde68a'); fg.addColorStop(1, 'rgba(249,115,22,0)');
       ctx.fillStyle = fg; ctx.fill();
