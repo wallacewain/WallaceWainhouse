@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Planet Hopper — a whimsical one-button slingshot game. Time your launch off a spinning planet, whip around worlds with gravity, and land in the zone. Runs in your browser.">
+  <meta name="description" content="Planet Hopper — a whimsical space flight game. Steer your rocket by dragging, slingshot around planets with gravity, and touch down in the landing zone. Runs in your browser.">
   <title>Planet Hopper &mdash; Wallace Wainhouse</title>
   <link rel="canonical" href="https://wallacewainhouse.com/tools/planet-hopper/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/tools/planet-hopper/">
   <meta property="og:title" content="Planet Hopper &mdash; Wallace Wainhouse">
-  <meta property="og:description" content="A whimsical one-button slingshot game. Time your launch, ride gravity, land in the zone.">
+  <meta property="og:description" content="A whimsical space flight game. Steer with your finger, ride gravity, land in the zone.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Planet Hopper &mdash; Wallace Wainhouse">
-  <meta name="twitter:description" content="A whimsical one-button slingshot game. Time your launch, ride gravity, land in the zone.">
+  <meta name="twitter:description" content="A whimsical space flight game. Steer with your finger, ride gravity, land in the zone.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,7 +59,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>One button. Your rocket rides a <strong>spinning</strong> launch planet &mdash; tap to fling off at the right moment, then <strong>hold</strong> to push away from whatever world is nearest. Follow the <strong>dream path</strong>, slingshot around the big planet, and touch down in the <strong>landing zone</strong>.</p>
+      <p>Hold and drag anywhere &mdash; your rocket thrusts <strong>toward your finger</strong>. Use the planets' gravity to <strong>slingshot</strong> (it saves fuel), follow the glowing route, and touch down in the <strong>landing zone</strong>. Every hop is farther and trickier.</p>
     </section>
 
     <div class="game-wrap">
@@ -75,17 +75,17 @@
         </div>
         <div class="overlay" id="overlay">
           <h2>Planet Hopper</h2>
-          <p>Your ship spins on the launch planet. <strong>Tap / Space</strong> to fling off &mdash; time it so the glowing preview line heads toward the big planet. Then <strong>hold</strong> to boost away from the nearest world, slingshot around, and coast into the blue landing zone.</p>
+          <p><strong>Hold and drag</strong> anywhere &mdash; the rocket flies toward your finger. Let gravity swing you around the purple planet to save fuel, and coast into the blue landing zone. The dotted line shows where you'll drift if you let go.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">balance build 8 &mdash; coast = crash</div>
+        <div class="build">control build 9 &mdash; thrust to finger</div>
       </div>
       <div class="legend">
-        <span>🟢 <b>Launch planet</b> (spins)</span>
-        <span>🟣 <b>Slingshot</b> (whip around it)</span>
-        <span>🔵 <b>Landing zone</b> (touch down here)</span>
+        <span>🟢 <b>Start</b></span>
+        <span>🟣 <b>Slingshot planet</b> (ride its gravity)</span>
+        <span>🔵 <b>Landing zone</b></span>
         <span>🔴 <b>Hazard</b></span>
-        <span>— dream path &nbsp; ┈ your trajectory</span>
+        <span>— route &nbsp; ┈ your drift</span>
       </div>
     </div>
   </main>
@@ -94,12 +94,10 @@
   <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  // ── Tunables ────────────────────────────────────────────────────────────────
   const CFG = {
-    SG: 110, INF: 12, EXP: 1.0, BOOST: 250, SHIP_R: 8, TURN: 16,
-    FUEL_MAX: 80, FUEL_DRAIN: 26, FUEL_REGEN: 15,
-    SLING_DIST: 470, DIST_PER_LEVEL: 18, SUBSTEPS: 4,
-    LAUNCH_SPEED: 310, ZOOM: 900, PREDICT_DT: 0.04,
+    G: 100, INF: 12, EXP: 1.0, BOOST: 300, SHIP_R: 8,
+    FUEL_MAX: 100, FUEL_DRAIN: 22, FUEL_REGEN: 13,
+    DIST0: 620, DIST_PER_LEVEL: 70, SUBSTEPS: 4, ZOOM: 820, PREDICT_DT: 0.045,
   };
 
   const stage = document.getElementById('stage');
@@ -123,7 +121,6 @@
       float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
       return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }
     float fbm(vec2 p){ float v=0.,a=.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.03; a*=.5;} return v; }
-    // soft round twinkling stars: one star per grid cell, gaussian falloff
     float starLayer(vec2 suv, float density, float sz){
       vec2 g=suv*density; vec2 id=floor(g); vec2 f=fract(g)-0.5;
       float h=hash(id); if(h<0.90) return 0.0;
@@ -167,12 +164,7 @@
       uRes = gl.getUniformLocation(glProg, 'u_res'); uTime = gl.getUniformLocation(glProg, 'u_time');
     } catch (e) { gl = null; bgCanvas.style.display = 'none'; }
   }
-  function drawGL(t) {
-    if (!gl) return;
-    gl.uniform2f(uRes, bgCanvas.width, bgCanvas.height);
-    gl.uniform1f(uTime, t / 1000);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-  }
+  function drawGL(t) { if (!gl) return; gl.uniform2f(uRes, bgCanvas.width, bgCanvas.height); gl.uniform1f(uTime, t / 1000); gl.drawArrays(gl.TRIANGLES, 0, 3); }
 
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -190,157 +182,69 @@
   hudBest.textContent = best;
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let state = 'menu';           // menu | ready | fly | dead
+  let state = 'menu';           // menu | fly | dead
   let level = 1, hops = 0;
   let planets = [], start = null, target = null, sling = null;
-  let ship = null, fuel = CFG.FUEL_MAX, boosting = false;
-  let padAngle = 0, dream = [], flashT = 0;
+  let ship = null, fuel = CFG.FUEL_MAX, boosting = false, flashT = 0;
+  let dream = [], boundR = 4000;
+  let ptr = { sx: 0, sy: 0 };   // finger position in screen space
 
   const rand = (a, b) => a + Math.random() * (b - a);
   const TAU = Math.PI * 2;
 
-  function gsOf(p)  { return CFG.SG * (p.kind === 'target' ? 1.7 : p.big ? 2.0 : 1); }
-  function rinfOf(p){ return p.r * CFG.INF * (p.big ? 1.35 : p.kind === 'target' ? 1.2 : 1); }
-  let idealA = 0, boundR = 4000;
+  function gsOf(p)  { return CFG.G * (p.kind === 'target' ? 1.6 : p.big ? 2.0 : 1); }
+  function rinfOf(p){ return p.r * CFG.INF * (p.big ? 1.4 : p.kind === 'target' ? 1.25 : 1); }
 
-  // Launch state for a given pad angle — used for BOTH generation and the live preview
-  function launchFor(A) {
-    const R = start.r + CFG.SHIP_R + 5;
-    const tang = A + (start.spin >= 0 ? Math.PI / 2 : -Math.PI / 2);
-    const sp = CFG.LAUNCH_SPEED + Math.abs(start.spin) * R;
-    return { x: start.x + Math.cos(A) * R, y: start.y + Math.sin(A) * R, vx: Math.cos(tang) * sp, vy: Math.sin(tang) * sp };
-  }
-
-  // Coast a launch state through the gravity field. This IS the dream path / preview,
-  // so it always agrees with the physics (and the spinning launch).
-  function trajectory(ls, steps) {
-    let { x, y, vx, vy } = ls; const pts = [[x, y]], sdt = CFG.PREDICT_DT;
-    let ph = Math.atan2(vy, vx), turn = 0, near = 1e9;
-    for (let i = 0; i < steps; i++) {
-      const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt; x += vx * sdt; y += vy * sdt;
-      pts.push([x, y]);
-      const nh = Math.atan2(vy, vx); let dh = nh - ph; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); turn += Math.abs(dh); ph = nh;
-      for (const p of planets) {
-        if (p.kind === 'start') continue;
-        const dd = Math.hypot(p.x - x, p.y - y);
-        if (dd < p.r + CFG.SHIP_R) return { pts, hit: p, turn, near };
-        if (p.big) near = Math.min(near, dd - p.r);
-      }
-      if (Math.hypot(x - start.x, y - start.y) > boundR) break;
-    }
-    return { pts, hit: null, turn, near };
-  }
-
-  // Short look-ahead coast — is a crash imminent? (drives the balance autopilot)
-  function willHit(x, y, vx, vy) {
-    let X = x, Y = y, VX = vx, VY = vy; const sdt = 0.03;
-    for (let i = 0; i < 16; i++) {
-      const [gx, gy] = gravityAt(X, Y); VX += gx * sdt; VY += gy * sdt; X += VX * sdt; Y += VY * sdt;
-      for (const p of planets) { if (p.kind === 'start') continue; if (Math.hypot(p.x - X, p.y - Y) < p.r + CFG.SHIP_R + 7) return true; }
-    }
-    return false;
-  }
-
-  // The dream path: a *balanced* run — boost away from the nearest world only when
-  // about to fall in. This is what the player has to actively hold; a pure coast crashes.
-  function autopilot(ls, steps) {
-    let { x, y, vx, vy } = ls; const pts = [[x, y]], sdt = 0.03; let boosts = 0;
-    for (let i = 0; i < steps; i++) {
-      const b = willHit(x, y, vx, vy); if (b) boosts++;
-      const nb = nearestPlanet(x, y), ang = Math.atan2(y - nb.y, x - nb.x);
-      const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt;
-      if (b) { vx += Math.cos(ang) * CFG.BOOST * sdt; vy += Math.sin(ang) * CFG.BOOST * sdt; }
-      x += vx * sdt; y += vy * sdt; pts.push([x, y]);
-      for (const p of planets) { if (p.kind === 'start') continue; if (Math.hypot(p.x - x, p.y - y) < p.r + CFG.SHIP_R) return { pts, hit: p, boosts }; }
-      if (Math.hypot(x - start.x, y - start.y) > 4200) break;
-    }
-    return { pts, hit: null, boosts };
-  }
-
-  function spawn(lv, attempt = 0) {
+  function spawn(lv) {
     planets = [];
-    start = { x: 0, y: 0, r: 46, kind: 'start', color: '#34d399', spin: (0.55 + lv * 0.05) * (Math.random() < 0.5 ? 1 : -1) };
-    const dir = rand(0, TAU), D = CFG.SLING_DIST + (lv - 1) * CFG.DIST_PER_LEVEL + rand(-30, 50);
-    sling = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: rand(46, 58), kind: 'sling', big: true, color: '#c084fc' };
-    for (const p of [start, sling]) { p.gs = gsOf(p); p.rinf = rinfOf(p); }
-    planets.push(start, sling);
-    boundR = 6000;   // generous during generation; tightened to the route below
+    start = { x: 0, y: 0, r: 44, kind: 'start', color: '#34d399' };
+    const dir = rand(0, TAU), D = CFG.DIST0 + (lv - 1) * CFG.DIST_PER_LEVEL;
+    target = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: Math.max(28, 42 - lv * 0.4), kind: 'target', color: '#7dd3fc' };
+    const ux = Math.cos(dir), uy = Math.sin(dir), px = -uy, py = ux, side = Math.random() < 0.5 ? 1 : -1;
+    sling = { x: target.x * 0.5 + px * side * rand(120, 210), y: target.y * 0.5 + py * side * rand(120, 210),
+              r: rand(46, 60), kind: 'sling', big: true, color: '#c084fc' };
+    for (const p of [start, target, sling]) { p.gs = gsOf(p); p.rinf = rinfOf(p); }
+    planets.push(start, target, sling);
 
-    // aim the tangential launch into the sling; among launches whose balanced run
-    // survives and clears the planet, PREFER ones where a pure coast crashes (so boost
-    // is genuinely required), then the cleanest hold
-    let best = null, relaxed = null;
-    const aim = dir - (Math.PI / 2) * (start.spin >= 0 ? 1 : -1);
-    for (let k = -40; k <= 40; k++) {
-      const A = aim + k * 0.02;
-      const ap = autopilot(launchFor(A), 1700);
-      if (ap.hit) continue;
-      const end = ap.pts[ap.pts.length - 1], escaped = Math.hypot(end[0], end[1]) >= D * 1.3;
-      if (!relaxed || Math.hypot(end[0], end[1]) > relaxed.d) relaxed = { ap, A, d: Math.hypot(end[0], end[1]) };
-      if (!escaped || ap.boosts < 2 || ap.boosts > 18) continue;
-      const co = trajectory(launchFor(A), 1700);
-      const score = (co.hit ? 1000 : 0) - ap.boosts;
-      if (!best || score > best.score) best = { score, ap, A };
-    }
-    const chosen = best || relaxed;
-    if (!chosen) return (attempt < 30) ? spawn(lv, attempt + 1) : null;   // regenerate geometry
-    idealA = chosen.A;
-    const bestRc = chosen.ap;
-    const p0 = bestRc.pts[bestRc.pts.length - 1], p1 = bestRc.pts[Math.max(0, bestRc.pts.length - 9)];
-    target = { x: p0[0], y: p0[1], r: Math.max(28, 44 - lv * 0.4), kind: 'target', color: '#7dd3fc' };
-    target.gs = gsOf(target); target.rinf = rinfOf(target);
-    target.zoneA = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
-    target.zoneHalf = Math.max(0.55, (90 - lv * 3) * Math.PI / 180);
-    planets.push(target);
+    // landing zone faces the slingshot approach
+    target.zoneA = Math.atan2(sling.y - target.y, sling.x - target.x);
+    target.zoneHalf = Math.max(0.6, (95 - lv * 3) * Math.PI / 180);
 
-    // Dream path = the balanced run to the target (a pure coast still crashes, so you
-    // must actively hold this line through the slingshot)
-    dream = bestRc.pts;
+    // smooth suggested route: off the start → around the far side of the sling → into the zone
+    const s0 = Math.atan2(sling.y - start.y, sling.x - start.x);
+    const P0 = [start.x + Math.cos(s0) * (start.r + 26), start.y + Math.sin(s0) * (start.r + 26)];
+    const away = Math.atan2(sling.y - (start.y + target.y) / 2, sling.x - (start.x + target.x) / 2);
+    const P1 = [sling.x + Math.cos(away) * (sling.r + 150), sling.y + Math.sin(away) * (sling.r + 150)];
+    const P2 = [target.x + Math.cos(target.zoneA) * (target.r + 6), target.y + Math.sin(target.zoneA) * (target.r + 6)];
+    dream = [];
+    for (let i = 0; i <= 60; i++) { const t = i / 60, m = 1 - t;
+      dream.push([m*m*P0[0] + 2*m*t*P1[0] + t*t*P2[0], m*m*P0[1] + 2*m*t*P1[1] + t*t*P2[1]]); }
 
-    // Inert asteroid hazards (no gravity, so they never bend the path) kept off the route
+    // hazards off the route
     const nHaz = Math.max(0, lv - 1); let tries = 0;
     while (planets.length < nHaz + 3 && tries < 500) {
       tries++;
-      const dp = dream[Math.floor(rand(6, dream.length - 4))];
-      const hr = rand(20, 24 + Math.min(28, lv * 2)), off = rand(hr + 60, hr + 150), a = rand(0, TAU);
+      const dp = dream[Math.floor(rand(8, dream.length - 6))];
+      const hr = rand(20, 24 + Math.min(26, lv * 2)), off = rand(hr + 70, hr + 160), a = rand(0, TAU);
       const hx = dp[0] + Math.cos(a) * off, hy = dp[1] + Math.sin(a) * off;
-      if (dream.some(q => Math.hypot(q[0] - hx, q[1] - hy) < hr + 46)) continue;
-      if (planets.some(p => Math.hypot(p.x - hx, p.y - hy) < p.r + hr + 40)) continue;
+      if (dream.some(q => Math.hypot(q[0] - hx, q[1] - hy) < hr + 54)) continue;
+      if (planets.some(p => Math.hypot(p.x - hx, p.y - hy) < p.r + hr + 44)) continue;
       if (Math.hypot(hx - start.x, hy - start.y) < start.r + 120) continue;
       planets.push({ x: hx, y: hy, r: hr, kind: 'hazard', color: '#fb7185', gs: 0, rinf: 0 });
     }
-    // Bound generously beyond the whole route so nearing the far target never reads as "lost"
+
+    // ship parked just off the start, pointing along the route
+    ship = { x: P0[0], y: P0[1], vx: 0, vy: 0, angle: s0 };
+    fuel = CFG.FUEL_MAX;
+
     let ext = 0;
     for (const q of dream) ext = Math.max(ext, Math.hypot(q[0], q[1]));
     for (const p of planets) ext = Math.max(ext, Math.hypot(p.x, p.y) + p.r);
     boundR = ext + 1100;
   }
 
-  function putOnPad() {
-    padAngle = rand(0, TAU);
-    ship = { x: 0, y: 0, vx: 0, vy: 0, angle: padAngle };
-    fuel = CFG.FUEL_MAX;
-    ridePad(0);
-  }
-  function ridePad(dt) {
-    padAngle += start.spin * dt;
-    const R = start.r + CFG.SHIP_R + 5;
-    ship.x = start.x + Math.cos(padAngle) * R;
-    ship.y = start.y + Math.sin(padAngle) * R;
-    ship.angle = padAngle;              // facing outward
-  }
-  function launchState() { return launchFor(padAngle); }
-  function launch() {
-    const s = launchState();
-    ship.x = s.x; ship.y = s.y; ship.vx = s.vx; ship.vy = s.vy;
-    state = 'fly';
-  }
-
-  function newLevel(lv) { spawn(lv); putOnPad(); state = 'ready'; }
-  function newGame() {
-    level = 1; hops = 0; hudLevel.textContent = 1;
-    newLevel(1); overlay.classList.add('hidden');
-  }
+  function newLevel(lv) { spawn(lv); state = 'fly'; }
+  function newGame() { level = 1; hops = 0; hudLevel.textContent = 1; newLevel(1); overlay.classList.add('hidden'); }
   function die(reason) {
     state = 'dead';
     if (hops > best) { best = hops; hudBest.textContent = best; try { localStorage.setItem('ww-hopper-best', best); } catch {} }
@@ -354,35 +258,32 @@
   function gravityAt(x, y) {
     let ax = 0, ay = 0;
     for (const p of planets) {
+      if (p.rinf <= p.r) continue;
       const dx = p.x - x, dy = p.y - y, d = Math.hypot(dx, dy) || 1;
       if (d >= p.rinf) continue;
-      if (p.rinf <= p.r) continue;
       const fr = Math.max(0, (p.rinf - Math.max(d, p.r)) / (p.rinf - p.r));
       const a = p.gs * Math.pow(fr, CFG.EXP);
       ax += a * dx / d; ay += a * dy / d;
     }
     return [ax, ay];
   }
-  function nearestPlanet(x, y) {
-    let b = planets[0], bd = Infinity;
-    for (const p of planets) { const d = Math.hypot(p.x - x, p.y - y) - p.r; if (d < bd) { bd = d; b = p; } }
-    return b;
-  }
+  function pointerWorld() { return [(ptr.sx - W / 2) / cam.s + cam.x, (ptr.sy - H / 2) / cam.s + cam.y]; }
 
   function step(dt) {
-    for (const p of planets) if (p.orbitR != null) { p.phase += p.orbitSpd * dt; p.x = p.cx + Math.cos(p.phase) * p.orbitR; p.y = p.cy + Math.sin(p.phase) * p.orbitR; }
-
-    const nb = nearestPlanet(ship.x, ship.y);
-    const desired = Math.atan2(ship.y - nb.y, ship.x - nb.x);
-    let da = desired - ship.angle; da = Math.atan2(Math.sin(da), Math.cos(da));
-    ship.angle += da * Math.min(1, CFG.TURN * dt);
-
     const thrust = boosting && fuel > 0;
-    fuel = thrust ? Math.max(0, fuel - CFG.FUEL_DRAIN * dt) : Math.min(CFG.FUEL_MAX, fuel + CFG.FUEL_REGEN * dt);
+    if (thrust) {
+      const [wx, wy] = pointerWorld();
+      const a = Math.atan2(wy - ship.y, wx - ship.x);
+      ship.angle = a;
+      ship.vx += Math.cos(a) * CFG.BOOST * dt; ship.vy += Math.sin(a) * CFG.BOOST * dt;
+      fuel = Math.max(0, fuel - CFG.FUEL_DRAIN * dt);
+    } else {
+      fuel = Math.min(CFG.FUEL_MAX, fuel + CFG.FUEL_REGEN * dt);
+      if (ship.vx || ship.vy) ship.angle = Math.atan2(ship.vy, ship.vx);
+    }
 
     const [gx, gy] = gravityAt(ship.x, ship.y);
     ship.vx += gx * dt; ship.vy += gy * dt;
-    if (thrust) { ship.vx += Math.cos(ship.angle) * CFG.BOOST * dt; ship.vy += Math.sin(ship.angle) * CFG.BOOST * dt; }
     ship.x += ship.vx * dt; ship.y += ship.vy * dt;
 
     for (const p of planets) {
@@ -391,14 +292,11 @@
         if (d < p.r + CFG.SHIP_R) {
           let ad = Math.atan2(dy, dx) - p.zoneA; ad = Math.atan2(Math.sin(ad), Math.cos(ad));
           if (Math.abs(ad) < p.zoneHalf) { hop(); return true; }
-          bounce(p, dx, dy, d);                        // wrong side — bounce off, try again
+          bounce(p, dx, dy, d);
         }
-      } else if (p === start && state !== 'fly') {
-        // (on pad handled elsewhere)
-      } else if (d < p.r + CFG.SHIP_R) {
-        if (p === start) bounce(p, dx, dy, d);          // launch planet is not lethal
-        else { die('Crashed!'); return true; }
-      }
+      } else if (p === start) {
+        if (d < p.r + CFG.SHIP_R) bounce(p, dx, dy, d);   // start is a safe pad
+      } else if (d < p.r + CFG.SHIP_R) { die('Crashed!'); return true; }
     }
     if (Math.hypot(ship.x, ship.y) > boundR) { die('Lost in deep space'); return true; }
     return false;
@@ -407,110 +305,79 @@
     const nx = dx / (d || 1), ny = dy / (d || 1), min = p.r + CFG.SHIP_R;
     ship.x = p.x + nx * min; ship.y = p.y + ny * min;
     const vn = ship.vx * nx + ship.vy * ny;
-    ship.vx = (ship.vx - 2 * vn * nx) * 0.55; ship.vy = (ship.vy - 2 * vn * ny) * 0.55;
+    ship.vx = (ship.vx - 2 * vn * nx) * 0.5; ship.vy = (ship.vy - 2 * vn * ny) * 0.5;
   }
 
   function update(dt) {
-    if (state === 'ready') { ridePad(dt); return; }
     if (state !== 'fly') return;
     const sdt = dt / CFG.SUBSTEPS;
     for (let i = 0; i < CFG.SUBSTEPS; i++) if (step(sdt)) break;
     if (flashT > 0) flashT -= dt;
   }
 
-  function predict(st) { return trajectory(st, 220).pts; }
+  function predict() {
+    let x = ship.x, y = ship.y, vx = ship.vx, vy = ship.vy; const pts = [], sdt = CFG.PREDICT_DT;
+    for (let i = 0; i < 130; i++) {
+      const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt; x += vx * sdt; y += vy * sdt;
+      if (i % 2 === 0) pts.push([x, y]);
+      let hit = false;
+      for (const p of planets) if (p !== start && Math.hypot(p.x - x, p.y - y) < p.r) { hit = true; break; }
+      if (hit) break;
+    }
+    return pts;
+  }
 
-  // ── Camera — zoomed in, follows the ship and leads along its path ────────────
+  // ── Camera ──────────────────────────────────────────────────────────────────
   let cam = { x: 0, y: 0, s: 0.4 };
   function updateCamera() {
-    let tx, ty, s;
-    if (state === 'fly' && ship) {
-      tx = ship.x + ship.vx * 0.3; ty = ship.y + ship.vy * 0.3;   // lead along the path
-      s = Math.min(W, H) / CFG.ZOOM;                              // zoomed in
-    } else {
-      tx = (start.x + sling.x) / 2; ty = (start.y + sling.y) / 2; // frame the launch + slingshot
-      s = Math.min(W, H) * 0.42 / (Math.hypot(sling.x - start.x, sling.y - start.y) + 170);
-    }
-    cam.x += (tx - cam.x) * 0.12; cam.y += (ty - cam.y) * 0.12; cam.s += (s - cam.s) * 0.1;
+    const fx = ship ? ship.x : 0, fy = ship ? ship.y : 0;
+    const tx = fx + (ship ? ship.vx * 0.25 : 0), ty = fy + (ship ? ship.vy * 0.25 : 0);
+    const s = Math.min(W, H) / CFG.ZOOM;
+    cam.x += (tx - cam.x) * 0.1; cam.y += (ty - cam.y) * 0.1; cam.s += (s - cam.s) * 0.1;
   }
   function w2s(x, y) { return [(x - cam.x) * cam.s + W / 2, (y - cam.y) * cam.s + H / 2]; }
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  function drawPolyline(pts, close) {
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => { const [sx, sy] = w2s(x, y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
-    if (close) ctx.closePath();
-    ctx.stroke();
-  }
+  function drawPolyline(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => { const [sx, sy] = w2s(x, y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); }); ctx.stroke(); }
 
   function draw(t) {
     ctx.clearRect(0, 0, W, H);
-
-    // gravity halos
     for (const p of planets) {
       const [sx, sy] = w2s(p.x, p.y);
       const g = ctx.createRadialGradient(sx, sy, p.r * cam.s, sx, sy, p.rinf * cam.s);
       g.addColorStop(0, hexA(p.color, 0.16)); g.addColorStop(1, hexA(p.color, 0));
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, p.rinf * cam.s, 0, TAU); ctx.fill();
     }
-
-    // dream path
     if (dream.length) {
-      ctx.strokeStyle = 'rgba(163,230,53,0.55)'; ctx.lineWidth = 3; ctx.setLineDash([]);
-      ctx.shadowColor = 'rgba(163,230,53,0.7)'; ctx.shadowBlur = 10;
-      drawPolyline(dream); ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(163,230,53,0.5)'; ctx.lineWidth = 3; ctx.setLineDash([]);
+      ctx.shadowColor = 'rgba(163,230,53,0.6)'; ctx.shadowBlur = 10; drawPolyline(dream); ctx.shadowBlur = 0;
     }
-
-    // current / launch trajectory (dotted)
-    let pst = null;
-    if (state === 'fly') pst = { x: ship.x, y: ship.y, vx: ship.vx, vy: ship.vy };
-    else if (state === 'ready') pst = launchState();
-    if (pst) {
-      const pts = predict(pst);
-      ctx.strokeStyle = state === 'ready' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.45)';
-      ctx.lineWidth = 2; ctx.setLineDash([2, 7]); drawPolyline(pts); ctx.setLineDash([]);
+    if (state === 'fly') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.setLineDash([2, 7]); drawPolyline(predict()); ctx.setLineDash([]);
+      // aim line to finger while thrusting
+      if (boosting && fuel > 0) {
+        const [wx, wy] = pointerWorld(); const [a, b] = w2s(ship.x, ship.y), [c, d] = w2s(wx, wy);
+        ctx.strokeStyle = 'rgba(253,224,71,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]);
+        ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); ctx.setLineDash([]);
+      }
     }
-
-    // planets
     for (const p of planets) drawPlanet(p, t);
-
-    // ship
-    if (ship) drawShip(t);
-
+    if (ship) drawShip();
     if (flashT > 0) { ctx.fillStyle = `rgba(163,230,53,${flashT * 0.4})`; ctx.fillRect(0, 0, W, H); }
-
     fuelFill.style.width = (fuel / CFG.FUEL_MAX * 100) + '%';
-    fuelFill.classList.toggle('low', fuel < CFG.FUEL_MAX * 0.4);
+    fuelFill.classList.toggle('low', fuel < CFG.FUEL_MAX * 0.35);
   }
 
   function drawPlanet(p, t) {
     const [sx, sy] = w2s(p.x, p.y), r = p.r * cam.s;
-    // body with soft rim light
     const g = ctx.createRadialGradient(sx - r * 0.35, sy - r * 0.4, r * 0.15, sx, sy, r);
     g.addColorStop(0, lighten(p.color, 0.35)); g.addColorStop(0.7, p.color); g.addColorStop(1, darken(p.color, 0.45));
     ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fillStyle = g; ctx.fill();
-    // whimsical little spots
     ctx.fillStyle = hexA(darken(p.color, 0.25), 0.5);
-    for (let i = 0; i < 3; i++) {
-      const a = i * 2.1 + p.x * 0.03, rr = r * (0.16 + 0.07 * i), dd = r * 0.5;
-      ctx.beginPath(); ctx.arc(sx + Math.cos(a) * dd, sy + Math.sin(a) * dd, rr, 0, TAU); ctx.fill();
-    }
-    if (p === start) {
-      // rotating launch ring
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(sx, sy, r + 5, padAngle, padAngle + 0.9); ctx.stroke();
-      // ideal-release marker (line up the ship with this, then let go)
-      if (state === 'ready') {
-        const mx = sx + Math.cos(idealA) * (r + 16), my = sy + Math.sin(idealA) * (r + 16);
-        ctx.fillStyle = '#a3e635'; ctx.beginPath(); ctx.arc(mx, my, 4.5, 0, TAU); ctx.fill();
-      }
-    }
-    if (p === sling) {
-      ctx.strokeStyle = hexA('#e9d5ff', 0.6); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(sx, sy, r * 1.5, r * 0.5, t / 1400, 0, TAU); ctx.stroke();
-    }
+    for (let i = 0; i < 3; i++) { const a = i * 2.1 + p.x * 0.03, rr = r * (0.16 + 0.07 * i), dd = r * 0.5;
+      ctx.beginPath(); ctx.arc(sx + Math.cos(a) * dd, sy + Math.sin(a) * dd, rr, 0, TAU); ctx.fill(); }
+    if (p === sling) { ctx.strokeStyle = hexA('#e9d5ff', 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(sx, sy, r * 1.5, r * 0.5, t / 1400, 0, TAU); ctx.stroke(); }
     if (p === target) {
-      // pulsing glow + landing zone arc
       const pulse = 1 + Math.sin(t / 280) * 0.12;
       ctx.beginPath(); ctx.arc(sx, sy, r * 1.7 * pulse, 0, TAU); ctx.fillStyle = hexA(p.color, 0.14); ctx.fill();
       ctx.beginPath(); ctx.arc(sx, sy, r + 3, p.zoneA - p.zoneHalf, p.zoneA + p.zoneHalf);
@@ -519,35 +386,28 @@
     }
   }
 
-  function drawShip(t) {
+  function drawShip() {
     const [sx, sy] = w2s(ship.x, ship.y);
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(ship.angle);
     const R = Math.max(8, CFG.SHIP_R * cam.s * 1.15);
     if (boosting && fuel > 0 && state === 'fly') {
-      ctx.beginPath(); ctx.moveTo(-R, -R * 0.5);
-      ctx.lineTo(-R - R * (1.3 + Math.random() * 0.7), 0); ctx.lineTo(-R, R * 0.5); ctx.closePath();
-      const fg = ctx.createLinearGradient(-R, 0, -R * 2.6, 0);
-      fg.addColorStop(0, '#fde68a'); fg.addColorStop(1, 'rgba(249,115,22,0)');
+      ctx.beginPath(); ctx.moveTo(-R, -R * 0.5); ctx.lineTo(-R - R * (1.3 + Math.random() * 0.7), 0); ctx.lineTo(-R, R * 0.5); ctx.closePath();
+      const fg = ctx.createLinearGradient(-R, 0, -R * 2.6, 0); fg.addColorStop(0, '#fde68a'); fg.addColorStop(1, 'rgba(249,115,22,0)');
       ctx.fillStyle = fg; ctx.fill();
     }
-    // rounded rocket body
     ctx.beginPath(); ctx.moveTo(R * 1.35, 0);
     ctx.quadraticCurveTo(R * 0.4, -R * 0.95, -R * 0.7, -R * 0.7);
     ctx.quadraticCurveTo(-R * 1.1, 0, -R * 0.7, R * 0.7);
     ctx.quadraticCurveTo(R * 0.4, R * 0.95, R * 1.35, 0); ctx.closePath();
-    const bg = ctx.createLinearGradient(0, -R, 0, R);
-    bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#c7d2fe');
+    const bg = ctx.createLinearGradient(0, -R, 0, R); bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#c7d2fe');
     ctx.fillStyle = bg; ctx.fill();
-    // fins
     ctx.fillStyle = '#f472b6';
     ctx.beginPath(); ctx.moveTo(-R * 0.4, -R * 0.6); ctx.lineTo(-R * 1.05, -R * 1.05); ctx.lineTo(-R * 0.55, -R * 0.15); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-R * 0.4, R * 0.6); ctx.lineTo(-R * 1.05, R * 1.05); ctx.lineTo(-R * 0.55, R * 0.15); ctx.closePath(); ctx.fill();
-    // window
     ctx.beginPath(); ctx.arc(R * 0.35, 0, R * 0.34, 0, TAU); ctx.fillStyle = '#38bdf8'; ctx.fill();
     ctx.restore();
   }
 
-  // colour helpers
   function hx(c){ return parseInt(c.slice(1),16); }
   function lighten(c,f){ const n=hx(c),r=(n>>16&255),g=(n>>8&255),b=n&255; return `rgb(${r+(255-r)*f|0},${g+(255-g)*f|0},${b+(255-b)*f|0})`; }
   function darken(c,f){ const n=hx(c),r=(n>>16&255),g=(n>>8&255),b=n&255; return `rgb(${r*(1-f)|0},${g*(1-f)|0},${b*(1-f)|0})`; }
@@ -563,22 +423,16 @@
     requestAnimationFrame(loop);
   }
 
-  // ── Input ───────────────────────────────────────────────────────────────────
-  function press(e) {
-    if (state === 'ready') { launch(); boosting = true; }
-    else if (state === 'fly') { boosting = true; }
-    if (e) e.preventDefault();
-  }
-  function release() { boosting = false; }
-  stage.addEventListener('pointerdown', press);
-  window.addEventListener('pointerup', release);
-  stage.addEventListener('pointercancel', release);
-  window.addEventListener('keydown', e => { if (e.code === 'Space') { press(e); } });
-  window.addEventListener('keyup', e => { if (e.code === 'Space') release(); });
+  // ── Input — thrust toward the finger ────────────────────────────────────────
+  function setPtr(e) { const r = stage.getBoundingClientRect(); ptr.sx = e.clientX - r.left; ptr.sy = e.clientY - r.top; }
+  stage.addEventListener('pointerdown', e => { setPtr(e); if (state === 'fly') { boosting = true; e.preventDefault(); } });
+  stage.addEventListener('pointermove', e => { if (boosting) { setPtr(e); e.preventDefault(); } });
+  window.addEventListener('pointerup', () => { boosting = false; });
+  stage.addEventListener('pointercancel', () => { boosting = false; });
   document.getElementById('play-btn').addEventListener('click', newGame);
 
   // ── Boot ────────────────────────────────────────────────────────────────────
-  initGL(); resize(); spawn(1); putOnPad(); state = 'menu';
+  initGL(); resize(); spawn(1); state = 'menu'; cam = { x: start.x, y: start.y, s: 0.4 };
   requestAnimationFrame(loop);
   </script>
   <script src="/js/logo.js"></script>
