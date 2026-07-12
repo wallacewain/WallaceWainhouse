@@ -78,7 +78,7 @@
           <p><strong>Hold and drag</strong> anywhere &mdash; the rocket flies toward your finger. Let gravity swing you around the purple planet to save fuel, and coast into the blue landing zone. The dotted line shows where you'll drift if you let go.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">control build 9 &mdash; thrust to finger</div>
+        <div class="build">control build 10 &mdash; thrust to finger</div>
       </div>
       <div class="legend">
         <span>🟢 <b>Start</b></span>
@@ -95,9 +95,9 @@
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   const CFG = {
-    G: 100, INF: 12, EXP: 1.0, BOOST: 300, SHIP_R: 8,
-    FUEL_MAX: 100, FUEL_DRAIN: 22, FUEL_REGEN: 13,
-    DIST0: 620, DIST_PER_LEVEL: 70, SUBSTEPS: 4, ZOOM: 820, PREDICT_DT: 0.045,
+    G: 78, INF: 6, EXP: 1.0, BOOST: 300, SHIP_R: 8,
+    FUEL_MAX: 100, FUEL_DRAIN: 20, FUEL_REGEN: 13,
+    DIST0: 560, DIST_PER_LEVEL: 70, SUBSTEPS: 4, ZOOM: 780, PREDICT_DT: 0.045,
   };
 
   const stage = document.getElementById('stage');
@@ -192,36 +192,42 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const TAU = Math.PI * 2;
 
-  function gsOf(p)  { return CFG.G * (p.kind === 'target' ? 1.6 : p.big ? 2.0 : 1); }
-  function rinfOf(p){ return p.r * CFG.INF * (p.big ? 1.4 : p.kind === 'target' ? 1.25 : 1); }
+  function gsOf(p)  { return CFG.G * (p.kind === 'target' ? 1.3 : p.big ? 1.7 : 1); }
+  function rinfOf(p){ return p.r * CFG.INF * (p.big ? 1.15 : p.kind === 'target' ? 1.25 : 1); }
 
   function spawn(lv) {
     planets = [];
     start = { x: 0, y: 0, r: 44, kind: 'start', color: '#34d399' };
     const dir = rand(0, TAU), D = CFG.DIST0 + (lv - 1) * CFG.DIST_PER_LEVEL;
-    target = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: Math.max(28, 42 - lv * 0.4), kind: 'target', color: '#7dd3fc' };
+    target = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: Math.max(30, 42 - lv * 0.4), kind: 'target', color: '#7dd3fc' };
     const ux = Math.cos(dir), uy = Math.sin(dir), px = -uy, py = ux, side = Math.random() < 0.5 ? 1 : -1;
-    sling = { x: target.x * 0.5 + px * side * rand(120, 210), y: target.y * 0.5 + py * side * rand(120, 210),
-              r: rand(46, 60), kind: 'sling', big: true, color: '#c084fc' };
-    for (const p of [start, target, sling]) { p.gs = gsOf(p); p.rinf = rinfOf(p); }
-    planets.push(start, target, sling);
+    start.gs = gsOf(start); start.rinf = rinfOf(start);
+    target.gs = gsOf(target); target.rinf = rinfOf(target);
+    planets.push(start, target);
 
-    // landing zone faces the slingshot approach
-    target.zoneA = Math.atan2(sling.y - target.y, sling.x - target.x);
-    target.zoneHalf = Math.max(0.6, (95 - lv * 3) * Math.PI / 180);
+    // a slingshot planet appears from level 2, off to one side as an optional assist
+    sling = null;
+    if (lv >= 2) {
+      const off = rand(230, 320);
+      sling = { x: target.x * 0.5 + px * side * off, y: target.y * 0.5 + py * side * off, r: rand(48, 60), kind: 'sling', big: true, color: '#c084fc' };
+      sling.gs = gsOf(sling); sling.rinf = rinfOf(sling);
+      planets.push(sling);
+    }
 
-    // smooth suggested route: off the start → around the far side of the sling → into the zone
-    const s0 = Math.atan2(sling.y - start.y, sling.x - start.x);
-    const P0 = [start.x + Math.cos(s0) * (start.r + 26), start.y + Math.sin(s0) * (start.r + 26)];
-    const away = Math.atan2(sling.y - (start.y + target.y) / 2, sling.x - (start.x + target.x) / 2);
-    const P1 = [sling.x + Math.cos(away) * (sling.r + 150), sling.y + Math.sin(away) * (sling.r + 150)];
-    const P2 = [target.x + Math.cos(target.zoneA) * (target.r + 6), target.y + Math.sin(target.zoneA) * (target.r + 6)];
+    // gentle route from start to target, bowing a little toward the sling (a nudge, not a dive)
+    const bow = sling ? side * 0.28 : (Math.random() < 0.5 ? 1 : -1) * 0.12;
+    const P0 = [start.x + ux * (start.r + 26), start.y + uy * (start.r + 26)];
+    const P1 = [target.x * 0.5 + px * bow * D, target.y * 0.5 + py * bow * D];
+    const approach = Math.atan2(P1[1] - target.y, P1[0] - target.x);   // land facing the way you arrive
+    target.zoneA = approach;
+    target.zoneHalf = Math.max(0.9, (160 - lv * 8) * Math.PI / 180);
+    const P2 = [target.x + Math.cos(approach) * (target.r + 6), target.y + Math.sin(approach) * (target.r + 6)];
     dream = [];
     for (let i = 0; i <= 60; i++) { const t = i / 60, m = 1 - t;
       dream.push([m*m*P0[0] + 2*m*t*P1[0] + t*t*P2[0], m*m*P0[1] + 2*m*t*P1[1] + t*t*P2[1]]); }
 
-    // hazards off the route
-    const nHaz = Math.max(0, lv - 1); let tries = 0;
+    // hazards off the route (from level 3)
+    const nHaz = Math.max(0, lv - 2); let tries = 0;
     while (planets.length < nHaz + 3 && tries < 500) {
       tries++;
       const dp = dream[Math.floor(rand(8, dream.length - 6))];
@@ -233,8 +239,8 @@
       planets.push({ x: hx, y: hy, r: hr, kind: 'hazard', color: '#fb7185', gs: 0, rinf: 0 });
     }
 
-    // ship parked just off the start, pointing along the route
-    ship = { x: P0[0], y: P0[1], vx: 0, vy: 0, angle: s0 };
+    // ship parked just off the start, pointing toward the target
+    ship = { x: P0[0], y: P0[1], vx: 0, vy: 0, angle: Math.atan2(target.y - P0[1], target.x - P0[0]) };
     fuel = CFG.FUEL_MAX;
 
     let ext = 0;
