@@ -94,10 +94,10 @@
 
   // ── Tunables ────────────────────────────────────────────────────────────────
   const CFG = {
-    SG: 80, INF: 12, EXP: 1.0, BOOST: 240, SHIP_R: 8, TURN: 16,
-    FUEL_MAX: 70, FUEL_DRAIN: 30, FUEL_REGEN: 16,
-    SLING_DIST: 490, DIST_PER_LEVEL: 20, SUBSTEPS: 4,
-    LAUNCH_SPEED: 265, ZOOM: 880, PREDICT_DT: 0.04,
+    SG: 110, INF: 12, EXP: 1.0, BOOST: 250, SHIP_R: 8, TURN: 16,
+    FUEL_MAX: 80, FUEL_DRAIN: 26, FUEL_REGEN: 15,
+    SLING_DIST: 470, DIST_PER_LEVEL: 18, SUBSTEPS: 4,
+    LAUNCH_SPEED: 310, ZOOM: 900, PREDICT_DT: 0.04,
   };
 
   const stage = document.getElementById('stage');
@@ -229,27 +229,61 @@
     return { pts, hit: null, turn, near };
   }
 
-  function spawn(lv) {
+  // Short look-ahead coast — is a crash imminent? (drives the balance autopilot)
+  function willHit(x, y, vx, vy) {
+    let X = x, Y = y, VX = vx, VY = vy; const sdt = 0.03;
+    for (let i = 0; i < 16; i++) {
+      const [gx, gy] = gravityAt(X, Y); VX += gx * sdt; VY += gy * sdt; X += VX * sdt; Y += VY * sdt;
+      for (const p of planets) { if (p.kind === 'start') continue; if (Math.hypot(p.x - X, p.y - Y) < p.r + CFG.SHIP_R + 7) return true; }
+    }
+    return false;
+  }
+
+  // The dream path: a *balanced* run — boost away from the nearest world only when
+  // about to fall in. This is what the player has to actively hold; a pure coast crashes.
+  function autopilot(ls, steps) {
+    let { x, y, vx, vy } = ls; const pts = [[x, y]], sdt = 0.03; let boosts = 0;
+    for (let i = 0; i < steps; i++) {
+      const b = willHit(x, y, vx, vy); if (b) boosts++;
+      const nb = nearestPlanet(x, y), ang = Math.atan2(y - nb.y, x - nb.x);
+      const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt;
+      if (b) { vx += Math.cos(ang) * CFG.BOOST * sdt; vy += Math.sin(ang) * CFG.BOOST * sdt; }
+      x += vx * sdt; y += vy * sdt; pts.push([x, y]);
+      for (const p of planets) { if (p.kind === 'start') continue; if (Math.hypot(p.x - x, p.y - y) < p.r + CFG.SHIP_R) return { pts, hit: p, boosts }; }
+      if (Math.hypot(x - start.x, y - start.y) > 4200) break;
+    }
+    return { pts, hit: null, boosts };
+  }
+
+  function spawn(lv, attempt = 0) {
     planets = [];
     start = { x: 0, y: 0, r: 46, kind: 'start', color: '#34d399', spin: (0.55 + lv * 0.05) * (Math.random() < 0.5 ? 1 : -1) };
-    const dir = rand(0, TAU), D = CFG.SLING_DIST + (lv - 1) * CFG.DIST_PER_LEVEL + rand(-40, 60);
-    sling = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: rand(44, 58), kind: 'sling', big: true, color: '#c084fc' };
+    const dir = rand(0, TAU), D = CFG.SLING_DIST + (lv - 1) * CFG.DIST_PER_LEVEL + rand(-30, 50);
+    sling = { x: Math.cos(dir) * D, y: Math.sin(dir) * D, r: rand(46, 58), kind: 'sling', big: true, color: '#c084fc' };
     for (const p of [start, sling]) { p.gs = gsOf(p); p.rinf = rinfOf(p); }
     planets.push(start, sling);
+    boundR = 6000;   // generous during generation; tightened to the route below
 
-    // aim the tangential launch at the sling, search for a clean ~1.4 rad slingshot pass
-    let best = -1e9, bestRc = null;
+    // aim the tangential launch into the sling; among launches whose balanced run
+    // survives and clears the planet, PREFER ones where a pure coast crashes (so boost
+    // is genuinely required), then the cleanest hold
+    let best = null, relaxed = null;
     const aim = dir - (Math.PI / 2) * (start.spin >= 0 ? 1 : -1);
-    for (let k = -10; k <= 10; k++) {
-      const A = aim + k * 0.045;
-      const rc = trajectory(launchFor(A), 1400);
-      if (rc.hit || rc.near < 8 || rc.near > 150) continue;
-      const end = rc.pts[rc.pts.length - 1];
-      const score = Math.hypot(end[0], end[1]) - Math.abs(rc.turn - 1.4) * 200;
-      if (score > best) { best = score; bestRc = rc; idealA = A; }
+    for (let k = -40; k <= 40; k++) {
+      const A = aim + k * 0.02;
+      const ap = autopilot(launchFor(A), 1700);
+      if (ap.hit) continue;
+      const end = ap.pts[ap.pts.length - 1], escaped = Math.hypot(end[0], end[1]) >= D * 1.3;
+      if (!relaxed || Math.hypot(end[0], end[1]) > relaxed.d) relaxed = { ap, A, d: Math.hypot(end[0], end[1]) };
+      if (!escaped || ap.boosts < 2 || ap.boosts > 18) continue;
+      const co = trajectory(launchFor(A), 1700);
+      const score = (co.hit ? 1000 : 0) - ap.boosts;
+      if (!best || score > best.score) best = { score, ap, A };
     }
-    if (!bestRc) return spawn(lv);   // unlucky geometry — regenerate
-
+    const chosen = best || relaxed;
+    if (!chosen) return (attempt < 30) ? spawn(lv, attempt + 1) : null;   // regenerate geometry
+    idealA = chosen.A;
+    const bestRc = chosen.ap;
     const p0 = bestRc.pts[bestRc.pts.length - 1], p1 = bestRc.pts[Math.max(0, bestRc.pts.length - 9)];
     target = { x: p0[0], y: p0[1], r: Math.max(28, 44 - lv * 0.4), kind: 'target', color: '#7dd3fc' };
     target.gs = gsOf(target); target.rinf = rinfOf(target);
@@ -257,8 +291,9 @@
     target.zoneHalf = Math.max(0.55, (90 - lv * 3) * Math.PI / 180);
     planets.push(target);
 
-    // Dream path is the real coast, now including the target's pull — fully trustworthy
-    dream = trajectory(launchFor(idealA), 1700).pts;
+    // Dream path = the balanced run to the target (a pure coast still crashes, so you
+    // must actively hold this line through the slingshot)
+    dream = bestRc.pts;
 
     // Inert asteroid hazards (no gravity, so they never bend the path) kept off the route
     const nHaz = Math.max(0, lv - 1); let tries = 0;
@@ -272,7 +307,11 @@
       if (Math.hypot(hx - start.x, hy - start.y) < start.r + 120) continue;
       planets.push({ x: hx, y: hy, r: hr, kind: 'hazard', color: '#fb7185', gs: 0, rinf: 0 });
     }
-    boundR = D * 2.4 + 1400;
+    // Bound generously beyond the whole route so nearing the far target never reads as "lost"
+    let ext = 0;
+    for (const q of dream) ext = Math.max(ext, Math.hypot(q[0], q[1]));
+    for (const p of planets) ext = Math.max(ext, Math.hypot(p.x, p.y) + p.r);
+    boundR = ext + 1100;
   }
 
   function putOnPad() {
