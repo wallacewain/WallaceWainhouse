@@ -61,7 +61,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. <strong>Slingshot</strong> around a planet to pick up speed for free instead of burning it. Arrive with enough fuel in reserve (the <strong>⛽ mark</strong> on the gauge) and it <strong>auto-lands</strong> softly &mdash; too little and it's a crash.</p>
+      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. The purple planet <strong>moves</strong> (arrow shows which way); pass <strong>behind its motion</strong> to steal speed for free &mdash; a real slingshot. Reach the zone with fuel past the <strong>⛽ mark</strong> and it <strong>auto-lands</strong>; too little and it crashes.</p>
     </section>
 
     <div class="game-wrap">
@@ -80,7 +80,7 @@
           <p><strong>Hold and drag</strong> &mdash; the rocket flies toward your finger and burns fuel doing it. Swing past a planet to gain speed for free, then let go and coast. Reach the blue zone with fuel past the <strong>⛽ mark</strong> and it auto-lands; below it, you crash. The dotted line is your drift.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">build 11 &mdash; fuel &amp; auto-land</div>
+        <div class="build">build 12 &mdash; moving slingshot</div>
       </div>
       <div class="legend">
         <span>🟢 <b>Start</b></span>
@@ -213,13 +213,18 @@
     sling = null;
     if (lv >= 2) {
       const off = rand(230, 320);
-      sling = { x: target.x * 0.5 + px * side * off, y: target.y * 0.5 + py * side * off, r: rand(48, 60), kind: 'sling', big: true, color: '#c084fc' };
+      const cx = target.x * 0.5 + px * side * off, cy = target.y * 0.5 + py * side * off;
+      // the slingshot planet MOVES — that's what lets it accelerate you (real gravity assist)
+      sling = { cx, cy, r: rand(48, 60), kind: 'sling', big: true, color: '#c084fc',
+                orbitR: rand(100, 160), orbitSpeed: rand(0.55, 0.85) * (Math.random() < 0.5 ? 1 : -1), phase: rand(0, TAU) };
+      sling.x = cx + Math.cos(sling.phase) * sling.orbitR;
+      sling.y = cy + Math.sin(sling.phase) * sling.orbitR;
       sling.gs = gsOf(sling); sling.rinf = rinfOf(sling);
       planets.push(sling);
     }
 
     // gentle route from start to target, bowing a little toward the sling (a nudge, not a dive)
-    const bow = sling ? side * 0.28 : (Math.random() < 0.5 ? 1 : -1) * 0.12;
+    const bow = (Math.random() < 0.5 ? 1 : -1) * 0.12;   // loose heading only; the moving planet is improvised
     const P0 = [start.x + ux * (start.r + 26), start.y + uy * (start.r + 26)];
     const P1 = [target.x * 0.5 + px * bow * D, target.y * 0.5 + py * bow * D];
     const approach = Math.atan2(P1[1] - target.y, P1[0] - target.x);   // land facing the way you arrive
@@ -279,7 +284,16 @@
   }
   function pointerWorld() { return [(ptr.sx - W / 2) / cam.s + cam.x, (ptr.sy - H / 2) / cam.s + cam.y]; }
 
+  function advanceOrbits(dt) {
+    for (const p of planets) if (p.orbitR != null) {
+      p.phase += p.orbitSpeed * dt;
+      p.x = p.cx + Math.cos(p.phase) * p.orbitR;
+      p.y = p.cy + Math.sin(p.phase) * p.orbitR;
+    }
+  }
+
   function step(dt) {
+    advanceOrbits(dt);
     ship.thrusting = false;
     const dtx = target.x - ship.x, dty = target.y - ship.y, dT = Math.hypot(dtx, dty);
 
@@ -344,14 +358,18 @@
   }
 
   function predict() {
+    // advance a saved copy of the orbiting bodies so the drift line accounts for their motion
+    const orb = planets.filter(p => p.orbitR != null).map(p => ({ p, x: p.x, y: p.y, ph: p.phase }));
     let x = ship.x, y = ship.y, vx = ship.vx, vy = ship.vy; const pts = [], sdt = CFG.PREDICT_DT;
     for (let i = 0; i < 130; i++) {
+      for (const o of orb) { o.p.phase += o.p.orbitSpeed * sdt; o.p.x = o.p.cx + Math.cos(o.p.phase) * o.p.orbitR; o.p.y = o.p.cy + Math.sin(o.p.phase) * o.p.orbitR; }
       const [gx, gy] = gravityAt(x, y); vx += gx * sdt; vy += gy * sdt; x += vx * sdt; y += vy * sdt;
       if (i % 2 === 0) pts.push([x, y]);
       let hit = false;
       for (const p of planets) if (p !== start && Math.hypot(p.x - x, p.y - y) < p.r) { hit = true; break; }
       if (hit) break;
     }
+    for (const o of orb) { o.p.x = o.x; o.p.y = o.y; o.p.phase = o.ph; }   // restore
     return pts;
   }
 
@@ -412,7 +430,17 @@
     ctx.fillStyle = hexA(darken(p.color, 0.25), 0.5);
     for (let i = 0; i < 3; i++) { const a = i * 2.1 + p.x * 0.03, rr = r * (0.16 + 0.07 * i), dd = r * 0.5;
       ctx.beginPath(); ctx.arc(sx + Math.cos(a) * dd, sy + Math.sin(a) * dd, rr, 0, TAU); ctx.fill(); }
-    if (p === sling) { ctx.strokeStyle = hexA('#e9d5ff', 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(sx, sy, r * 1.5, r * 0.5, t / 1400, 0, TAU); ctx.stroke(); }
+    if (p === sling) {
+      const [ccx, ccy] = w2s(p.cx, p.cy);
+      ctx.strokeStyle = hexA('#c084fc', 0.28); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(ccx, ccy, p.orbitR * cam.s, 0, TAU); ctx.stroke();      // orbit path
+      const va = p.phase + (p.orbitSpeed >= 0 ? Math.PI / 2 : -Math.PI / 2);            // motion direction
+      const hx = sx + Math.cos(va) * (r + 22), hy = sy + Math.sin(va) * (r + 22);
+      ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(sx + Math.cos(va) * r, sy + Math.sin(va) * r); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(va); ctx.fillStyle = '#e9d5ff';
+      ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
     if (p === target) {
       const pulse = 1 + Math.sin(t / 280) * 0.12;
       ctx.beginPath(); ctx.arc(sx, sy, r * 1.7 * pulse, 0, TAU); ctx.fillStyle = hexA(p.color, 0.14); ctx.fill();
