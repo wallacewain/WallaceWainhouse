@@ -61,7 +61,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Planet Hopper</h1>
-      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel. Planets <strong>stream past in lanes</strong> (arrows show their motion); swing <strong>behind a passing one</strong> to steal its speed for free &mdash; that's the fuel-saving slingshot the <strong>green line</strong> takes. Reach the zone with fuel past the <strong>⛽ mark</strong> and it auto-lands.</p>
+      <p>Hold and drag &mdash; your rocket thrusts <strong>toward your finger</strong>, burning fuel (and fuel ticks down over time, so hurry). A planet <strong>drifts along each lane</strong> (arrow shows its way); swing <strong>behind it</strong> to steal speed for free &mdash; that's the fuel-saving slingshot the <strong>green line</strong> takes. Reach the zone with fuel past the <strong>⛽ mark</strong> and it auto-lands.</p>
     </section>
 
     <div class="game-wrap">
@@ -80,7 +80,7 @@
           <p><strong>Hold and drag</strong> &mdash; the rocket flies toward your finger, burning fuel. Fuel also <strong>ticks down over time</strong>, so speed matters: swing <strong>behind</strong> a passing planet (the arrow shows its way) to gain speed for free and beat the clock. Follow the <strong>green route</strong>, then land with fuel above the <strong>⛽ mark</strong>. Dotted line = your live drift.</p>
           <button class="play-btn" id="play-btn">Play</button>
         </div>
-        <div class="build">build 19 &mdash; time pressure</div>
+        <div class="build">build 20 &mdash; one planet per lane</div>
       </div>
       <div class="legend">
         <span>🟢 <b>Start</b></span>
@@ -252,19 +252,15 @@
           } } }
       if (!best) return (attempt < 25) ? spawn(lv, attempt + 1) : null;
 
-      // build the "taxi rank": several planets on the same drift line, spaced, cycling
+      // one drifting slingshot planet, cycling along a marked lane (comes back around)
       const v = Math.hypot(best.pvx, best.pvy), ux = best.pvx / v, uy = best.pvy / v;
       const passX = best.sx0 + best.pvx * best.r.tPass, passY = best.sy0 + best.pvy * best.r.tPass;
-      const spacing = best.pl0.rinf * 2.3, M = CFG.RANK_N, laneLen = spacing * M;
+      const laneLen = 1700;
       const lane = { cx: passX, cy: passY, ux, uy, laneLen, color: '#c084fc' };
       ranks.push(lane);
-      for (let m = -Math.floor(M / 2); m <= Math.floor(M / 2); m++) {
-        const bx = best.sx0 + ux * spacing * m, by = best.sy0 + uy * spacing * m, primary = m === 0;
-        const p = { x: bx, y: by, vx: best.pvx, vy: best.pvy, r: best.pl0.r, kind: 'sling', big: true, color: '#c084fc',
-                    lane, primary, ghost: !primary };
-        if (primary) { p.gs = gsOf(p); p.rinf = rinfOf(p); } else { p.gs = 0; p.rinf = 0; }  // only the active one pulls/collides
-        planets.push(p);
-      }
+      const p = { x: best.sx0, y: best.sy0, vx: best.pvx, vy: best.pvy, r: best.pl0.r, kind: 'sling', big: true, color: '#c084fc', lane };
+      p.gs = gsOf(p); p.rinf = rinfOf(p);
+      planets.push(p);
       for (const p of best.r.path) path.push(p);
       state = best.r.end; T += best.r.dur;
       if (k === 0) launchThr = best.thr;
