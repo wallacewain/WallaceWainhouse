@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Arrange photos and images onto A4, A3, Letter and other print sizes right in your browser. Auto-arranges to a tidy grid, then drag, resize and rotate each one. Print or save as PDF or PNG. Nothing is uploaded.">
+  <title>Print Layout &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/print-layout/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/print-layout/">
+  <meta property="og:title" content="Print Layout &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Place images onto A4, A3, Letter and more. Auto-arranges, then fully adjustable. Print, PDF or PNG — nothing leaves your device.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Print Layout &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Place images onto A4, A3, Letter and more. Auto-arranges, then fully adjustable. Print, PDF or PNG — nothing leaves your device.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    .pl-layout { display: grid; grid-template-columns: 300px 1fr; gap: 1.75rem; padding: 1.5rem 0 4rem; align-items: start; }
+    @media (max-width: 860px) { .pl-layout { grid-template-columns: 1fr; } }
+
+    .pl-sidebar { display: flex; flex-direction: column; gap: 1.1rem; }
+    .pl-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .pl-group > label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+    .pl-row { display: flex; gap: 0.5rem; }
+    .pl-row > * { flex: 1; min-width: 0; }
+    select, input[type="number"], input[type="text"] {
+      width: 100%; padding: 0.5rem 0.6rem; background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font); font-size: 0.9rem;
+    }
+    input[type="color"] { height: 38px; padding: 2px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); cursor: pointer; width: 100%; }
+    .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { flex: 1; padding: 0.5rem; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 500; }
+    .seg button.active { background: var(--accent); color: #fff; }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; user-select: none; color: var(--muted); }
+    .range-row { display: flex; align-items: center; gap: 0.6rem; }
+    .range-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .range-row .val { font-size: 0.82rem; color: var(--muted); min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+
+    .btn-block { width: 100%; justify-content: center; text-align: center; cursor: pointer; border: none; }
+    .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 0.6rem 1rem; border-radius: var(--radius); font-family: var(--font); font-weight: 600; font-size: 0.9rem; cursor: pointer; width: 100%; }
+    .btn-ghost:hover { border-color: var(--accent); }
+    .pl-hint { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+    /* Canvas / stage */
+    .pl-stage { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+    .pl-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .pl-toolbar .spacer { flex: 1; }
+    .pl-toolbar button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.45rem 0.75rem; font-family: var(--font); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; }
+    .pl-toolbar button:hover:not(:disabled) { border-color: var(--accent); }
+    .pl-toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pl-toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pl-toolbar button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    #viewport { background: repeating-conic-gradient(#1c1c20 0% 25%, #161619 0% 50%) 50% / 22px 22px; border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; display: flex; align-items: center; justify-content: center; padding: 24px; min-height: 60vh; }
+    #sheet-wrap { position: relative; flex: 0 0 auto; }
+    #sheet {
+      position: absolute; top: 0; left: 0; transform-origin: top left;
+      background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    .pl-item { position: absolute; box-sizing: border-box; cursor: grab; }
+    .pl-item img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; -webkit-user-drag: none; }
+    .pl-item.selected { outline: calc(2px * var(--inv, 1)) solid var(--accent); outline-offset: 0; }
+    .pl-item.dragging { cursor: grabbing; }
+    .pl-handle { position: absolute; width: calc(13px * var(--inv, 1)); height: calc(13px * var(--inv, 1)); background: #fff; border: calc(2px * var(--inv, 1)) solid var(--accent); border-radius: 50%; display: none; z-index: 5; }
+    .pl-item.selected .pl-handle { display: block; }
+    .pl-handle.nw { left: calc(-6px * var(--inv,1)); top: calc(-6px * var(--inv,1)); cursor: nwse-resize; }
+    .pl-handle.ne { right: calc(-6px * var(--inv,1)); top: calc(-6px * var(--inv,1)); cursor: nesw-resize; }
+    .pl-handle.sw { left: calc(-6px * var(--inv,1)); bottom: calc(-6px * var(--inv,1)); cursor: nesw-resize; }
+    .pl-handle.se { right: calc(-6px * var(--inv,1)); bottom: calc(-6px * var(--inv,1)); cursor: nwse-resize; }
+    .pl-lowres { position: absolute; top: calc(4px * var(--inv,1)); left: calc(4px * var(--inv,1)); background: #f59e0b; color: #1a1206; font-size: calc(10px * var(--inv,1)); font-weight: 700; padding: calc(2px * var(--inv,1)) calc(5px * var(--inv,1)); border-radius: calc(4px * var(--inv,1)); z-index: 4; pointer-events: none; }
+
+    .pl-empty { text-align: center; color: var(--muted); padding: 4rem 1rem; }
+    .pl-empty strong { color: var(--text); display: block; font-size: 1.05rem; margin-bottom: 0.35rem; }
+    #drop-hint { border: 2px dashed var(--border); border-radius: var(--radius); }
+    #viewport.drag-over { outline: 2px dashed var(--accent); outline-offset: -6px; }
+
+    .sel-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .sel-tools button { flex: 1; min-width: 70px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 0.45rem; font-family: var(--font); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .sel-tools button:hover { border-color: var(--accent); }
+    .sel-tools button.danger:hover { border-color: #f43f5e; color: #f43f5e; }
+
+    /* Print: only the sheet, at true physical size */
+    @media print {
+      body { background: #fff; }
+      header, footer, main > .hero, .pl-sidebar, .pl-toolbar, .pl-hint, .pl-legend { display: none !important; }
+      main, .container, .pl-layout, .pl-stage { display: block !important; padding: 0 !important; margin: 0 !important; max-width: none !important; }
+      #viewport { border: none !important; background: none !important; padding: 0 !important; overflow: visible !important; display: block !important; min-height: 0 !important; }
+      #sheet-wrap { width: auto !important; height: auto !important; }
+      #sheet { position: static !important; transform: none !important; box-shadow: none !important; --inv: 0 !important; }
+      .pl-handle, .pl-lowres { display: none !important; }
+      .pl-item.selected { outline: none !important; }
+    }
+
+    .pl-legend { font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; }
+    .pl-legend b { color: var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1rem">
+      <h1>Print Layout</h1>
+      <p>Drop in photos and images, pick a paper size, and they auto-arrange onto the sheet. Then <strong>drag, resize and rotate</strong> each one to taste and send it straight to your printer or save as a PDF or PNG. Everything happens in your browser &mdash; nothing is uploaded.</p>
+    </section>
+
+    <div class="pl-layout">
+      <aside class="pl-sidebar">
+        <button class="btn btn-block" id="add-btn">＋ Add images</button>
+        <input type="file" id="file-input" accept="image/*" multiple hidden>
+
+        <div class="pl-group">
+          <label>Paper size</label>
+          <select id="paper">
+            <option value="A3">A3 &mdash; 297 × 420 mm</option>
+            <option value="A4" selected>A4 &mdash; 210 × 297 mm</option>
+            <option value="A5">A5 &mdash; 148 × 210 mm</option>
+            <option value="A6">A6 &mdash; 105 × 148 mm</option>
+            <option value="Letter">US Letter &mdash; 8.5 × 11 in</option>
+            <option value="Legal">US Legal &mdash; 8.5 × 14 in</option>
+            <option value="Tabloid">Tabloid &mdash; 11 × 17 in</option>
+            <option value="6x4">Photo 6 × 4 in</option>
+            <option value="7x5">Photo 7 × 5 in</option>
+            <option value="Square">Square &mdash; 200 × 200 mm</option>
+            <option value="Custom">Custom…</option>
+          </select>
+        </div>
+
+        <div class="pl-group" id="custom-group" style="display:none">
+          <label>Custom size (mm)</label>
+          <div class="pl-row">
+            <input type="number" id="custom-w" value="210" min="10" max="2000" step="1" aria-label="Custom width mm">
+            <input type="number" id="custom-h" value="297" min="10" max="2000" step="1" aria-label="Custom height mm">
+          </div>
+        </div>
+
+        <div class="pl-group">
+          <label>Orientation</label>
+          <div class="seg" id="orient">
+            <button data-orient="portrait" class="active">Portrait</button>
+            <button data-orient="landscape">Landscape</button>
+          </div>
+        </div>
+
+        <div class="pl-group">
+          <label>Margin <span id="margin-val" style="color:var(--muted);font-weight:400">10 mm</span></label>
+          <div class="range-row"><input type="range" id="margin" min="0" max="40" value="10" step="1"></div>
+        </div>
+
+        <div class="pl-group">
+          <label>Spacing between images <span id="gap-val" style="color:var(--muted);font-weight:400">5 mm</span></label>
+          <div class="range-row"><input type="range" id="gap" min="0" max="30" value="5" step="1"></div>
+        </div>
+
+        <div class="pl-group">
+          <label>Auto-arrange columns</label>
+          <div class="pl-row">
+            <select id="cols">
+              <option value="auto" selected>Auto</option>
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option>
+            </select>
+            <button class="btn-ghost" id="arrange-btn" style="flex:0 0 auto;width:auto;padding:0.5rem 0.8rem">↺ Re-arrange</button>
+          </div>
+        </div>
+
+        <div class="pl-group">
+          <label>Sheet background</label>
+          <div class="pl-row" style="align-items:center">
+            <input type="color" id="bg-color" value="#ffffff" style="flex:0 0 46px">
+            <label class="check-row" style="flex:1"><input type="checkbox" id="bg-transparent"> Transparent</label>
+          </div>
+        </div>
+
+        <div class="pl-group" id="sel-group" style="display:none">
+          <label>Selected image</label>
+          <div class="sel-tools">
+            <button id="sel-rotate">↻ Rotate 90°</button>
+            <button id="sel-fill">Fill cell</button>
+            <button id="sel-center">Center</button>
+            <button id="sel-delete" class="danger">Delete</button>
+          </div>
+        </div>
+
+        <p class="pl-hint">Tip: click an image to select it, then drag to move or pull a corner to resize. Arrow keys nudge; <strong>Delete</strong> removes it. An <strong style="color:#f59e0b">amber badge</strong> means it's being printed larger than its resolution supports and may look soft.</p>
+      </aside>
+
+      <section class="pl-stage">
+        <div class="pl-toolbar">
+          <button id="print-btn" class="primary" disabled>🖨 Print / Save PDF</button>
+          <button id="png-btn" disabled>⭳ PNG</button>
+          <select id="dpi" style="width:auto" aria-label="Export resolution" disabled>
+            <option value="150">150 dpi</option>
+            <option value="300" selected>300 dpi</option>
+          </select>
+          <span class="spacer"></span>
+          <button id="clear-btn" disabled>Clear all</button>
+        </div>
+
+        <div id="viewport">
+          <div id="sheet-wrap">
+            <div id="sheet"></div>
+          </div>
+          <div class="pl-empty" id="empty-state">
+            <div id="drop-hint" style="padding:3.5rem 2rem">
+              <strong>Drop images here</strong>
+              or use “Add images”. They’ll auto-arrange onto the sheet.
+            </div>
+          </div>
+        </div>
+
+        <div class="pl-legend">
+          <span>Drag to <b>move</b></span>
+          <span>Corner to <b>resize</b></span>
+          <span><b>Rotate</b> for portrait/landscape mix</span>
+          <span>Print at <b>true size</b> (A4/A3/Letter…)</span>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+
+  <script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // ── Paper definitions in mm (portrait base: [width, height]) ────────────────
+  const PAPERS = {
+    A3: [297, 420], A4: [210, 297], A5: [148, 210], A6: [105, 148],
+    Letter: [215.9, 279.4], Legal: [215.9, 355.6], Tabloid: [279.4, 431.8],
+    '6x4': [101.6, 152.4], '7x5': [127, 177.8], Square: [200, 200],
+  };
+  const PX_PER_MM = 96 / 25.4; // CSS reference pixels per millimetre
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  const state = {
+    paper: 'A4', orient: 'portrait', customW: 210, customH: 297,
+    margin: 10, gap: 5, cols: 'auto', bg: '#ffffff', transparent: false,
+    items: [], selected: null, scale: 1,
+  };
+  let idSeq = 1;
+
+  // ── Elements ──────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const sheet = $('sheet'), sheetWrap = $('sheet-wrap'), viewport = $('viewport');
+  const emptyState = $('empty-state');
+
+  function pageDims() {
+    let w, h;
+    if (state.paper === 'Custom') { w = state.customW; h = state.customH; }
+    else { [w, h] = PAPERS[state.paper]; }
+    if (state.orient === 'landscape') return [Math.max(w, h), Math.min(w, h)];
+    return [Math.min(w, h), Math.max(w, h)];
+  }
+
+  // ── Rotation: bake into a new upright raster so print/export stay uniform ──
+  function rotatedImage(srcImg, deg) {
+    deg = ((deg % 360) + 360) % 360;
+    if (deg === 0) return Promise.resolve(srcImg);
+    const c = document.createElement('canvas');
+    const sw = srcImg.naturalWidth, sh = srcImg.naturalHeight;
+    if (deg === 90 || deg === 270) { c.width = sh; c.height = sw; }
+    else { c.width = sw; c.height = sh; }
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(deg * Math.PI / 180);
+    ctx.drawImage(srcImg, -sw / 2, -sh / 2);
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.src = c.toDataURL('image/png');
+    });
+  }
+
+  // ── Auto-arrange ─────────────────────────────────────────────────────────
+  function arrange() {
+    const [pw, ph] = pageDims();
+    const m = state.margin, g = state.gap;
+    const n = state.items.length;
+    if (!n) return;
+    const usableW = Math.max(1, pw - 2 * m);
+    const usableH = Math.max(1, ph - 2 * m);
+
+    let cols;
+    if (state.cols === 'auto') {
+      cols = Math.max(1, Math.min(n, Math.round(Math.sqrt(n * usableW / usableH))));
+    } else {
+      cols = Math.min(n, parseInt(state.cols, 10));
+    }
+    const rows = Math.ceil(n / cols);
+    const cellW = (usableW - (cols - 1) * g) / cols;
+    const cellH = (usableH - (rows - 1) * g) / rows;
+
+    state.items.forEach((it, i) => {
+      const r = Math.floor(i / cols), c = i % cols;
+      const cellX = m + c * (cellW + g);
+      const cellY = m + r * (cellH + g);
+      const aw = it.img.naturalWidth, ah = it.img.naturalHeight;
+      const s = Math.min(cellW / aw, cellH / ah);
+      it.w = aw * s; it.h = ah * s;
+      it.x = cellX + (cellW - it.w) / 2;
+      it.y = cellY + (cellH - it.h) / 2;
+    });
+    render();
+  }
+
+  // ── Fit the (scaled) sheet into the viewport ───────────────────────────────
+  function fitScale() {
+    const [pw, ph] = pageDims();
+    const basePxW = pw * PX_PER_MM, basePxH = ph * PX_PER_MM;
+    const availW = viewport.clientWidth - 48;
+    const availH = Math.max(320, window.innerHeight * 0.72) - 48;
+    const k = Math.min(availW / basePxW, availH / basePxH);
+    state.scale = k > 0 ? k : 1;
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render() {
+    const has = state.items.length > 0;
+    emptyState.style.display = has ? 'none' : 'block';
+    sheetWrap.style.display = has ? 'block' : 'none';
+    ['print-btn', 'png-btn', 'clear-btn', 'dpi'].forEach(id => $(id).disabled = !has);
+    if (!has) { $('sel-group').style.display = 'none'; return; }
+
+    const [pw, ph] = pageDims();
+    fitScale();
+    const k = state.scale;
+    const basePxW = pw * PX_PER_MM, basePxH = ph * PX_PER_MM;
+
+    sheet.style.width = pw + 'mm';
+    sheet.style.height = ph + 'mm';
+    sheet.style.transform = `scale(${k})`;
+    sheet.style.setProperty('--inv', 1 / k);
+    sheet.style.background = state.transparent ? 'transparent' : state.bg;
+    sheetWrap.style.width = basePxW * k + 'px';
+    sheetWrap.style.height = basePxH * k + 'px';
+
+    sheet.innerHTML = '';
+    state.items.forEach(it => {
+      const el = document.createElement('div');
+      el.className = 'pl-item' + (state.selected === it.id ? ' selected' : '');
+      el.style.left = it.x + 'mm';
+      el.style.top = it.y + 'mm';
+      el.style.width = it.w + 'mm';
+      el.style.height = it.h + 'mm';
+      el.dataset.id = it.id;
+
+      const img = document.createElement('img');
+      img.src = it.img.src;
+      el.appendChild(img);
+
+      // Low-resolution warning (printed larger than image supports)
+      const widthIn = it.w / 25.4;
+      const ppi = widthIn > 0 ? it.img.naturalWidth / widthIn : 999;
+      if (ppi < 150) {
+        const b = document.createElement('div');
+        b.className = 'pl-lowres';
+        b.textContent = Math.round(ppi) + ' dpi';
+        el.appendChild(b);
+      }
+
+      ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+        const h = document.createElement('div');
+        h.className = 'pl-handle ' + pos;
+        h.dataset.handle = pos;
+        el.appendChild(h);
+      });
+      sheet.appendChild(el);
+    });
+
+    $('sel-group').style.display = state.selected ? 'flex' : 'none';
+  }
+
+  // ── Pointer interaction (move + resize) ────────────────────────────────────
+  let gesture = null;
+  sheet.addEventListener('pointerdown', e => {
+    const itemEl = e.target.closest('.pl-item');
+    if (!itemEl) return;
+    const id = parseInt(itemEl.dataset.id, 10);
+    const it = state.items.find(x => x.id === id);
+    if (!it) return;
+    state.selected = id;
+    // bring to front
+    state.items = state.items.filter(x => x.id !== id).concat(it);
+
+    const handle = e.target.dataset.handle;
+    const mmPerPx = 1 / (PX_PER_MM * state.scale);
+    gesture = {
+      it, handle, mmPerPx,
+      startX: e.clientX, startY: e.clientY,
+      ox: it.x, oy: it.y, ow: it.w, oh: it.h,
+      aspect: it.w / it.h,
+    };
+    itemEl.setPointerCapture?.(e.pointerId);
+    render();
+    e.preventDefault();
+  });
+
+  window.addEventListener('pointermove', e => {
+    if (!gesture) return;
+    const { it, handle, mmPerPx } = gesture;
+    const dx = (e.clientX - gesture.startX) * mmPerPx;
+    const dy = (e.clientY - gesture.startY) * mmPerPx;
+    const [pw, ph] = pageDims();
+
+    if (!handle) {
+      it.x = Math.max(-it.w / 2, Math.min(pw - it.w / 2, gesture.ox + dx));
+      it.y = Math.max(-it.h / 2, Math.min(ph - it.h / 2, gesture.oy + dy));
+    } else {
+      const a = gesture.aspect;
+      let nw = gesture.ow, nh = gesture.oh, nx = gesture.ox, ny = gesture.oy;
+      const east = handle === 'ne' || handle === 'se';
+      const south = handle === 'sw' || handle === 'se';
+      // Drive by the larger delta, keep aspect ratio
+      let w = gesture.ow + (east ? dx : -dx);
+      let h = gesture.oh + (south ? dy : -dy);
+      if (w / a > h) nh = w / a, nw = w; else nw = h * a, nh = h;
+      nw = Math.max(8, nw); nh = Math.max(8, nh);
+      if (!east) nx = gesture.ox + (gesture.ow - nw);
+      if (!south) ny = gesture.oy + (gesture.oh - nh);
+      it.w = nw; it.h = nh; it.x = nx; it.y = ny;
+    }
+    render();
+  });
+
+  window.addEventListener('pointerup', () => { gesture = null; });
+
+  // Click empty sheet area / viewport to deselect
+  viewport.addEventListener('pointerdown', e => {
+    if (e.target === viewport || e.target === sheet || e.target === sheetWrap) {
+      state.selected = null; render();
+    }
+  });
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  window.addEventListener('keydown', e => {
+    if (!state.selected) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+    const it = state.items.find(x => x.id === state.selected);
+    if (!it) return;
+    const step = e.shiftKey ? 5 : 1;
+    if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { it.x -= step; render(); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { it.x += step; render(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { it.y -= step; render(); e.preventDefault(); }
+    else if (e.key === 'ArrowDown') { it.y += step; render(); e.preventDefault(); }
+  });
+
+  // ── Selected-image tools ───────────────────────────────────────────────────
+  function selItem() { return state.items.find(x => x.id === state.selected); }
+  function deleteSelected() {
+    if (!state.selected) return;
+    state.items = state.items.filter(x => x.id !== state.selected);
+    state.selected = null;
+    render();
+  }
+  $('sel-delete').addEventListener('click', deleteSelected);
+
+  $('sel-rotate').addEventListener('click', async () => {
+    const it = selItem(); if (!it) return;
+    it.rot = (it.rot + 90) % 360;
+    it.img = await rotatedImage(it.orig, it.rot);
+    // keep centre, swap aspect within current box
+    const cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+    const boxAspect = it.img.naturalWidth / it.img.naturalHeight;
+    const area = it.w * it.h;
+    it.w = Math.sqrt(area * boxAspect);
+    it.h = it.w / boxAspect;
+    it.x = cx - it.w / 2; it.y = cy - it.h / 2;
+    render();
+  });
+
+  $('sel-center').addEventListener('click', () => {
+    const it = selItem(); if (!it) return;
+    const [pw, ph] = pageDims();
+    it.x = (pw - it.w) / 2; it.y = (ph - it.h) / 2;
+    render();
+  });
+
+  $('sel-fill').addEventListener('click', () => {
+    const it = selItem(); if (!it) return;
+    // grow to fill its nearest sensible cell: the usable area / current column guess
+    const [pw, ph] = pageDims();
+    const m = state.margin;
+    const maxW = pw - 2 * m, maxH = ph - 2 * m;
+    const a = it.img.naturalWidth / it.img.naturalHeight;
+    let w = maxW, h = w / a;
+    if (h > maxH) { h = maxH; w = h * a; }
+    const cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+    it.w = w; it.h = h;
+    it.x = Math.max(m, Math.min(pw - m - w, cx - w / 2));
+    it.y = Math.max(m, Math.min(ph - m - h, cy - h / 2));
+    render();
+  });
+
+  // ── Loading images ─────────────────────────────────────────────────────────
+  function loadFiles(fileList) {
+    const files = [...fileList].filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    let pending = files.length;
+    files.forEach(file => {
+      const img = new Image();
+      img.onload = () => {
+        state.items.push({ id: idSeq++, orig: img, img, rot: 0, x: 0, y: 0, w: 0, h: 0 });
+        if (--pending === 0) arrange();
+      };
+      img.onerror = () => { if (--pending === 0) arrange(); };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  $('add-btn').addEventListener('click', () => $('file-input').click());
+  $('file-input').addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
+
+  // Drag & drop
+  ['dragenter', 'dragover'].forEach(ev => viewport.addEventListener(ev, e => {
+    e.preventDefault(); viewport.classList.add('drag-over');
+  }));
+  ['dragleave', 'drop'].forEach(ev => viewport.addEventListener(ev, e => {
+    e.preventDefault(); if (ev !== 'dragleave' || e.target === viewport) viewport.classList.remove('drag-over');
+  }));
+  viewport.addEventListener('drop', e => { if (e.dataTransfer?.files) loadFiles(e.dataTransfer.files); });
+
+  // ── Controls ────────────────────────────────────────────────────────────────
+  $('paper').addEventListener('change', e => {
+    state.paper = e.target.value;
+    $('custom-group').style.display = state.paper === 'Custom' ? 'flex' : 'none';
+    arrange();
+  });
+  $('custom-w').addEventListener('input', e => { state.customW = +e.target.value || 210; if (state.paper === 'Custom') arrange(); });
+  $('custom-h').addEventListener('input', e => { state.customH = +e.target.value || 297; if (state.paper === 'Custom') arrange(); });
+
+  document.querySelectorAll('#orient button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#orient button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.orient = b.dataset.orient;
+    arrange();
+  }));
+
+  $('margin').addEventListener('input', e => { state.margin = +e.target.value; $('margin-val').textContent = state.margin + ' mm'; arrange(); });
+  $('gap').addEventListener('input', e => { state.gap = +e.target.value; $('gap-val').textContent = state.gap + ' mm'; arrange(); });
+  $('cols').addEventListener('change', e => { state.cols = e.target.value; arrange(); });
+  $('arrange-btn').addEventListener('click', arrange);
+
+  $('bg-color').addEventListener('input', e => { state.bg = e.target.value; render(); });
+  $('bg-transparent').addEventListener('change', e => { state.transparent = e.target.checked; render(); });
+
+  $('clear-btn').addEventListener('click', () => {
+    if (state.items.length && !confirm('Remove all images from the sheet?')) return;
+    state.items = []; state.selected = null; render();
+  });
+
+  window.addEventListener('resize', () => { if (state.items.length) render(); });
+
+  // ── Print (true physical size via @page) ───────────────────────────────────
+  const printStyle = document.createElement('style');
+  document.head.appendChild(printStyle);
+  $('print-btn').addEventListener('click', () => {
+    const [pw, ph] = pageDims();
+    const prevSel = state.selected;
+    state.selected = null; render();
+    printStyle.textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
+    setTimeout(() => {
+      window.print();
+      state.selected = prevSel; render();
+    }, 60);
+  });
+
+  // ── PNG export at chosen DPI ────────────────────────────────────────────────
+  $('png-btn').addEventListener('click', () => {
+    const [pw, ph] = pageDims();
+    const dpi = parseInt($('dpi').value, 10);
+    const pxW = Math.round(pw / 25.4 * dpi);
+    const pxH = Math.round(ph / 25.4 * dpi);
+    const c = document.createElement('canvas');
+    c.width = pxW; c.height = pxH;
+    const ctx = c.getContext('2d');
+    if (!state.transparent) { ctx.fillStyle = state.bg; ctx.fillRect(0, 0, pxW, pxH); }
+    const mmToPx = dpi / 25.4;
+    state.items.forEach(it => {
+      const bx = it.x * mmToPx, by = it.y * mmToPx, bw = it.w * mmToPx, bh = it.h * mmToPx;
+      const aw = it.img.naturalWidth, ah = it.img.naturalHeight;
+      const s = Math.min(bw / aw, bh / ah); // object-fit: contain
+      const dw = aw * s, dh = ah * s;
+      ctx.drawImage(it.img, bx + (bw - dw) / 2, by + (bh - dh) / 2, dw, dh);
+    });
+    c.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `print-layout-${state.paper}-${dpi}dpi.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  });
+  </script>
+  <script src="/js/logo.js"></script>
+</body>
+</html>
