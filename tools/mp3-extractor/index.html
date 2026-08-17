@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Extract the audio from a video clip and save it as an MP3 — right in your browser. Optionally trim to a section and pick the bitrate. MP4, MOV, WebM, MKV supported. Nothing is uploaded.">
+  <title>MP3 Extractor &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/mp3-extractor/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/mp3-extractor/">
+  <meta property="og:title" content="MP3 Extractor &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Pull the audio out of any video as an MP3. Trim to a section, choose the bitrate, download. Runs entirely in your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MP3 Extractor &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Pull the audio out of any video as an MP3. Trim to a section, choose the bitrate, download. Runs entirely in your browser.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    .mp3-wrap { max-width: 760px; padding-bottom: 4rem; }
+
+    .drop {
+      border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface);
+      padding: 3.5rem 2rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent); background: #1b1b22; }
+    .drop .big { font-size: 1.1rem; color: var(--text); font-weight: 600; margin-bottom: 0.35rem; }
+    .drop .sub { color: var(--muted); font-size: 0.9rem; }
+    .drop .icon { font-size: 2.2rem; margin-bottom: 0.6rem; }
+
+    .panel { display: none; flex-direction: column; gap: 1.5rem; }
+    video { width: 100%; max-height: 340px; border-radius: var(--radius); border: 1px solid var(--border); background: #000; display: block; }
+
+    .ctl-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1.2rem; }
+    .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .ctl-head h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
+    .ctl-head .file-name { font-size: 0.82rem; color: var(--muted); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .field label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-bottom: 0.5rem; }
+    .trim-times { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; margin-bottom: 0.4rem; }
+    .trim-times b { color: var(--text); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-pair { display: flex; flex-direction: column; gap: 0.3rem; }
+
+    .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { flex: 1; padding: 0.5rem 0.4rem; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; }
+    .seg button.active { background: var(--accent); color: #fff; }
+
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row .field { flex: 1; min-width: 180px; }
+
+    .btn-lg { width: 100%; justify-content: center; text-align: center; font-size: 1rem; padding: 0.8rem 1rem; border: none; cursor: pointer; }
+    .btn-lg:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .status { display: none; flex-direction: column; gap: 0.5rem; }
+    .status.show { display: flex; }
+    .bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.2s; border-radius: 5px; }
+    .status-txt { font-size: 0.85rem; color: var(--muted); }
+    .status-txt.err { color: #f43f5e; }
+
+    .result { display: none; flex-direction: column; gap: 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; }
+    .result.show { display: flex; }
+    .result h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
+    .result audio { width: 100%; }
+    .result .meta { font-size: 0.85rem; color: var(--muted); }
+    .result .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 1.1rem; font-family: var(--font); font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .secondary:hover { border-color: var(--accent); }
+
+    .notes { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-top: 1.5rem; }
+    .notes a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1rem">
+      <h1>MP3 Extractor</h1>
+      <p>Pull the audio straight out of a video and save it as an <strong>MP3</strong>. Optionally trim to just the section you want and choose the bitrate. Works with MP4, MOV, WebM and MKV &mdash; and it all runs in your browser, so <strong>nothing is uploaded</strong>.</p>
+    </section>
+
+    <div class="mp3-wrap">
+      <div class="drop" id="drop">
+        <input type="file" id="file-input" accept="video/*" hidden>
+        <div class="icon">🎬 → 🎵</div>
+        <div class="big">Drop a video here</div>
+        <div class="sub">or click to choose one &mdash; MP4, MOV, WebM, MKV</div>
+      </div>
+
+      <div class="panel" id="panel">
+        <video id="vid" controls playsinline></video>
+
+        <div class="ctl-card">
+          <div class="ctl-head">
+            <h3>Extract audio</h3>
+            <span class="file-name" id="file-name"></span>
+          </div>
+
+          <div class="field">
+            <label>Trim (optional)</label>
+            <div class="trim-times">
+              <span>Start <b id="t-start">0:00</b></span>
+              <span id="t-dur">Whole clip</span>
+              <span>End <b id="t-end">0:00</b></span>
+            </div>
+            <div class="range-pair">
+              <input type="range" id="start" min="0" max="100" value="0" step="0.1">
+              <input type="range" id="end" min="0" max="100" value="100" step="0.1">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Bitrate</label>
+              <div class="seg" id="bitrate">
+                <button data-br="128">128k</button>
+                <button data-br="192" class="active">192k</button>
+                <button data-br="256">256k</button>
+                <button data-br="320">320k</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-lg" id="extract-btn">Extract MP3</button>
+
+          <div class="status" id="status">
+            <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+            <div class="status-txt" id="status-txt"></div>
+          </div>
+        </div>
+
+        <div class="result" id="result">
+          <h3>Your MP3</h3>
+          <audio id="out-audio" controls></audio>
+          <div class="meta" id="out-meta"></div>
+          <div class="actions">
+            <a class="btn" id="dl-btn" download>⭳ Download MP3</a>
+            <button class="secondary" id="reset-btn">Choose another video</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="notes">
+        The first extraction downloads the audio engine (~32&nbsp;MB) and then caches it, so later runs are quick.
+        Everything is processed locally — your video never leaves your device.
+        Need to cut the clip first or export a GIF? Try the <a href="/tools/video-trimmer/">Video Trimmer &amp; GIF Maker</a>.
+      </p>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+
+  <script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  const $ = id => document.getElementById(id);
+  const drop = $('drop'), fileInput = $('file-input'), panel = $('panel'), vid = $('vid');
+  const startEl = $('start'), endEl = $('end');
+  const statusBox = $('status'), barFill = $('bar-fill'), statusTxt = $('status-txt');
+  const result = $('result'), extractBtn = $('extract-btn');
+
+  let vidFile = null, vidUrl = null, duration = 0, bitrate = 192, outUrl = null;
+
+  function fmtTime(s) {
+    s = Math.max(0, s || 0);
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+  }
+
+  function setStatus(msg, frac, isErr) {
+    statusBox.classList.add('show');
+    statusTxt.textContent = msg;
+    statusTxt.classList.toggle('err', !!isErr);
+    if (frac != null) barFill.style.width = Math.round(frac * 100) + '%';
+  }
+
+  // ── Load a video ────────────────────────────────────────────────────────────
+  function loadVideo(file) {
+    if (!file || !file.type.startsWith('video/')) {
+      // some browsers report empty type for .mkv/.mov — accept by extension too
+      if (!/\.(mp4|mov|webm|mkv|m4v|avi|ogv|ts|3gp)$/i.test(file?.name || '')) return;
+    }
+    vidFile = file;
+    if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidUrl = URL.createObjectURL(file);
+    vid.src = vidUrl;
+    $('file-name').textContent = file.name;
+    result.classList.remove('show');
+    statusBox.classList.remove('show');
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+    panel.style.display = 'flex';
+    drop.style.display = 'none';
+  }
+
+  vid.addEventListener('loadedmetadata', () => {
+    duration = vid.duration || 0;
+    startEl.max = endEl.max = duration.toFixed(2);
+    startEl.value = 0;
+    endEl.value = duration.toFixed(2);
+    updateTrimLabels();
+  });
+
+  function updateTrimLabels() {
+    let a = parseFloat(startEl.value), b = parseFloat(endEl.value);
+    if (a > b) { [a, b] = [b, a]; }
+    $('t-start').textContent = fmtTime(a);
+    $('t-end').textContent = fmtTime(b);
+    const sel = b - a;
+    const whole = a <= 0.05 && b >= duration - 0.05;
+    $('t-dur').textContent = whole ? 'Whole clip' : (fmtTime(sel) + ' selected');
+  }
+
+  startEl.addEventListener('input', () => {
+    if (parseFloat(startEl.value) > parseFloat(endEl.value)) endEl.value = startEl.value;
+    updateTrimLabels();
+  });
+  endEl.addEventListener('input', () => {
+    if (parseFloat(endEl.value) < parseFloat(startEl.value)) startEl.value = endEl.value;
+    updateTrimLabels();
+  });
+
+  // Bitrate segmented control
+  document.querySelectorAll('#bitrate button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#bitrate button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    bitrate = parseInt(b.dataset.br, 10);
+  }));
+
+  // Drag & drop + click
+  drop.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadVideo(e.target.files[0]); });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) loadVideo(e.dataTransfer.files[0]); });
+
+  $('reset-btn').addEventListener('click', () => {
+    panel.style.display = 'none';
+    drop.style.display = 'block';
+    fileInput.value = '';
+  });
+
+  // ── ffmpeg.wasm loader (same-origin worker wrapping a CDN module worker) ────
+  let _ff = null, _ffLibsLoaded = false;
+  function injectScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function loadFFmpeg() {
+    if (_ff) return _ff;
+    if (!_ffLibsLoaded) {
+      await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+      _ffLibsLoaded = true;
+    }
+    if (!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg) throw new Error('audio engine did not initialise');
+    const { FFmpeg } = window.FFmpegWASM;
+    const ff = new FFmpeg();
+    ff.on('progress', ({ progress }) => {
+      if (progress > 0 && progress <= 1) setStatus('Encoding MP3…', 0.4 + progress * 0.55);
+    });
+    const esmBase  = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+    const workerBlob = URL.createObjectURL(new Blob([`import "${esmBase}/worker.js";`], { type: 'text/javascript' }));
+    await ff.load({
+      classWorkerURL: workerBlob,
+      coreURL:  `${coreBase}/ffmpeg-core.js`,
+      wasmURL:  `${coreBase}/ffmpeg-core.wasm`,
+    });
+    _ff = ff;
+    return ff;
+  }
+
+  // ── Extract ────────────────────────────────────────────────────────────────
+  async function extract() {
+    if (!vidFile) return;
+    let a = parseFloat(startEl.value), b = parseFloat(endEl.value);
+    if (a > b) [a, b] = [b, a];
+    const whole = a <= 0.05 && b >= duration - 0.05;
+    const sel = b - a;
+    if (!whole && sel <= 0.05) throw new Error('Selected section is too short');
+
+    extractBtn.disabled = true;
+    result.classList.remove('show');
+    setStatus('Loading audio engine… (first run downloads ~32 MB, then it is cached)', 0.1);
+
+    let ff;
+    try { ff = await loadFFmpeg(); }
+    catch (e) { throw new Error('Could not load the audio engine (' + e.message + ')'); }
+
+    const ext = (vidFile.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+    const inName = 'input.' + ext, outName = 'output.mp3';
+
+    setStatus('Reading video…', 0.25);
+    await ff.writeFile(inName, new Uint8Array(await vidFile.arrayBuffer()));
+
+    setStatus('Encoding MP3…', 0.4);
+    const args = [];
+    if (!whole) args.push('-ss', a.toFixed(3), '-t', sel.toFixed(3));
+    args.push('-i', inName, '-vn', '-c:a', 'libmp3lame', '-b:a', bitrate + 'k', outName);
+    await ff.exec(args);
+
+    let data;
+    try { data = await ff.readFile(outName); }
+    catch (e) { throw new Error('No audio could be extracted — the video may not have an audio track'); }
+    if (!data || data.length === 0) throw new Error('No audio could be extracted — the video may not have an audio track');
+
+    try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch (e) {}
+
+    const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    outUrl = URL.createObjectURL(blob);
+
+    $('out-audio').src = outUrl;
+    const base = vidFile.name.replace(/\.[^.]+$/, '') || 'audio';
+    const dl = $('dl-btn');
+    dl.href = outUrl; dl.download = base + '.mp3';
+    $('out-meta').textContent =
+      `${fmtTime(whole ? duration : sel)} · ${bitrate} kbps · ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+    result.classList.add('show');
+    setStatus('Done!', 1);
+  }
+
+  extractBtn.addEventListener('click', async () => {
+    try { await extract(); }
+    catch (e) { setStatus(e.message || String(e), null, true); }
+    finally { extractBtn.disabled = false; }
+  });
+  </script>
+  <script src="/js/logo.js"></script>
+</body>
+</html>
