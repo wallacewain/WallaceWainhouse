@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Remove the audio track from a video (mute it) without re-encoding — the video keeps its exact original quality. MP4, MOV, WebM, MKV. Runs in your browser, nothing is uploaded.">
+  <title>Remove Audio from Video &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/remove-audio/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/remove-audio/">
+  <meta property="og:title" content="Remove Audio from Video &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Strip the audio from a video losslessly — the picture keeps its original quality. Runs entirely in your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Remove Audio from Video &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Strip the audio from a video losslessly — the picture keeps its original quality. Runs entirely in your browser.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    .ra-wrap { max-width: 760px; padding-bottom: 4rem; }
+
+    .drop {
+      border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface);
+      padding: 3.5rem 2rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent); background: #1b1b22; }
+    .drop .big { font-size: 1.1rem; color: var(--text); font-weight: 600; margin-bottom: 0.35rem; }
+    .drop .sub { color: var(--muted); font-size: 0.9rem; }
+    .drop .icon { font-size: 2.2rem; margin-bottom: 0.6rem; }
+
+    .panel { display: none; flex-direction: column; gap: 1.5rem; }
+    video { width: 100%; max-height: 340px; border-radius: var(--radius); border: 1px solid var(--border); background: #000; display: block; }
+
+    .ctl-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1.1rem; }
+    .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .ctl-head h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
+    .ctl-head .file-name { font-size: 0.82rem; color: var(--muted); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .info-line { font-size: 0.85rem; color: var(--muted); }
+    .info-line b { color: var(--text); }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(99,102,241,0.16); color: var(--accent-hover); border: 1px solid rgba(99,102,241,0.35); }
+    .badge.muted { background: rgba(161,161,170,0.14); color: var(--muted); border-color: var(--border); }
+
+    .btn-lg { width: 100%; justify-content: center; text-align: center; font-size: 1rem; padding: 0.8rem 1rem; border: none; cursor: pointer; }
+    .btn-lg:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .status { display: none; flex-direction: column; gap: 0.5rem; }
+    .status.show { display: flex; }
+    .bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.2s; border-radius: 5px; }
+    .status-txt { font-size: 0.85rem; color: var(--muted); }
+    .status-txt.err { color: #f43f5e; }
+
+    .result { display: none; flex-direction: column; gap: 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.4rem; }
+    .result.show { display: flex; }
+    .result h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
+    .result .meta { font-size: 0.85rem; color: var(--muted); }
+    .result .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 1.1rem; font-family: var(--font); font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .secondary:hover { border-color: var(--accent); }
+
+    .notes { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-top: 1.5rem; }
+    .notes a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1rem">
+      <h1>Remove Audio from Video</h1>
+      <p>Mute a video by stripping out its audio track &mdash; <strong>without re-encoding</strong>, so the picture keeps its <strong>exact original quality</strong>. Works with MP4, MOV, WebM and MKV, and runs entirely in your browser, so <strong>nothing is uploaded</strong>.</p>
+    </section>
+
+    <div class="ra-wrap">
+      <div class="drop" id="drop">
+        <input type="file" id="file-input" accept="video/*" hidden>
+        <div class="icon">🎬 🔇</div>
+        <div class="big">Drop a video here</div>
+        <div class="sub">or click to choose one &mdash; MP4, MOV, WebM, MKV</div>
+      </div>
+
+      <div class="panel" id="panel">
+        <video id="vid" controls playsinline></video>
+
+        <div class="ctl-card">
+          <div class="ctl-head">
+            <h3>Remove audio</h3>
+            <span class="file-name" id="file-name"></span>
+          </div>
+          <div class="info-line" id="info-line"></div>
+          <button class="btn btn-lg" id="strip-btn">Remove audio &amp; keep quality</button>
+
+          <div class="status" id="status">
+            <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+            <div class="status-txt" id="status-txt"></div>
+          </div>
+        </div>
+
+        <div class="result" id="result">
+          <h3>Muted video</h3>
+          <video id="out-vid" controls playsinline></video>
+          <div class="meta" id="out-meta"></div>
+          <div class="actions">
+            <a class="btn" id="dl-btn" download>⭳ Download video</a>
+            <button class="secondary" id="reset-btn">Choose another video</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="notes">
+        The video stream is copied through untouched (no re-encoding), so this is lossless and fast &mdash; only the audio is dropped.
+        The first run downloads the processing engine (~32&nbsp;MB) and then caches it. Everything happens locally; your video never leaves your device.
+        Want the audio instead? Use the <a href="/tools/mp3-extractor/">MP3 Extractor</a>, or cut the clip with the <a href="/tools/video-trimmer/">Video Trimmer &amp; GIF Maker</a>.
+      </p>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+
+  <script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  const $ = id => document.getElementById(id);
+  const drop = $('drop'), fileInput = $('file-input'), panel = $('panel'), vid = $('vid');
+  const statusBox = $('status'), barFill = $('bar-fill'), statusTxt = $('status-txt');
+  const result = $('result'), stripBtn = $('strip-btn');
+
+  let vidFile = null, vidUrl = null, duration = 0, outUrl = null;
+
+  function fmtTime(s) {
+    s = Math.max(0, s || 0);
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+  }
+  function fmtSize(bytes) {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+  function setStatus(msg, frac, isErr) {
+    statusBox.classList.add('show');
+    statusTxt.textContent = msg;
+    statusTxt.classList.toggle('err', !!isErr);
+    if (frac != null) barFill.style.width = Math.round(frac * 100) + '%';
+  }
+
+  function loadVideo(file) {
+    if (!(file.type && file.type.startsWith('video/')) &&
+        !/\.(mp4|mov|webm|mkv|m4v|avi|ogv|ts|3gp)$/i.test(file.name || '')) return;
+    vidFile = file;
+    if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidUrl = URL.createObjectURL(file);
+    vid.src = vidUrl;
+    $('file-name').textContent = file.name;
+    result.classList.remove('show');
+    statusBox.classList.remove('show');
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+    panel.style.display = 'flex';
+    drop.style.display = 'none';
+  }
+
+  vid.addEventListener('loadedmetadata', () => {
+    duration = vid.duration || 0;
+    const hasAudio = detectAudio(vid);
+    $('info-line').innerHTML =
+      `<b>${fmtTime(duration)}</b> · ${fmtSize(vidFile.size)} · ` +
+      (hasAudio === false
+        ? `<span class="badge muted">no audio track detected</span>`
+        : `<span class="badge">audio present</span>`);
+    stripBtn.disabled = false;
+  });
+
+  // Best-effort audio detection (browser support varies; null = unknown)
+  function detectAudio(v) {
+    if (typeof v.mozHasAudio === 'boolean') return v.mozHasAudio;
+    if (v.audioTracks && typeof v.audioTracks.length === 'number') return v.audioTracks.length > 0;
+    if (typeof v.webkitAudioDecodedByteCount === 'number') return v.webkitAudioDecodedByteCount > 0;
+    return null;
+  }
+
+  drop.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadVideo(e.target.files[0]); });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) loadVideo(e.dataTransfer.files[0]); });
+
+  $('reset-btn').addEventListener('click', () => {
+    panel.style.display = 'none';
+    drop.style.display = 'block';
+    fileInput.value = '';
+  });
+
+  // ── ffmpeg.wasm loader (same-origin worker wrapping a CDN module worker) ────
+  let _ff = null, _ffLibsLoaded = false;
+  function injectScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function loadFFmpeg() {
+    if (_ff) return _ff;
+    if (!_ffLibsLoaded) {
+      await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+      _ffLibsLoaded = true;
+    }
+    if (!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg) throw new Error('processing engine did not initialise');
+    const { FFmpeg } = window.FFmpegWASM;
+    const ff = new FFmpeg();
+    ff.on('progress', ({ progress }) => {
+      if (progress > 0 && progress <= 1) setStatus('Removing audio…', 0.4 + progress * 0.55);
+    });
+    const esmBase  = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+    const workerBlob = URL.createObjectURL(new Blob([`import "${esmBase}/worker.js";`], { type: 'text/javascript' }));
+    await ff.load({
+      classWorkerURL: workerBlob,
+      coreURL:  `${coreBase}/ffmpeg-core.js`,
+      wasmURL:  `${coreBase}/ffmpeg-core.wasm`,
+    });
+    _ff = ff;
+    return ff;
+  }
+
+  async function strip() {
+    if (!vidFile) return;
+    stripBtn.disabled = true;
+    result.classList.remove('show');
+    setStatus('Loading engine… (first run downloads ~32 MB, then it is cached)', 0.1);
+
+    let ff;
+    try { ff = await loadFFmpeg(); }
+    catch (e) { throw new Error('Could not load the processing engine (' + e.message + ')'); }
+
+    const ext = (vidFile.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+    const inName = 'input.' + ext, outName = 'output.' + ext;
+
+    setStatus('Reading video…', 0.25);
+    await ff.writeFile(inName, new Uint8Array(await vidFile.arrayBuffer()));
+
+    setStatus('Removing audio…', 0.4);
+    // Copy every non-audio stream through untouched; -an drops audio. Lossless.
+    await ff.exec(['-i', inName, '-map', '0', '-map', '-0:a', '-c', 'copy', outName]);
+
+    let data;
+    try { data = await ff.readFile(outName); }
+    catch (e) { throw new Error('Could not process this video — try a different file or container'); }
+    if (!data || data.length === 0) throw new Error('Could not process this video — try a different file or container');
+
+    try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch (e) {}
+
+    const blob = new Blob([data.buffer], { type: vidFile.type || 'video/mp4' });
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    outUrl = URL.createObjectURL(blob);
+
+    $('out-vid').src = outUrl;
+    const base = vidFile.name.replace(/\.[^.]+$/, '') || 'video';
+    const dl = $('dl-btn');
+    dl.href = outUrl; dl.download = base + '-muted.' + ext;
+    $('out-meta').textContent = `${fmtTime(duration)} · ${fmtSize(blob.size)} · original quality (no re-encode)`;
+    result.classList.add('show');
+    setStatus('Done!', 1);
+  }
+
+  stripBtn.addEventListener('click', async () => {
+    try { await strip(); }
+    catch (e) { setStatus(e.message || String(e), null, true); }
+    finally { stripBtn.disabled = false; }
+  });
+  </script>
+  <script src="/js/logo.js"></script>
+</body>
+</html>
