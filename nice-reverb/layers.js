@@ -26,6 +26,8 @@ const RAD = Math.PI / 180;
 const BLOOM_THRESHOLD = DEBUG.has("bt") ? +DEBUG.get("bt") : 0.92;
 const BLOOM_STRENGTH = DEBUG.has("bs") ? +DEBUG.get("bs") : 0.5;
 const CAPTION_CORE = DEBUG.has("cc") ? +DEBUG.get("cc") : 0.8;
+// shimmer: glints on the rack that catch the light at their own angle (?glint=0 off)
+const GLINT = DEBUG.has("glint") ? +DEBUG.get("glint") : 1.0;
 const CAPTION_GLOW = DEBUG.has("cg") ? +DEBUG.get("cg") : 0.32;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
@@ -46,6 +48,7 @@ function program(vs, fs) {
   gl.bindAttribLocation(p, 0, "aPos");
   gl.bindAttribLocation(p, 1, "aZ");
   gl.bindAttribLocation(p, 2, "aUV");
+  gl.bindAttribLocation(p, 3, "aGlint");
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   const u = {};
@@ -237,6 +240,63 @@ void main() {
   vec4 t = texture(uTex, vUV);
   outColor = vec4(uColor * (t.r * uCore + t.g * uGlow), 1.0);
 }`;
+
+// Glints: a few thousand points on the faces of the racks, each catching the lamp
+// only when the camera passes its own angle, the way dust and brushing sparkle on
+// real metal. They show most against the dark and are drawn before the bloom, so
+// the brightest ones halo a little. Kept after a phone GPU made them by accident.
+const GLINT_VS = `#version 300 es
+uniform mat4 uViewProj;
+uniform vec2 uAngle;       // camera yaw, pitch in degrees
+uniform float uScale, uStrength;
+in vec3 aPos;
+in vec4 aGlint;            // preferred yaw, pitch, lobe width (deg), brightness
+out float vI;
+out vec2 vScreen;
+void main() {
+  vec2 d = (uAngle - aGlint.xy) / aGlint.z;
+  vI = aGlint.w * exp(-0.5 * dot(d, d)) * uStrength;
+  vec4 clip = uViewProj * vec4(aPos, 1.0);
+  gl_Position = vI < 0.004 ? vec4(0.0, 0.0, 2.0, 1.0) : clip;
+  vScreen = clip.xy / clip.w * 0.5 + 0.5;
+  gl_PointSize = (2.0 + 7.0 * min(vI, 1.2)) * uScale;
+}`;
+
+const GLINT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uScene;
+in float vI;
+in vec2 vScreen;
+out vec4 outColor;
+void main() {
+  vec2 p = gl_PointCoord * 2.0 - 1.0;
+  float r2 = dot(p, p);
+  if (r2 > 1.0) discard;
+  float shape = exp(-r2 * 5.0) + 0.6 * exp(-r2 * 40.0);
+  // brightest against the dark; faint where the lamp already lights the metal
+  vec3 bg = texture(uScene, vScreen).rgb;
+  float dark = 1.0 - smoothstep(0.04, 0.38, max(bg.r, max(bg.g, bg.b)));
+  outColor = vec4(vec3(1.0, 0.84, 0.62) * vI * shape * (0.3 + 0.7 * dark), 1.0);
+}`;
+
+function makeGlints(meta) {
+  // seeded, so the same glints come back on every load
+  let seed = 1234567;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const f = meta.framing, n = 5200;
+  const pos = new Float32Array(n * 3), g = new Float32Array(n * 4);
+  const rackY = f.near - meta.distance + 0.018;
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (rnd() * 2 - 1) * 0.84;
+    pos[i * 3 + 1] = rackY - 0.002 - rnd() * rnd() * 0.035;
+    pos[i * 3 + 2] = (rnd() * 2 - 1) * f.halfHeight;
+    g[i * 4] = (rnd() * 2 - 1) * (meta.viewYaw + 1);
+    g[i * 4 + 1] = (rnd() * 2 - 1) * (meta.viewPitch + 1);
+    g[i * 4 + 2] = 0.35 + rnd() * 0.9;
+    g[i * 4 + 3] = 0.25 + Math.pow(rnd(), 3) * 2.0;
+  }
+  return { pos, g, n };
+}
 
 // Where REVERB sits in the original logo artwork, in its pixels: the wordmark's
 // bounding box, each letter's left and right ink edge, and the cap line/baseline.
@@ -531,9 +591,22 @@ async function main() {
   const P = {
     mesh: program(MESH_VS, MESH_FS), tile: program(TILE_VS, MESH_FS),
     copy: program(QUAD_VS, COPY_FS), bright: program(QUAD_VS, BRIGHT_FS),
-    caption: program(CAPTION_VS, CAPTION_FS),
+    caption: program(CAPTION_VS, CAPTION_FS), glint: program(GLINT_VS, GLINT_FS),
     down: program(QUAD_VS, DOWN_FS), up: program(QUAD_VS, UP_FS), present: program(QUAD_VS, PRESENT_FS),
   };
+
+  const glints = makeGlints(meta);
+  const glintVAO = gl.createVertexArray();
+  gl.bindVertexArray(glintVAO);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, glints.pos, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, glints.g, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(3);
+  gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, 0);
+  const sceneCopy = { tex: null, fb: null, w: 0, h: 0 };
 
   let T = null;  // render targets, sized with the canvas
   function sizeTargets(w, h) {
@@ -605,7 +678,9 @@ async function main() {
       gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, 0);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
-      gl.depthFunc(gl.EQUAL);
+      // LEQUAL, not EQUAL: some phone GPUs compute the prepass depth a hair differently,
+      // and with EQUAL surfaces slip through and add their light twice
+      gl.depthFunc(gl.LEQUAL);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.uniform1i(p.u.uPrepass, 0);
@@ -614,6 +689,34 @@ async function main() {
     gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
+  }
+
+  function drawGlints(viewProj, fade) {
+    if (GLINT <= 0) return;
+    {
+      // the glint shader looks at the scene behind each glint, so it reads a copy
+      if (sceneCopy.w !== T.w || sceneCopy.h !== T.h) {
+        if (sceneCopy.tex) { gl.deleteTexture(sceneCopy.tex); gl.deleteFramebuffer(sceneCopy.fb); }
+        Object.assign(sceneCopy, target(T.w >> 2, T.h >> 2));
+      }
+      quad(P.copy, sceneCopy.fb, sceneCopy.w, sceneCopy.h);
+      bindTex(P.copy, "uTex", T.scene.tex, 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, T.scene.fb);
+      gl.viewport(0, 0, T.w, T.h);
+      gl.useProgram(P.glint.p);
+      gl.bindVertexArray(glintVAO);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      bindTex(P.glint, "uScene", sceneCopy.tex, 0);
+      gl.uniformMatrix4fv(P.glint.u.uViewProj, false, viewProj);
+      gl.uniform2f(P.glint.u.uAngle, state.yaw, state.pitch);
+      gl.uniform1f(P.glint.u.uScale, T.h / 900);
+      gl.uniform1f(P.glint.u.uStrength, GLINT * (PINNED ? 1 : Math.min(1, fade * 1.5)));
+      gl.drawArrays(gl.POINTS, 0, glints.n);
+      gl.disable(gl.BLEND);
+    }
+
   }
 
   function frame(now) {
@@ -648,7 +751,10 @@ async function main() {
     gl.viewport(0, 0, T.w, T.h);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    const fade = shownAt ? Math.min(1, (now - shownAt) / 1800) : 0;
     for (const layer of meta.layers) {
+      // glints sit on the racks, so the wordmark must cover them
+      if (layer.name === "logo") drawGlints(viewProj, fade);
       if (layer.opaque) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, T.scene.fb);
         drawLayer(layer, viewProj, state.yaw, state.pitch);
@@ -667,7 +773,6 @@ async function main() {
     }
 
     // the caption, as light: warm letters and a soft halo, easing in after load
-    const fade = shownAt ? Math.min(1, (now - shownAt) / 1800) : 0;
     quad(P.caption, T.scene.fb, T.w, T.h);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
@@ -725,6 +830,25 @@ async function main() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+
+if (DEBUG.has("diag")) {
+  const box = Object.assign(document.createElement("pre"), {
+    style: "position:fixed;left:8px;top:70px;z-index:9;margin:0;padding:8px;font:11px/1.35 monospace;" +
+      "color:#ffd9a8;background:rgba(0,0,0,.72);white-space:pre-wrap;max-width:92vw;pointer-events:none",
+  });
+  document.body.appendChild(box);
+  const info = [];
+  if (gl) {
+    const d = gl.getExtension("WEBGL_debug_renderer_info");
+    const fsHigh = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    info.push(`renderer: ${d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)}`,
+      `max texture ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}, fs highp ${fsHigh.precision} bits`,
+      `float targets: ${!!gl.getExtension("EXT_color_buffer_float")} / half ${!!gl.getExtension("EXT_color_buffer_half_float")}`,
+      `dpr ${devicePixelRatio}, screen ${innerWidth}x${innerHeight}`);
+  } else info.push("no WebGL2");
+  box.textContent = info.join("\n");
+  setInterval(() => { box.textContent = info.join("\n") + `\ncanvas ${canvas.width}x${canvas.height}`; }, 1000);
 }
 
 main().catch((err) => {
