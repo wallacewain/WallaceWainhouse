@@ -44,6 +44,8 @@ function program(vs, fs) {
   gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
   gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
   gl.bindAttribLocation(p, 0, "aPos");
+  gl.bindAttribLocation(p, 1, "aZ");
+  gl.bindAttribLocation(p, 2, "aUV");
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   const u = {};
@@ -99,6 +101,25 @@ void main() {
   vec3 pc = vec3((px.x - 0.5 * uFrame.x) / uFrame.z * z, -(px.y - 0.5 * uFrame.y) / uFrame.z * z, -z);
   gl_Position = uViewProj * (uC2W * vec4(pc, 1.0));
   vUV = off / uCrop.zw;
+}`;
+
+// A sparse layer (the hardware) keeps only atlas tiles that hold something; each
+// tile is its own little depth mesh, with depth and atlas position per vertex.
+const TILE_VS = `#version 300 es
+precision highp float;
+uniform mat4 uC2W, uViewProj;
+uniform vec4 uCrop;
+uniform vec3 uFrame;
+uniform float uStep;
+in vec2 aPos;              // depth grid cell (i, j)
+in float aZ;
+in vec2 aUV;
+out vec2 vUV;
+void main() {
+  vec2 px = uCrop.xy + (aPos + 0.5) * uStep;
+  vec3 pc = vec3((px.x - 0.5 * uFrame.x) / uFrame.z * aZ, -(px.y - 0.5 * uFrame.y) / uFrame.z * aZ, -aZ);
+  gl_Position = uViewProj * (uC2W * vec4(pc, 1.0));
+  vUV = aUV;
 }`;
 
 const MESH_FS = `#version 300 es
@@ -291,13 +312,18 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; };
 
-// How much of the width the wordmark fills: about half on a desktop, most of a phone.
+// Landscape screens: the wordmark fills a set share of the width and the wall of
+// racks runs off both sides. Portrait screens: the racks fill the height.
 function framing(meta, aspect) {
-  const half = Math.atan(meta.logoWidth / 2 / meta.distance);
-  const t = clamp((aspect - 0.6) / (1.5 - 0.6), 0, 1);
-  const fill = 0.8 + (0.52 - 0.8) * t;
-  let hfov = 2 * Math.atan(Math.tan(half) / fill);
-  let vfov = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  const f = meta.framing;
+  let hfov, vfov;
+  if (aspect >= 1) {
+    hfov = 2 * Math.atan(Math.tan(Math.atan(meta.logoWidth / 2 / meta.distance)) / f.logoFill);
+    vfov = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  } else {
+    vfov = 2 * Math.atan(f.halfHeight / f.near);
+    hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+  }
   // a view rendered at yaw 0 must still cover the frame when the camera has turned
   const hmax = (meta.hfov - 2 * meta.viewYaw) * RAD, vmax = (meta.vfov - 2 * meta.viewPitch) * RAD;
   if (vfov > vmax) { vfov = vmax; hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect); }
@@ -387,11 +413,65 @@ async function main() {
     return createImageBitmap(blob, { premultiplyAlpha: "none", colorSpaceConversion: "none" });
   }
 
+  function bytes(bmp) {
+    const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(bmp.width, bmp.height)
+      : Object.assign(document.createElement("canvas"), { width: bmp.width, height: bmp.height });
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0);
+    return ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+  }
+
+  // one vertex buffer per tiled view: every kept tile is a (TILE+1)^2 grid of cells
+  function tileMesh(layer, v, depth) {
+    const [gw, gh] = layer.grid, t = v.tiles, T = t.size, step = layer.step;
+    const [aw, ah] = t.atlas, zr = layer.z;
+    const n = t.list.length / 2, per = (T + 1) * (T + 1);
+    const data = new Float32Array(n * per * 5), idx = new Uint32Array(n * T * T * 6);
+    let o = 0, q = 0;
+    for (let k = 0; k < n; k++) {
+      const i0 = t.list[2 * k] * T, j0 = t.list[2 * k + 1] * T;
+      const ax = (k % t.cols) * t.cell, ay = Math.floor(k / t.cols) * t.cell;
+      const base = o / 5;
+      for (let jj = 0; jj <= T; jj++) for (let ii = 0; ii <= T; ii++) {
+        const i = Math.min(i0 + ii, gw - 1), j = Math.min(j0 + jj, gh - 1), p = (j * gw + i) * 4;
+        const z = zr[0] + ((depth[p] * 256 + depth[p + 1]) / 65535) * (zr[1] - zr[0]);
+        data[o++] = i; data[o++] = j; data[o++] = z;
+        data[o++] = (ax + t.gutter + ii * step) / aw;
+        data[o++] = (ay + t.gutter + jj * step) / ah;
+      }
+      for (let jj = 0; jj < T; jj++) for (let ii = 0; ii < T; ii++) {
+        const a = base + jj * (T + 1) + ii, b = a + 1, c = a + T + 1, d = c + 1;
+        idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d;
+      }
+    }
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 20, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 20, 8);
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 20, 12);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    v.vao = vao;
+    v.count = idx.length;
+  }
+
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
   const jobs = [];
   for (const layer of meta.layers) {
     const [gw, gh] = layer.grid;
+    if (layer.views[0].tiles) {
+      for (const v of layer.views) {
+        const m = v.c2w;
+        v.c2wGL = new Float32Array([m[0][0], m[1][0], m[2][0], 0, m[0][1], m[1][1], m[2][1], 0,
+          m[0][2], m[1][2], m[2][2], 0, m[0][3], m[1][3], m[2][3], 1]);
+        jobs.push(bitmap(v.color).then((b) => { v.colorTex = texture(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 0, 0, b); b.close(); }));
+        jobs.push(bitmap(v.depth).then((b) => { tileMesh(layer, v, bytes(b)); b.close(); }));
+      }
+      continue;
+    }
     // one index buffer per grid size; the vertex shader reads depth by cell
     const pos = new Float32Array(gw * gh * 2);
     for (let j = 0, k = 0; j < gh; j++) for (let i = 0; i < gw; i++) { pos[k++] = i; pos[k++] = j; }
@@ -416,7 +496,8 @@ async function main() {
       v.c2wGL = new Float32Array([m[0][0], m[1][0], m[2][0], 0, m[0][1], m[1][1], m[2][1], 0,
         m[0][2], m[1][2], m[2][2], 0, m[0][3], m[1][3], m[2][3], 1]);
       jobs.push(bitmap(v.color).then((b) => { v.colorTex = texture(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 0, 0, b); b.close(); }));
-      jobs.push(bitmap(v.depth).then((b) => { v.depthTex = texture(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 0, 0, b, gl.NEAREST); b.close(); }));
+      if (v.tiles) jobs.push(bitmap(v.depth).then((b) => { tileMesh(layer, v, bytes(b)); b.close(); }));
+      else jobs.push(bitmap(v.depth).then((b) => { v.depthTex = texture(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 0, 0, b, gl.NEAREST); b.close(); }));
     }
   }
   const captionJob = captionTexture();
@@ -448,7 +529,8 @@ async function main() {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
   const P = {
-    mesh: program(MESH_VS, MESH_FS), copy: program(QUAD_VS, COPY_FS), bright: program(QUAD_VS, BRIGHT_FS),
+    mesh: program(MESH_VS, MESH_FS), tile: program(TILE_VS, MESH_FS),
+    copy: program(QUAD_VS, COPY_FS), bright: program(QUAD_VS, BRIGHT_FS),
     caption: program(CAPTION_VS, CAPTION_FS),
     down: program(QUAD_VS, DOWN_FS), up: program(QUAD_VS, UP_FS), present: program(QUAD_VS, PRESENT_FS),
   };
@@ -494,20 +576,23 @@ async function main() {
   }
 
   function drawLayer(layer, viewProj, yaw, pitch) {
-    const p = P.mesh;
+    const tiled = !!layer.views[0].tiles;
+    const p = tiled ? P.tile : P.mesh;
     gl.useProgram(p.p);
-    gl.bindVertexArray(layer.vao);
+    if (!tiled) gl.bindVertexArray(layer.vao);
     gl.uniformMatrix4fv(p.u.uViewProj, false, viewProj);
     const [x0, y0, x1, y1] = layer.crop;
     gl.uniform4f(p.u.uCrop, x0, y0, x1 - x0, y1 - y0);
     gl.uniform3f(p.u.uFrame, layer.w, layer.h, layer.fl);
     gl.uniform1f(p.u.uStep, layer.step);
-    gl.uniform2f(p.u.uZ, layer.z[0], layer.z[1]);
+    if (!tiled) gl.uniform2f(p.u.uZ, layer.z[0], layer.z[1]);
     gl.enable(gl.DEPTH_TEST);
     for (const [v, w] of weights(layer, yaw, pitch)) {
       gl.uniformMatrix4fv(p.u.uC2W, false, v.c2wGL);
       bindTex(p, "uColor", v.colorTex, 0);
-      bindTex(p, "uDepth", v.depthTex, 1);
+      if (tiled) gl.bindVertexArray(v.vao);
+      else bindTex(p, "uDepth", v.depthTex, 1);
+      const count = tiled ? v.count : layer.count;
       gl.uniform1f(p.u.uWeight, w);
       // each view hides its own back surfaces, then adds its share of colour
       gl.depthMask(true);  // a depth clear is ignored while the mask is off
@@ -517,14 +602,14 @@ async function main() {
       gl.depthMask(true);
       gl.depthFunc(gl.LESS);
       gl.uniform1i(p.u.uPrepass, 1);
-      gl.drawElements(gl.TRIANGLES, layer.count, gl.UNSIGNED_INT, 0);
+      gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, 0);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.EQUAL);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.uniform1i(p.u.uPrepass, 0);
-      gl.drawElements(gl.TRIANGLES, layer.count, gl.UNSIGNED_INT, 0);
+      gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, 0);
     }
     gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
