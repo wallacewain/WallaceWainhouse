@@ -28,6 +28,9 @@ const BLOOM_STRENGTH = DEBUG.has("bs") ? +DEBUG.get("bs") : 0.5;
 const CAPTION_CORE = DEBUG.has("cc") ? +DEBUG.get("cc") : 0.8;
 // shimmer: glints on the rack that catch the light at their own angle (?glint=0 off)
 const GLINT = DEBUG.has("glint") ? +DEBUG.get("glint") : 1.0;
+// how much closer the camera comes at the edge of its swing (0 = pure orbit).
+// The lens widens to match, so the wordmark keeps its size and only perspective changes
+const DOLLY = DEBUG.has("dolly") ? +DEBUG.get("dolly") : null;
 const CAPTION_GLOW = DEBUG.has("cg") ? +DEBUG.get("cg") : 0.32;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
@@ -309,7 +312,7 @@ const ART = {
 async function captionTexture() {
   let family = "Bahnschrift, Helvetica, Arial, sans-serif";
   try {
-    const face = new FontFace("Oxanium", `url(${new URL("fonts/oxanium-500-latin.woff2", location.href)})`, { weight: "500" });
+    const face = new FontFace("Oxanium", `url(${new URL("fonts/oxanium-500-latin.woff2", import.meta.url)})`, { weight: "500" });
     document.fonts.add(await face.load());
     family = "Oxanium, " + family;
   } catch (e) { console.warn("caption font", e); }
@@ -374,14 +377,23 @@ const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, 
 
 // Landscape screens: the wordmark fills a set share of the width and the wall of
 // racks runs off both sides. Portrait screens: the racks fill the height.
-function framing(meta, aspect) {
+function framing(meta, aspect, distance) {
   const f = meta.framing;
+  const d = distance || meta.distance;
   let hfov, vfov;
-  if (aspect >= 1) {
-    hfov = 2 * Math.atan(Math.tan(Math.atan(meta.logoWidth / 2 / meta.distance)) / f.logoFill);
+  if (f.mode === "rack") {
+    // the rack fills the width, whichever way the screen is turned
+    hfov = 2 * Math.atan(f.halfWidth / f.near);
+    vfov = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  } else if (aspect >= 1) {
+    hfov = 2 * Math.atan(meta.logoWidth / 2 / d / f.logoFill);
+    vfov = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  } else if (f.logoFillPortrait) {
+    // portrait keeps the same composition, the wordmark just a touch wider
+    hfov = 2 * Math.atan(meta.logoWidth / 2 / d / f.logoFillPortrait);
     vfov = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
   } else {
-    vfov = 2 * Math.atan(f.halfHeight / f.near);
+    vfov = 2 * Math.atan(f.halfHeight / (f.near - (meta.distance - d)));
     hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
   }
   // a view rendered at yaw 0 must still cover the frame when the camera has turned
@@ -517,6 +529,19 @@ async function main() {
     v.count = idx.length;
   }
 
+  // low-memory devices: keep the outer and middle angles of each layer's grid and
+  // skip the rest. Blending works off whatever angles are present, so nothing breaks
+  const lowMem = DEBUG.has("lowmem") ? DEBUG.get("lowmem") !== "0"
+    : (navigator.deviceMemory && navigator.deviceMemory <= 4);
+  if (lowMem) {
+    const thin = (vals) => (vals.length <= 3 ? vals : [vals[0], vals[(vals.length - 1) / 2 | 0], vals[vals.length - 1]]);
+    for (const layer of meta.layers) {
+      const ys = thin([...new Set(layer.views.map((v) => v.yaw))].sort((a, b) => a - b));
+      const ps = thin([...new Set(layer.views.map((v) => v.pitch))].sort((a, b) => a - b));
+      layer.views = layer.views.filter((v) => ys.includes(v.yaw) && ps.includes(v.pitch));
+    }
+  }
+
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
   const jobs = [];
@@ -628,7 +653,7 @@ async function main() {
   function resize() {
     const w = Math.round(innerWidth * scale), h = Math.round(innerHeight * scale);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-    const { hfov } = framing(meta0, innerWidth / innerHeight);
+    const { hfov } = framing(meta0, innerWidth / innerHeight, meta0.distance);
     poster.style.width = `${innerWidth * Math.tan((meta0.hfov / 2) * RAD) / Math.tan(hfov / 2)}px`;
   }
   addEventListener("resize", resize);
@@ -739,10 +764,13 @@ async function main() {
     state.pitch += (-ty * meta.viewPitch - state.pitch) * ease;
     if (PINNED) { state.yaw = PINNED[0]; state.pitch = PINNED[1]; }
 
-    const y = state.yaw * RAD, pt = state.pitch * RAD, d = meta.distance, tg = meta.target;
+    const y = state.yaw * RAD, pt = state.pitch * RAD, tg = meta.target;
+    const dolly = DOLLY !== null ? DOLLY : (meta.camera && meta.camera.dolly) || 0;
+    const r = Math.min(1, Math.hypot(state.yaw / meta.viewYaw, state.pitch / meta.viewPitch));
+    const d = meta.distance * (1 - dolly * r);
     const eye = [tg[0] + d * Math.sin(y) * Math.cos(pt), tg[1] - d * Math.cos(y) * Math.cos(pt), tg[2] + d * Math.sin(pt)];
     const aspect = canvas.width / canvas.height;
-    const vfov = DEBUG.has("vfov") ? +DEBUG.get("vfov") * RAD : framing(meta, aspect).vfov;
+    const vfov = DEBUG.has("vfov") ? +DEBUG.get("vfov") * RAD : framing(meta, aspect, d).vfov;
     const viewProj = mul(perspective(vfov, aspect, 0.05, 30), lookAt(eye, tg, [0, 0, 1]));
     sizeTargets(canvas.width, canvas.height);
 
