@@ -427,7 +427,8 @@ function weights(layer, yaw, pitch) {
 // ------------------------------------------------------------ input
 
 const input = { x: 0, y: 0, last: -1e9 };
-let drag = null, orientBase = null;
+const TOUCH = matchMedia("(pointer: coarse)").matches;
+let drag = null;
 addEventListener("pointermove", (e) => {
   if (e.pointerType === "mouse") {
     input.x = (e.clientX / innerWidth) * 2 - 1;
@@ -441,30 +442,45 @@ addEventListener("pointermove", (e) => {
 });
 addEventListener("pointerdown", (e) => {
   if (e.pointerType !== "mouse") drag = { x: input.x, y: input.y, cx: e.clientX, cy: e.clientY };
-  const D = window.DeviceOrientationEvent;  // iOS asks permission from a gesture
-  if (D && typeof D.requestPermission === "function" && !orientBase) {
-    D.requestPermission().then((r) => { if (r === "granted") listenOrientation(); }).catch(() => {});
-  }
+  askMotion();  // iOS only hands out motion data after a gesture asks for it
 }, { passive: true });
 addEventListener("pointerup", () => { drag = null; });
 addEventListener("pointercancel", () => { drag = null; });
-function listenOrientation() {
-  addEventListener("deviceorientation", (e) => {
-    if (e.beta == null || drag) return;
-    const angle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-    let gx = e.gamma, gy = e.beta;
-    if (angle === 90) { gx = e.beta; gy = -e.gamma; }
-    else if (angle === -90 || angle === 270) { gx = -e.beta; gy = e.gamma; }
-    else if (angle === 180) { gx = -e.gamma; gy = -e.beta; }
-    if (!orientBase) orientBase = { x: gx, y: gy };
-    orientBase.x += (gx - orientBase.x) * 0.01;  // rest position follows how the phone is held
-    orientBase.y += (gy - orientBase.y) * 0.01;
-    input.x = clamp((gx - orientBase.x) / 10, -1, 1);
-    input.y = clamp((gy - orientBase.y) / 10, -1, 1);
-    input.last = performance.now();
-  });
+
+// Tilt from the direction of gravity, not from orientation angles. The angles are
+// unstable exactly where people hold a phone (upright, near beta 90, where gamma
+// swings wildly), which made the view lurch. Gravity has no such gimbal, and
+// measuring it against a slowly-following rest pose keeps it steady in the hand.
+let gravity = null, rest = null;
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null || drag) return;
+  const g = [a.x, a.y, a.z];
+  const n = Math.hypot(g[0], g[1], g[2]) || 1;
+  const s0 = [g[0] / n, g[1] / n, g[2] / n];
+  if (!gravity) { gravity = s0.slice(); rest = s0.slice(); }
+  for (let i = 0; i < 3; i++) {
+    gravity[i] += (s0[i] - gravity[i]) * 0.12;   // smooth the hand shake out
+    rest[i] += (gravity[i] - rest[i]) * 0.0016;  // and let the rest pose drift to how it is held
+  }
+  let dx = gravity[0] - rest[0], dy = gravity[1] - rest[1];
+  const angle = (screen.orientation && screen.orientation.angle) || 0;
+  if (angle === 90) { const t = dx; dx = -dy; dy = t; }
+  else if (angle === 270 || angle === -90) { const t = dx; dx = dy; dy = -t; }
+  else if (angle === 180) { dx = -dx; dy = -dy; }
+  const k = 3.2;  // about 18 degrees of tilt for the full swing
+  input.x = clamp(dx * k, -1, 1);
+  input.y = clamp(-dy * k, -1, 1);
+  input.last = performance.now();
 }
-if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== "function") listenOrientation();
+function askMotion() {
+  const D = window.DeviceMotionEvent;
+  if (!D || gravity) return;
+  if (typeof D.requestPermission === "function") {
+    D.requestPermission().then((r) => { if (r === "granted") addEventListener("devicemotion", onMotion); }).catch(() => {});
+  } else addEventListener("devicemotion", onMotion);
+}
+if (TOUCH && window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission !== "function") askMotion();
 
 // ------------------------------------------------------------ main
 
@@ -532,7 +548,7 @@ async function main() {
   // low-memory devices: keep the outer and middle angles of each layer's grid and
   // skip the rest. Blending works off whatever angles are present, so nothing breaks
   const lowMem = DEBUG.has("lowmem") ? DEBUG.get("lowmem") !== "0"
-    : (navigator.deviceMemory && navigator.deviceMemory <= 4);
+    : TOUCH || (navigator.deviceMemory && navigator.deviceMemory <= 4);
   if (lowMem) {
     const thin = (vals) => (vals.length <= 3 ? vals : [vals[0], vals[(vals.length - 1) / 2 | 0], vals[vals.length - 1]]);
     for (const layer of meta.layers) {
@@ -759,15 +775,18 @@ async function main() {
       tx = tx * (1 - k) + k * 0.55 * Math.sin(s * 0.23);
       ty = ty * (1 - k) + k * 0.45 * Math.sin(s * 0.31 + 1.3);
     }
-    const ease = 1 - Math.exp(-dt * 3.5);
-    state.yaw += (tx * meta.viewYaw - state.yaw) * ease;
-    state.pitch += (-ty * meta.viewPitch - state.pitch) * ease;
+    const ease = 1 - Math.exp(-dt * (TOUCH ? 2.6 : 3.5));
+    const swing = TOUCH ? 0.75 : 1;  // a phone tilts less far than a mouse travels
+    state.yaw += (tx * meta.viewYaw * swing - state.yaw) * ease;
+    state.pitch += (-ty * meta.viewPitch * swing - state.pitch) * ease;
     if (PINNED) { state.yaw = PINNED[0]; state.pitch = PINNED[1]; }
 
     const y = state.yaw * RAD, pt = state.pitch * RAD, tg = meta.target;
-    const dolly = DOLLY !== null ? DOLLY : (meta.camera && meta.camera.dolly) || 0;
-    const r = Math.min(1, Math.hypot(state.yaw / meta.viewYaw, state.pitch / meta.viewPitch));
-    const d = meta.distance * (1 - dolly * r);
+    // squared radius, not distance: smooth through the centre instead of a kink,
+    // and gentler in the hand where a moving lens feels like the page is breathing
+    const dolly = (DOLLY !== null ? DOLLY : (meta.camera && meta.camera.dolly) || 0) * (TOUCH ? 0.5 : 1);
+    const r2 = Math.min(1, (state.yaw / meta.viewYaw) ** 2 + (state.pitch / meta.viewPitch) ** 2);
+    const d = meta.distance * (1 - dolly * r2);
     const eye = [tg[0] + d * Math.sin(y) * Math.cos(pt), tg[1] - d * Math.cos(y) * Math.cos(pt), tg[2] + d * Math.sin(pt)];
     const aspect = canvas.width / canvas.height;
     const vfov = DEBUG.has("vfov") ? +DEBUG.get("vfov") * RAD : framing(meta, aspect, d).vfov;
@@ -847,6 +866,7 @@ async function main() {
     gl.uniform1f(P.present.u.uDither, PINNED ? 0 : 1);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+    if (DEBUG.has("diag")) window.__nice = { yaw: state.yaw, pitch: state.pitch, d, ix: input.x, iy: input.y };
     if (!shown) {
       shown = true;
       shownAt = now;
