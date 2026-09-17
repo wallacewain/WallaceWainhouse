@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Nice Reverb: a reverb plugin, coming soon.">
+  <meta name="description" content="Nice Reverb: a physically modelled reverb plugin. Free public beta for Windows and macOS.">
   <meta name="theme-color" content="#000000">
   <title>Nice Reverb &mdash; Wallace Wainhouse</title>
   <link rel="canonical" href="https://wallacewainhouse.com/nice-reverb/">
@@ -11,11 +11,11 @@
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/nice-reverb/">
   <meta property="og:title" content="Nice Reverb">
-  <meta property="og:description" content="A reverb plugin, coming soon.">
+  <meta property="og:description" content="A physically modelled reverb plugin. Free public beta for Windows and macOS.">
   <meta property="og:image" content="https://wallacewainhouse.com/nice-reverb/layers/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Nice Reverb">
-  <meta name="twitter:description" content="A reverb plugin, coming soon.">
+  <meta name="twitter:description" content="A physically modelled reverb plugin. Free public beta for Windows and macOS.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,6 +45,24 @@
       font-size: 0.78rem; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase;
       color: rgba(255, 228, 200, 0.6);
     }
+    /* The one thing on the page that can be clicked, and it should still read
+       as part of the scene: the same lettering as the line it replaces, lit a
+       little warmer, over a hairline that only fills in under the cursor. */
+    .soon a {
+      pointer-events: auto; color: rgba(255, 228, 200, 0.82);
+      text-decoration: none; padding-bottom: 6px; position: relative;
+      transition: color 0.5s ease;
+    }
+    .soon a::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: #ffb574; opacity: 0.25; transform: scaleX(0.4);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .soon a:hover, .soon a:focus-visible { color: #fff0dc; }
+    .soon a:hover::after, .soon a:focus-visible::after { opacity: 0.7; transform: scaleX(1); }
+    @media (prefers-reduced-motion: reduce) {
+      .soon a, .soon a::after { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -63,7 +81,7 @@
     <canvas id="c"></canvas>
   </div>
   <div id="bar"><i></i></div>
-  <p class="soon">Coming soon</p>
+  <p class="soon"><a href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Join the beta</a></p>
   <script type="module" src="layers.js"></script>
   <script src="/js/logo.js"></script>
 </body>
