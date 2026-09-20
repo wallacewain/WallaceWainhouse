@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Turn a phone video shot at 120 or 240 fps into a proper slow-motion clip you can actually share. Pick a target frame rate, cut the timeline into chunks at real speed, half or full slow-mo, ramp between speeds, and smooth it with motion interpolation. Runs in your browser — nothing is uploaded.">
+  <meta name="description" content="Turn a phone video shot at 120 or 240 fps into a proper slow-motion clip you can actually share. Pick a target frame rate, cut the timeline into chunks at real speed, half or full slow-mo, and ramp between speeds on a smooth bezier curve. Re-times your real captured frames — stays sharp. Runs in your browser, nothing is uploaded.">
   <title>Slow-Mo Studio &mdash; Wallace Wainhouse</title>
   <link rel="canonical" href="https://wallacewainhouse.com/tools/slow-mo/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/tools/slow-mo/">
   <meta property="og:title" content="Slow-Mo Studio &mdash; Wallace Wainhouse">
-  <meta property="og:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks, ramping, and motion-interpolated smoothing.">
+  <meta property="og:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks and smooth bezier speed ramps.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Slow-Mo Studio &mdash; Wallace Wainhouse">
-  <meta name="twitter:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks, ramping, and motion-interpolated smoothing.">
+  <meta name="twitter:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks and smooth bezier speed ramps.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,7 +55,9 @@
     .tl-seg .lbl { font-size: 0.72rem; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); pointer-events: none; white-space: nowrap; }
     .tl-seg.sel { outline: 2px solid #fff; outline-offset: -2px; z-index: 2; }
     .tl-seg:hover { filter: brightness(1.12); }
-    .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9); pointer-events: none; z-index: 3; left: 0; }
+    .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9); pointer-events: none; z-index: 4; left: 0; }
+    .ph-grip { position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 13px; height: 13px; background: #fff; border-radius: 0 0 4px 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+    .timeline { touch-action: none; }
     .tl-scale { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
     .tl-tools { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
@@ -112,7 +114,7 @@
   <main>
     <section class="hero" style="padding-bottom:1rem">
       <h1>Slow-Mo Studio</h1>
-      <p>Phones record at 120 or 240&nbsp;fps but often share back at normal speed &mdash; so your slow motion vanishes. This <strong>bakes the slow motion in</strong>. Pick an output frame rate, chop the timeline into chunks at real speed, half or full slow-mo, <strong>ramp</strong> between speeds, and smooth it all with <strong>motion interpolation</strong>. Everything runs in your browser &mdash; nothing is uploaded.</p>
+      <p>Phones record at 120 or 240&nbsp;fps but often share back at normal speed &mdash; so your slow motion vanishes. This <strong>bakes the slow motion in</strong>. Pick an output frame rate, chop the timeline into chunks at real speed, half or full slow-mo, and <strong>ramp</strong> between speeds on a smooth bezier curve. It re-times your real captured frames, so it stays sharp. Everything runs in your browser &mdash; nothing is uploaded.</p>
     </section>
 
     <div class="sm-wrap">
@@ -147,24 +149,16 @@
                 <button data-fps="60">60</button>
               </div>
             </div>
-            <div class="fld">
-              <span>Smoothness</span>
-              <div class="seg" id="smooth">
-                <button data-mode="smooth" class="active">Smooth (motion)</button>
-                <button data-mode="blend">Blend</button>
-                <button data-mode="none">Off</button>
-              </div>
-            </div>
           </div>
-          <p class="lead" id="smooth-hint">Motion interpolation invents in-between frames for the most natural slow-mo. It's the slowest to render — keep clips short.</p>
+          <p class="lead">Slow-mo uses your real captured frames re-timed to play slowly — no invented frames, so it stays sharp. Ramps ease between speeds on a smooth bezier curve.</p>
         </div>
 
         <div class="card">
           <h3>Timeline</h3>
-          <p class="lead">Move the playhead (scrub the video or click the bar), then <b>Split</b> to cut a chunk. Click a chunk to set its speed.</p>
+          <p class="lead"><b>Drag anywhere on the bar</b> to move the playhead (the preview scrubs with it), then <b>Split</b> to cut a chunk there — or just <b>double-click</b> the bar to split on the spot. Click a chunk to set its speed.</p>
           <div class="tl-outer">
-            <div class="timeline" id="timeline"><div class="playhead" id="playhead"></div></div>
-            <div class="tl-scale"><span>0:00</span><span id="tl-end">0:00</span></div>
+            <div class="timeline" id="timeline"><div class="playhead" id="playhead"><span class="ph-grip"></span></div></div>
+            <div class="tl-scale"><span>0:00</span><span id="tl-time">0:00</span><span id="tl-end">0:00</span></div>
           </div>
           <div class="tl-tools">
             <button class="mini" id="split-btn">✂ Split at playhead</button>
@@ -219,7 +213,7 @@
       </div>
 
       <p class="notes">
-        How it works: your captured frames are re-timed so they play slowly (that's the true, sharp slow-mo), and where a chunk is slower than your source can cover, motion interpolation synthesises the in-between frames.
+        How it works: your captured frames are re-timed so they play slowly — that's true, sharp slow-mo using your real frames, no invented ones. Ramps ease between speeds on a smooth bezier curve. If a chunk is slower than your source frame rate can cover, a few frames simply repeat.
         Audio is dropped — slow-mo audio isn't meaningful. Output is H.264 MP4.
         The first render downloads the processing engine (~32&nbsp;MB) and then caches it. Everything is local; your video never leaves your device.
         Want to trim first, or pull the audio out? Try the <a href="/tools/video-trimmer/">Video Trimmer</a> or <a href="/tools/mp3-extractor/">MP3 Extractor</a>.
@@ -238,7 +232,7 @@
   const result = $('result'), renderBtn = $('render-btn');
 
   let vidFile = null, vidUrl = null, duration = 0, outUrl = null;
-  let srcFps = 240, tgtFps = 30, smoothMode = 'smooth';
+  let srcFps = 240, tgtFps = 30;
   let segments = [];       // [{start,end, mode:'factor'|'ramp', factor, from, to}]
   let selected = -1;
 
@@ -293,9 +287,21 @@
   vid.addEventListener('timeupdate', updatePlayhead);
   vid.addEventListener('seeked', updatePlayhead);
 
+  let playT = 0; // playhead time (independent of playback)
   function updatePlayhead() {
     if (!duration) return;
-    playhead.style.left = (vid.currentTime / duration * 100) + '%';
+    if (!vid.paused) playT = vid.currentTime;
+    playhead.style.left = (playT / duration * 100) + '%';
+    const tt = $('tl-time'); if (tt) tt.textContent = fmtTime(playT);
+  }
+  function setPlayhead(t) {
+    playT = Math.max(0, Math.min(duration, t));
+    try { vid.currentTime = playT; } catch (e) {}
+    // select the chunk the playhead sits in
+    const i = segments.findIndex(s => playT >= s.start && playT < s.end);
+    if (i >= 0) selected = i;
+    updatePlayhead();
+    renderTimeline();
   }
 
   // ── Timeline rendering ──────────────────────────────────────────────────
@@ -309,7 +315,6 @@
         ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.from)]}, ${SEG_COLORS[clampKey(seg.to)]})`
         : segColor(seg);
       el.innerHTML = `<span class="lbl">${segLabel(seg)}</span>`;
-      el.addEventListener('click', e => { e.stopPropagation(); selectSeg(i); });
       timeline.insertBefore(el, playhead);
     });
     updatePlayhead();
@@ -318,26 +323,39 @@
   }
   function clampKey(f) { return SEG_COLORS[f] ? f : 'custom'; }
 
-  timeline.addEventListener('click', e => {
+  // Drag anywhere on the bar to move the playhead (and scrub the preview)
+  function timeAt(clientX) {
     const r = timeline.getBoundingClientRect();
-    const t = Math.max(0, Math.min(duration, (e.clientX - r.left) / r.width * duration));
-    vid.currentTime = t;
+    return Math.max(0, Math.min(duration, (clientX - r.left) / r.width * duration));
+  }
+  let scrubbing = false;
+  timeline.addEventListener('pointerdown', e => {
+    if (!duration) return;
+    scrubbing = true;
+    timeline.setPointerCapture?.(e.pointerId);
+    vid.pause();
+    setPlayhead(timeAt(e.clientX));
+    e.preventDefault();
   });
-
-  function selectSeg(i) { selected = i; renderTimeline(); }
+  timeline.addEventListener('pointermove', e => { if (scrubbing) setPlayhead(timeAt(e.clientX)); });
+  timeline.addEventListener('pointerup', () => { scrubbing = false; });
+  timeline.addEventListener('pointercancel', () => { scrubbing = false; });
+  timeline.addEventListener('dblclick', e => { setPlayhead(timeAt(e.clientX)); splitAtPlayhead(); });
 
   // ── Segment ops ───────────────────────────────────────────────────────────
-  $('split-btn').addEventListener('click', () => {
-    const t = vid.currentTime;
+  function splitAtPlayhead() {
+    const t = playT;
     const i = segments.findIndex(s => t > s.start + 0.03 && t < s.end - 0.03);
-    if (i < 0) { setStatus('Move the playhead inside a chunk (not at an edge) to split.', null, true); return; }
+    if (i < 0) { setStatus('Move the playhead inside a chunk (not right at an edge) to split.', null, true); return; }
     const s = segments[i];
-    const a = Object.assign({}, s, { end: t });
-    const b = Object.assign({}, s, { start: t });
+    const a = Object.assign({}, s, { end: t, _default: false });
+    const b = Object.assign({}, s, { start: t, _default: false });
     segments.splice(i, 1, a, b);
     selected = i + 1;
+    statusBox.classList.remove('show');
     renderTimeline();
-  });
+  }
+  $('split-btn').addEventListener('click', splitAtPlayhead);
   $('merge-btn').addEventListener('click', () => {
     if (selected < 0 || selected >= segments.length - 1) return;
     const s = segments[selected];
@@ -376,7 +394,7 @@
       msg = `Your ${srcFps}fps source covers up to ${maxReal.toFixed(1)}× slow at ${tgtFps}fps with real frames — this chunk needs no invented frames. Crisp.`;
       $('seg-hint').className = 'hint';
     } else {
-      msg = `${worst}× is beyond the ${maxReal.toFixed(1)}× your ${srcFps}fps source covers, so frames are invented here — use "Smooth" for the most natural result.`;
+      msg = `${worst}× is beyond the ${maxReal.toFixed(1)}× your ${srcFps}fps source covers, so some frames will repeat here — it may judder slightly. Ease it off with a lower factor or a ramp.`;
       $('seg-hint').className = 'hint warn';
     }
     $('seg-hint').textContent = msg;
@@ -537,15 +555,6 @@
     document.querySelectorAll('#tgt-fps button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); tgtFps = +b.dataset.fps; updateEstimate(); renderEditor();
   }));
-  document.querySelectorAll('#smooth button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('#smooth button').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); smoothMode = b.dataset.mode;
-    $('smooth-hint').textContent = smoothMode === 'smooth'
-      ? "Motion interpolation invents in-between frames for the most natural slow-mo. It's the slowest to render — keep clips short."
-      : smoothMode === 'blend'
-      ? 'Blends neighbouring frames — softer than motion but much faster to render.'
-      : 'No interpolation — frames are duplicated/dropped to hit the frame rate. Fastest, but can look juddery on big slowdowns.';
-  }));
 
   // ── Drag & drop ───────────────────────────────────────────────────────────
   drop.addEventListener('click', () => fileInput.click());
@@ -590,17 +599,20 @@
       const dur = Math.max(0.0001, seg.end - seg.start);
       let sp;
       if (seg.mode === 'ramp') {
+        // Bezier-eased (smoothstep) speed ramp. The slowdown factor k eases
+        // k(u) = k0 + dk*(3u^2 - 2u^3), u = X/dur, X = (T-STARTT).
+        // Output PTS is its integral:  k0*X + (dk/dur^2)*X^3 - (dk/(2*dur^3))*X^4
         const k0 = seg.from, dk = seg.to - seg.from;
-        sp = `setpts='(${k0.toFixed(5)}*(T-STARTT)+${dk.toFixed(5)}*(T-STARTT)*(T-STARTT)/(2*${dur.toFixed(5)}))/TB'`;
+        const B = dk / (dur * dur), C = dk / (2 * dur * dur * dur);
+        const X = '(T-STARTT)';
+        sp = `setpts='(${k0.toFixed(6)}*${X}+${B.toFixed(8)}*${X}*${X}*${X}-${C.toFixed(8)}*${X}*${X}*${X}*${X})/TB'`;
       } else {
         sp = `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
       }
       chains.push(`${src}trim=start=${a}:end=${b},${sp}[v${i}]`);
     });
     chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
-    if (smoothMode === 'smooth') chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1[outv]`);
-    else if (smoothMode === 'blend') chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=blend[outv]`);
-    else chains.push(`[cc]fps=${tgtFps}[outv]`);
+    chains.push(`[cc]fps=${tgtFps}[outv]`);
     return chains.join(';');
   }
 
@@ -630,7 +642,7 @@
 
     let data;
     try { data = await ff.readFile(outName); }
-    catch (e) { throw new Error('Render failed — try fewer chunks, a shorter clip, or "Blend"/"Off" smoothness'); }
+    catch (e) { throw new Error('Render failed — try fewer chunks or a shorter clip'); }
     if (!data || data.length === 0) throw new Error('Render produced no output — try a shorter clip or simpler settings');
     try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch (e) {}
 
@@ -640,7 +652,7 @@
     $('out-vid').src = outUrl;
     const base = vidFile.name.replace(/\.[^.]+$/, '') || 'video';
     const dl = $('dl-btn'); dl.href = outUrl; dl.download = base + '-slowmo.mp4';
-    $('out-meta').textContent = `${tgtFps}fps · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${smoothMode === 'none' ? 'no interpolation' : smoothMode + ' smoothing'}`;
+    $('out-meta').textContent = `${tgtFps}fps · ${(blob.size / 1024 / 1024).toFixed(1)} MB · sharp (real frames re-timed)`;
     result.classList.add('show');
     setStatus('Done!', 1);
     result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
