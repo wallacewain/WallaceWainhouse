@@ -686,34 +686,30 @@
       const src = N > 1 ? `[s${i}]` : '[0:v]';
       const a = seg.start.toFixed(4), b = seg.end.toFixed(4);
       const dur = Math.max(0.0001, seg.end - seg.start);
-      let chain;
-      if (seg.mode === 'ramp') {
-        const k0 = seg.from, dk = seg.to - seg.from;
-        const B = dk / (dur * dur);            // coeff of x^3
-        const C = dk / (2 * dur * dur * dur);  // magnitude of x^4 term (subtracted)
-        const X = `(N/${srcFps.toFixed(3)})`;  // local source seconds, chunk-relative
-        const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(6) + v;
-        const expr = `${k0.toFixed(6)}*${X}${term(B, `*${X}*${X}*${X}`)}${term(-C, `*${X}*${X}*${X}*${X}`)}`;
-        chain = `${src}trim=start=${a}:end=${b},setpts='(${expr})/TB'[v${i}]`;
-      } else {
-        chain = `${src}trim=start=${a}:end=${b},setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`;
-      }
-      chains.push(chain);
+      const sp = seg.mode === 'ramp' ? rampExprFor(seg) : `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
+      chains.push(`${src}trim=start=${a}:end=${b},${sp}[v${i}]`);
     });
     chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
     chains.push(`[cc]fps=${tgtFps}[outv]`);
     return chains.join(';');
   }
 
-  // Simple single-chunk retime (canonical setpts,fps) for the whole clip.
+  // Continuous smoothstep-eased ramp, expressed purely with (PTS-STARTPTS) and
+  // TB — both reliably chunk-local after a trim (unlike N or a chained T reset),
+  // so a ramp works anywhere in the timeline, including a ramp back up to real
+  // speed mid-clip. With P = (PTS-STARTPTS) [ticks] and x = P*TB [seconds]:
+  //   output seconds = k0*x + (dk/dur^2)*x^3 - (dk/(2*dur^3))*x^4
+  //   output ticks   = k0*P + B*P^3*TB^2 - C*P^4*TB^3   (B=dk/dur^2, C=dk/(2*dur^3))
+  // TB is kept symbolic so the numeric coefficients stay normal-sized (no
+  // precision loss); the result is in ticks, so no final /TB.
   function rampExprFor(seg) {
     const dur = Math.max(0.0001, seg.end - seg.start);
     const k0 = seg.from, dk = seg.to - seg.from;
     const B = dk / (dur * dur), C = dk / (2 * dur * dur * dur);
-    const X = `(N/${srcFps.toFixed(3)})`;
+    const P = '(PTS-STARTPTS)';
     const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(6) + v;
-    const expr = `${k0.toFixed(6)}*${X}${term(B, `*${X}*${X}*${X}`)}${term(-C, `*${X}*${X}*${X}*${X}`)}`;
-    return `setpts='(${expr})/TB'`;
+    const expr = `${k0.toFixed(6)}*${P}${term(B, `*${P}*${P}*${P}*TB*TB`)}${term(-C, `*${P}*${P}*${P}*${P}*TB*TB*TB`)}`;
+    return `setpts='${expr}'`;
   }
   function buildVf(seg) {
     const sp = seg.mode === 'ramp' ? rampExprFor(seg) : `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
