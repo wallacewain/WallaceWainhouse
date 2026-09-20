@@ -42,6 +42,10 @@
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .seg button { padding: 0.45rem 0.85rem; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; }
     .seg button.active { background: var(--accent); color: #fff; }
+    .detected { font-size: 0.98rem; color: var(--text); font-weight: 700; padding: 0.35rem 0; min-height: 1.6rem; }
+    .detected .note { font-weight: 500; font-size: 0.82rem; color: var(--muted); }
+    .detected a { font-weight: 500; font-size: 0.82rem; margin-left: 0.35rem; }
+    .detected.spin { color: var(--muted); font-weight: 500; }
 
     /* Timeline */
     .tl-outer { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -124,13 +128,15 @@
 
         <div class="card">
           <div class="fld-row">
-            <div class="fld">
-              <span>Source frame rate (what your phone shot)</span>
-              <div class="seg" id="src-fps">
-                <button data-fps="240" class="active">240</button>
+            <div class="fld" style="min-width:230px">
+              <span>Source frame rate</span>
+              <div class="detected spin" id="src-detect">—</div>
+              <div class="seg" id="src-fps" style="display:none">
+                <button data-fps="240">240</button>
                 <button data-fps="120">120</button>
                 <button data-fps="60">60</button>
                 <button data-fps="30">30</button>
+                <button data-fps="24">24</button>
               </div>
             </div>
             <div class="fld">
@@ -279,9 +285,10 @@
   vid.addEventListener('loadedmetadata', () => {
     duration = vid.duration || 0;
     $('tl-end').textContent = fmtTime(duration);
-    segments = [{ start: 0, end: duration, mode: 'factor', factor: 4 }];
+    segments = [{ start: 0, end: duration, mode: 'factor', factor: 4, _default: true }];
     selected = 0;
     renderTimeline();
+    runDetection();
   });
   vid.addEventListener('timeupdate', updatePlayhead);
   vid.addEventListener('seeked', updatePlayhead);
@@ -377,6 +384,7 @@
 
   document.querySelectorAll('#speed-grid button').forEach(b => b.addEventListener('click', () => {
     const seg = segments[selected]; if (!seg) return;
+    seg._default = false;
     const f = b.dataset.f;
     if (f === 'ramp') { seg.mode = 'ramp'; seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value; }
     else if (f === 'custom') { seg.mode = 'factor'; seg.factor = +$('custom-f').value || 4; }
@@ -405,10 +413,126 @@
   }
 
   // ── Top selectors ────────────────────────────────────────────────────────
+  function setActiveSrcButton(fps) {
+    document.querySelectorAll('#src-fps button').forEach(x => x.classList.toggle('active', +x.dataset.fps === fps));
+  }
+  function showSrc(fps, note) {
+    $('src-detect').className = 'detected';
+    $('src-detect').innerHTML = `<b>${fps} fps</b>` + (note ? ` <span class="note">${note}</span>` : '') +
+      ` · <a href="#" id="src-change">change</a>`;
+  }
   document.querySelectorAll('#src-fps button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('#src-fps button').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); srcFps = +b.dataset.fps; renderEditor();
+    srcFps = +b.dataset.fps;
+    setActiveSrcButton(srcFps);
+    showSrc(srcFps, '· set manually');
+    $('src-fps').style.display = 'flex';
+    renderEditor();
   }));
+  // Delegated "change" link → reveal the manual picker
+  $('src-detect').addEventListener('click', e => {
+    if (e.target && e.target.id === 'src-change') {
+      e.preventDefault();
+      $('src-fps').style.display = 'flex';
+      setActiveSrcButton(srcFps);
+    }
+  });
+
+  // ── Source frame-rate detection (parse the MP4/MOV sample tables) ──────────
+  function str4(dv, o) { return String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3)); }
+  function* iterBoxes(dv, start, end) {
+    let o = start, guard = 0;
+    while (o + 8 <= end && guard++ < 4096) {
+      let size = dv.getUint32(o); const type = str4(dv, o + 4); let hs = 8;
+      if (size === 1) { size = Number(dv.getBigUint64(o + 8)); hs = 16; }
+      else if (size === 0) { size = end - o; }
+      if (size < 8) break;
+      yield { type, start: o, hs, end: Math.min(o + size, end) };
+      o += size;
+    }
+  }
+  function findBox(dv, s, e, t) { for (const b of iterBoxes(dv, s, e)) if (b.type === t) return b; return null; }
+  function findBoxes(dv, s, e, t) { const r = []; for (const b of iterBoxes(dv, s, e)) if (b.type === t) r.push(b); return r; }
+
+  async function readTopBox(file, offset) {
+    if (offset + 8 > file.size) return null;
+    const dv = new DataView(await file.slice(offset, Math.min(offset + 16, file.size)).arrayBuffer());
+    let size = dv.getUint32(0); const type = str4(dv, 4); let hs = 8;
+    if (size === 1) { size = Number(dv.getBigUint64(8)); hs = 16; }
+    else if (size === 0) { size = file.size - offset; }
+    return { type, size, hs, offset };
+  }
+  async function findMoov(file) {
+    let off = 0, guard = 0;
+    while (off + 8 <= file.size && guard++ < 4096) {
+      const box = await readTopBox(file, off);
+      if (!box || box.size < 8) return null;
+      if (box.type === 'moov') return box;
+      off += box.size;
+    }
+    return null;
+  }
+  async function detectSourceFps(file) {
+    try {
+      const moov = await findMoov(file);
+      if (!moov) return null;
+      const dv = new DataView(await file.slice(moov.offset, moov.offset + moov.size).arrayBuffer());
+      for (const trak of findBoxes(dv, moov.hs, dv.byteLength, 'trak')) {
+        const mdia = findBox(dv, trak.start + trak.hs, trak.end, 'mdia'); if (!mdia) continue;
+        const hdlr = findBox(dv, mdia.start + mdia.hs, mdia.end, 'hdlr'); if (!hdlr) continue;
+        if (str4(dv, hdlr.start + hdlr.hs + 8) !== 'vide') continue;
+        let timescale = 0, mdur = 0;
+        const mdhd = findBox(dv, mdia.start + mdia.hs, mdia.end, 'mdhd');
+        if (mdhd) {
+          const p = mdhd.start + mdhd.hs, ver = dv.getUint8(p);
+          if (ver === 1) { timescale = dv.getUint32(p + 20); mdur = Number(dv.getBigUint64(p + 24)); }
+          else { timescale = dv.getUint32(p + 12); mdur = dv.getUint32(p + 16); }
+        }
+        const minf = findBox(dv, mdia.start + mdia.hs, mdia.end, 'minf'); if (!minf) continue;
+        const stbl = findBox(dv, minf.start + minf.hs, minf.end, 'stbl'); if (!stbl) continue;
+        let frames = 0;
+        const stts = findBox(dv, stbl.start + stbl.hs, stbl.end, 'stts');
+        if (stts) {
+          const p = stts.start + stts.hs, n = dv.getUint32(p + 4);
+          for (let i = 0; i < n && p + 8 + i * 8 + 4 <= stts.end; i++) frames += dv.getUint32(p + 8 + i * 8);
+        }
+        if (!frames) {
+          const stsz = findBox(dv, stbl.start + stbl.hs, stbl.end, 'stsz');
+          if (stsz) frames = dv.getUint32(stsz.start + stsz.hs + 8);
+        }
+        const durSec = (timescale && mdur) ? mdur / timescale : (vid.duration || 0);
+        if (frames > 1 && durSec > 0.1) return frames / durSec;
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+  function snapFps(f) {
+    const std = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60, 90, 100, 120, 240];
+    let best = f, bd = Infinity;
+    for (const s of std) { const d = Math.abs(s - f) / s; if (d < bd) { bd = d; best = s; } }
+    return bd < 0.05 ? Math.round(best) : Math.round(f);
+  }
+  async function runDetection() {
+    $('src-detect').className = 'detected spin';
+    $('src-detect').textContent = 'Detecting frame rate…';
+    $('src-fps').style.display = 'none';
+    const raw = await detectSourceFps(vidFile);
+    if (raw && raw > 5) {
+      srcFps = snapFps(raw);
+      showSrc(srcFps, '· detected');
+      setActiveSrcButton(srcFps);
+      // If the clip is still one untouched chunk, default it to full slow-mo from this source
+      if (segments.length === 1 && segments[0]._default) {
+        segments[0].factor = Math.max(2, Math.min(8, Math.round(srcFps / tgtFps)));
+      }
+    } else {
+      srcFps = 240;
+      $('src-detect').className = 'detected';
+      $('src-detect').innerHTML = `<span class="note">Couldn't read it automatically — pick what you shot at:</span>`;
+      $('src-fps').style.display = 'flex';
+      setActiveSrcButton(srcFps);
+    }
+    renderTimeline();
+  }
   document.querySelectorAll('#tgt-fps button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#tgt-fps button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); tgtFps = +b.dataset.fps; updateEstimate(); renderEditor();
