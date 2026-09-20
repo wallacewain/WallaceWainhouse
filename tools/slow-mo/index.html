@@ -413,7 +413,8 @@
       `<button data-f="ramp">Ramp…</button>`;
     const opts = facs.map(f => `<option value="${f}">${f === 1 ? 'real' : f + '×'}</option>`).join('');
     $('ramp-from').innerHTML = opts; $('ramp-to').innerHTML = opts;
-    $('ramp-from').value = facs[0]; $('ramp-to').value = facs[facs.length - 1];
+    // Default ramp: ease out of full slow-mo back to normal speed
+    $('ramp-from').value = facs[facs.length - 1]; $('ramp-to').value = facs[0];
   }
   function clampSegmentsToClean() {
     segments.forEach(s => {
@@ -636,19 +637,26 @@
       const src = N > 1 ? `[s${i}]` : '[0:v]';
       const a = seg.start.toFixed(4), b = seg.end.toFixed(4);
       const dur = Math.max(0.0001, seg.end - seg.start);
-      let sp;
+      let chain;
       if (seg.mode === 'ramp') {
-        // Bezier-eased (smoothstep) speed ramp. The slowdown factor k eases
-        // k(u) = k0 + dk*(3u^2 - 2u^3), u = X/dur, X = (T-STARTT).
-        // Output PTS is its integral:  k0*X + (dk/dur^2)*X^3 - (dk/(2*dur^3))*X^4
+        // Smoothstep (ease-in/ease-out) speed ramp. The slowdown factor k eases
+        //   k(u) = k0 + dk*(3u^2 - 2u^3),  u = t/dur
+        // so acceleration is zero at both ends (eases out of one speed and into
+        // the other). Output PTS is its integral over local time t:
+        //   k0*t + (dk/dur^2)*t^3 - (dk/(2*dur^3))*t^4
+        // We reset each chunk to t=0 first (setpts=PTS-STARTPTS) so the curve is
+        // always evaluated on a clean 0..dur domain regardless of where the
+        // chunk sits in the clip, then map t (=T after reset) to the eased PTS.
         const k0 = seg.from, dk = seg.to - seg.from;
-        const B = dk / (dur * dur), C = dk / (2 * dur * dur * dur);
-        const X = '(T-STARTT)';
-        sp = `setpts='(${k0.toFixed(6)}*${X}+${B.toFixed(8)}*${X}*${X}*${X}-${C.toFixed(8)}*${X}*${X}*${X}*${X})/TB'`;
+        const c3 = dk / (dur * dur);              // coefficient of t^3
+        const c4 = -dk / (2 * dur * dur * dur);   // coefficient of t^4
+        const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(8) + v;
+        const expr = `${k0.toFixed(6)}*T${term(c3, '*T*T*T')}${term(c4, '*T*T*T*T')}`;
+        chain = `${src}trim=start=${a}:end=${b},setpts=PTS-STARTPTS,setpts='(${expr})/TB'[v${i}]`;
       } else {
-        sp = `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
+        chain = `${src}trim=start=${a}:end=${b},setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`;
       }
-      chains.push(`${src}trim=start=${a}:end=${b},${sp}[v${i}]`);
+      chains.push(chain);
     });
     chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
     chains.push(`[cc]fps=${tgtFps}[outv]`);
