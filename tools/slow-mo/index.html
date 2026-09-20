@@ -162,6 +162,7 @@
             <div class="tl-scale"><span>0:00</span><span id="tl-time">0:00</span><span id="tl-end">0:00</span></div>
           </div>
           <div class="tl-tools">
+            <button class="mini" id="preview-btn">▶ Preview slo-mo</button>
             <button class="mini" id="split-btn">✂ Split at playhead</button>
             <button class="mini danger" id="reset-tl">Reset chunks</button>
             <span class="est" id="est" style="margin-left:auto"></span>
@@ -332,6 +333,42 @@
   timeline.addEventListener('pointerup', () => { scrubbing = false; });
   timeline.addEventListener('pointercancel', () => { scrubbing = false; });
   timeline.addEventListener('dblclick', e => { setPlayhead(timeAt(e.clientX)); splitAtPlayhead(); });
+
+  // ── Live slow-mo preview (plays the source at the timeline's speeds) ────────
+  let previewing = false, previewRAF = 0;
+  function factorAt(t) {
+    const seg = segments.find(s => t >= s.start && t < s.end) || segments[segments.length - 1];
+    if (!seg) return 1;
+    if (seg.mode === 'ramp') {
+      let u = (t - seg.start) / Math.max(0.0001, seg.end - seg.start);
+      u = Math.max(0, Math.min(1, u));
+      return seg.from + (seg.to - seg.from) * (u * u * (3 - 2 * u));
+    }
+    return seg.factor;
+  }
+  function previewStep() {
+    if (!previewing) return;
+    const rate = Math.max(0.0625, Math.min(16, 1 / factorAt(vid.currentTime)));
+    if (Math.abs(vid.playbackRate - rate) > 0.001) vid.playbackRate = rate;
+    previewRAF = requestAnimationFrame(previewStep);
+  }
+  function stopPreview() {
+    previewing = false;
+    if (previewRAF) cancelAnimationFrame(previewRAF);
+    vid.playbackRate = 1;
+    $('preview-btn').textContent = '▶ Preview slo-mo';
+  }
+  function startPreview() {
+    if (!segments.length) return;
+    previewing = true;
+    vid.muted = true;
+    if (vid.currentTime >= duration - 0.05) vid.currentTime = 0;
+    $('preview-btn').textContent = '❚❚ Stop preview';
+    vid.play().then(() => previewStep()).catch(() => stopPreview());
+  }
+  $('preview-btn').addEventListener('click', () => { previewing ? (stopPreview(), vid.pause()) : startPreview(); });
+  vid.addEventListener('pause', () => { if (previewing) stopPreview(); });
+  vid.addEventListener('ended', () => { if (previewing) stopPreview(); });
 
   // ── Segment ops ───────────────────────────────────────────────────────────
   function splitAtPlayhead() {
