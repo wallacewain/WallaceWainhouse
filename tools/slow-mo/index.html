@@ -628,37 +628,48 @@
     return ff;
   }
 
+  // Expand chunks into constant-speed "pieces". A ramp becomes a fine staircase
+  // of short constant-speed steps whose slowdown follows a smoothstep ease, so
+  // it reads as a smooth ease-out/ease-in ramp — while every piece is the plain,
+  // reliable `setpts=const*(PTS-STARTPTS)` construct (no timestamp expressions,
+  // always monotonic, so no speed glitches).
+  function smoothstep(u) { return u * u * (3 - 2 * u); }
+  function buildPieces() {
+    const pieces = [];
+    segments.forEach(seg => {
+      const dur = Math.max(0.0001, seg.end - seg.start);
+      if (seg.mode === 'ramp') {
+        let M = Math.ceil(dur * 16);                       // ~16 steps/sec
+        M = Math.min(M, 48);                                // cap graph size
+        M = Math.min(M, Math.max(1, Math.floor(dur * srcFps / 3))); // ≥~3 src frames/step
+        M = Math.max(2, M);
+        const k0 = seg.from, dk = seg.to - seg.from;
+        for (let j = 0; j < M; j++) {
+          pieces.push({
+            a: seg.start + (j / M) * dur,
+            b: seg.start + ((j + 1) / M) * dur,
+            factor: k0 + dk * smoothstep((j + 0.5) / M),
+          });
+        }
+      } else {
+        pieces.push({ a: seg.start, b: seg.end, factor: seg.factor });
+      }
+    });
+    return pieces;
+  }
+
   // ── Build the filtergraph ──────────────────────────────────────────────────
   function buildFilter() {
-    const N = segments.length;
+    const pieces = buildPieces();
+    const N = pieces.length;
     const chains = [];
-    if (N > 1) chains.push(`[0:v]split=${N}${segments.map((_, i) => `[s${i}]`).join('')}`);
-    segments.forEach((seg, i) => {
+    if (N > 1) chains.push(`[0:v]split=${N}${pieces.map((_, i) => `[s${i}]`).join('')}`);
+    pieces.forEach((p, i) => {
       const src = N > 1 ? `[s${i}]` : '[0:v]';
-      const a = seg.start.toFixed(4), b = seg.end.toFixed(4);
-      const dur = Math.max(0.0001, seg.end - seg.start);
-      let chain;
-      if (seg.mode === 'ramp') {
-        // Smoothstep (ease-in/ease-out) speed ramp. The slowdown factor k eases
-        //   k(u) = k0 + dk*(3u^2 - 2u^3),  u = t/dur
-        // so acceleration is zero at both ends (eases out of one speed and into
-        // the other). Output PTS is its integral over local time t:
-        //   k0*t + (dk/dur^2)*t^3 - (dk/(2*dur^3))*t^4
-        // We reset each chunk to t=0 first (setpts=PTS-STARTPTS) so the curve is
-        // always evaluated on a clean 0..dur domain regardless of where the
-        // chunk sits in the clip, then map t (=T after reset) to the eased PTS.
-        const k0 = seg.from, dk = seg.to - seg.from;
-        const c3 = dk / (dur * dur);              // coefficient of t^3
-        const c4 = -dk / (2 * dur * dur * dur);   // coefficient of t^4
-        const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(8) + v;
-        const expr = `${k0.toFixed(6)}*T${term(c3, '*T*T*T')}${term(c4, '*T*T*T*T')}`;
-        chain = `${src}trim=start=${a}:end=${b},setpts=PTS-STARTPTS,setpts='(${expr})/TB'[v${i}]`;
-      } else {
-        chain = `${src}trim=start=${a}:end=${b},setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`;
-      }
-      chains.push(chain);
+      chains.push(`${src}trim=start=${p.a.toFixed(4)}:end=${p.b.toFixed(4)},` +
+        `setpts=${p.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`);
     });
-    chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
+    chains.push(`${pieces.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
     chains.push(`[cc]fps=${tgtFps}[outv]`);
     return chains.join(';');
   }
