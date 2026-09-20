@@ -704,6 +704,26 @@
     return chains.join(';');
   }
 
+  // Simple single-chunk retime (canonical setpts,fps) for the whole clip.
+  function rampExprFor(seg) {
+    const dur = Math.max(0.0001, seg.end - seg.start);
+    const k0 = seg.from, dk = seg.to - seg.from;
+    const B = dk / (dur * dur), C = dk / (2 * dur * dur * dur);
+    const X = `(N/${srcFps.toFixed(3)})`;
+    const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(6) + v;
+    const expr = `${k0.toFixed(6)}*${X}${term(B, `*${X}*${X}*${X}`)}${term(-C, `*${X}*${X}*${X}*${X}`)}`;
+    return `setpts='(${expr})/TB'`;
+  }
+  function buildVf(seg) {
+    const sp = seg.mode === 'ramp' ? rampExprFor(seg) : `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
+    return `${sp},fps=${tgtFps}`;
+  }
+  function expectedOutSeconds() {
+    let out = 0;
+    segments.forEach(s => { const d = s.end - s.start; out += d * (s.mode === 'ramp' ? (s.from + s.to) / 2 : s.factor); });
+    return out;
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   async function render() {
     if (!vidFile || !segments.length) return;
@@ -720,13 +740,12 @@
     setStatus('Reading video…', 0.2);
     await ff.writeFile(inName, new Uint8Array(await vidFile.arrayBuffer()));
 
-    const graph = buildFilter();
+    const enc = ['-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'veryfast', '-movflags', '+faststart', outName];
+    const args = segments.length === 1
+      ? ['-i', inName, '-vf', buildVf(segments[0]), ...enc]
+      : ['-i', inName, '-filter_complex', buildFilter(), '-map', '[outv]', ...enc];
     setStatus('Rendering slow motion…', 0.35);
-    await ff.exec([
-      '-i', inName, '-filter_complex', graph, '-map', '[outv]', '-an',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'veryfast',
-      '-movflags', '+faststart', outName,
-    ]);
+    await ff.exec(args);
 
     let data;
     try { data = await ff.readFile(outName); }
@@ -737,10 +756,20 @@
     const blob = new Blob([data.buffer], { type: 'video/mp4' });
     if (outUrl) URL.revokeObjectURL(outUrl);
     outUrl = URL.createObjectURL(blob);
-    $('out-vid').src = outUrl;
+    const outVid = $('out-vid');
+    outVid.src = outUrl;
     const base = vidFile.name.replace(/\.[^.]+$/, '') || 'video';
     const dl = $('dl-btn'); dl.href = outUrl; dl.download = base + '-slowmo.mp4';
-    $('out-meta').textContent = `${tgtFps}fps · ${(blob.size / 1024 / 1024).toFixed(1)} MB · sharp (real frames re-timed)`;
+    const exp = expectedOutSeconds();
+    const sizeMb = (blob.size / 1024 / 1024).toFixed(1);
+    $('out-meta').textContent = `${tgtFps}fps · ${sizeMb} MB · length —s (expected ~${fmtTime(exp)})`;
+    outVid.onloadedmetadata = () => {
+      const got = outVid.duration;
+      const ok = got >= exp * 0.9;
+      $('out-meta').textContent =
+        `${tgtFps}fps · ${sizeMb} MB · length ${fmtTime(got)} (expected ~${fmtTime(exp)})` +
+        (ok ? '' : ' — ⚠ output not slowed; tell me and I\'ll switch the encode');
+    };
     result.classList.add('show');
     setStatus('Done!', 1);
     result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
