@@ -200,7 +200,7 @@
       </div>
 
       <p class="notes">
-        How it works: your captured frames are re-timed so they play slowly — that's true, sharp slow-mo using your real frames, no invented ones. Ramps ease between speeds on a smooth bezier curve. If a chunk is slower than your source frame rate can cover, a few frames simply repeat.
+        How it works: your captured frames are re-timed so they play slowly — sharp slow-mo from your real frames. Ramps ease between speeds on a smooth bezier curve, and wherever an output frame lands between two captured frames (across a ramp, or when a chunk is slower than your source can cleanly cover) the two neighbours are blended by weight so the motion stays smooth.
         Audio is dropped — slow-mo audio isn't meaningful. Output is H.264 MP4.
         The first render downloads the processing engine (~32&nbsp;MB) and then caches it. Everything is local; your video never leaves your device.
         Want to trim first, or pull the audio out? Try the <a href="/tools/video-trimmer/">Video Trimmer</a> or <a href="/tools/mp3-extractor/">MP3 Extractor</a>.
@@ -628,49 +628,42 @@
     return ff;
   }
 
-  // Expand chunks into constant-speed "pieces". A ramp becomes a fine staircase
-  // of short constant-speed steps whose slowdown follows a smoothstep ease, so
-  // it reads as a smooth ease-out/ease-in ramp — while every piece is the plain,
-  // reliable `setpts=const*(PTS-STARTPTS)` construct (no timestamp expressions,
-  // always monotonic, so no speed glitches).
-  function smoothstep(u) { return u * u * (3 - 2 * u); }
-  function buildPieces() {
-    const pieces = [];
-    segments.forEach(seg => {
-      const dur = Math.max(0.0001, seg.end - seg.start);
-      if (seg.mode === 'ramp') {
-        let M = Math.ceil(dur * 16);                       // ~16 steps/sec
-        M = Math.min(M, 48);                                // cap graph size
-        M = Math.min(M, Math.max(1, Math.floor(dur * srcFps / 3))); // ≥~3 src frames/step
-        M = Math.max(2, M);
-        const k0 = seg.from, dk = seg.to - seg.from;
-        for (let j = 0; j < M; j++) {
-          pieces.push({
-            a: seg.start + (j / M) * dur,
-            b: seg.start + ((j + 1) / M) * dur,
-            factor: k0 + dk * smoothstep((j + 0.5) / M),
-          });
-        }
-      } else {
-        pieces.push({ a: seg.start, b: seg.end, factor: seg.factor });
-      }
-    });
-    return pieces;
-  }
-
   // ── Build the filtergraph ──────────────────────────────────────────────────
+  // Retime each chunk continuously, then conform to the output fps with a
+  // weighted blend between the frames each output frame lands between
+  // (minterpolate blend — plain weighted averaging, not motion-comp/Twixtor).
+  //
+  // Ramps use a smoothstep ease on the slowdown factor k:
+  //     k(u) = k0 + dk*(3u^2 - 2u^3),  u = x/dur,  x = local source seconds
+  // Output time is its integral:  k0*x + (dk/dur^2)*x^3 - (dk/(2*dur^3))*x^4.
+  // We express x as N/srcFps (N = frame index, which resets to 0 at the start of
+  // each trimmed chunk), so the curve is always evaluated on x∈[0,dur] — it can
+  // never overshoot into the region where its slope goes negative (which is what
+  // ran timestamps backwards before). Constant chunks use the plain setpts form.
   function buildFilter() {
-    const pieces = buildPieces();
-    const N = pieces.length;
+    const N = segments.length;
     const chains = [];
-    if (N > 1) chains.push(`[0:v]split=${N}${pieces.map((_, i) => `[s${i}]`).join('')}`);
-    pieces.forEach((p, i) => {
+    if (N > 1) chains.push(`[0:v]split=${N}${segments.map((_, i) => `[s${i}]`).join('')}`);
+    segments.forEach((seg, i) => {
       const src = N > 1 ? `[s${i}]` : '[0:v]';
-      chains.push(`${src}trim=start=${p.a.toFixed(4)}:end=${p.b.toFixed(4)},` +
-        `setpts=${p.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`);
+      const a = seg.start.toFixed(4), b = seg.end.toFixed(4);
+      const dur = Math.max(0.0001, seg.end - seg.start);
+      let chain;
+      if (seg.mode === 'ramp') {
+        const k0 = seg.from, dk = seg.to - seg.from;
+        const B = dk / (dur * dur);            // coeff of x^3
+        const C = dk / (2 * dur * dur * dur);  // magnitude of x^4 term (subtracted)
+        const X = `(N/${srcFps.toFixed(3)})`;  // local source seconds, chunk-relative
+        const term = (c, v) => (c >= 0 ? '+' : '-') + Math.abs(c).toFixed(6) + v;
+        const expr = `${k0.toFixed(6)}*${X}${term(B, `*${X}*${X}*${X}`)}${term(-C, `*${X}*${X}*${X}*${X}`)}`;
+        chain = `${src}trim=start=${a}:end=${b},setpts='(${expr})/TB'[v${i}]`;
+      } else {
+        chain = `${src}trim=start=${a}:end=${b},setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)[v${i}]`;
+      }
+      chains.push(chain);
     });
-    chains.push(`${pieces.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
-    chains.push(`[cc]fps=${tgtFps}[outv]`);
+    chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
+    chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=blend[outv]`);
     return chains.join(';');
   }
 
