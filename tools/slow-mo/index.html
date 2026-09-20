@@ -143,11 +143,7 @@
             </div>
             <div class="fld">
               <span>Output frame rate</span>
-              <div class="seg" id="tgt-fps">
-                <button data-fps="24">24</button>
-                <button data-fps="30" class="active">30</button>
-                <button data-fps="60">60</button>
-              </div>
+              <div class="seg" id="tgt-fps"><!-- clean rates for the detected source --></div>
             </div>
           </div>
           <p class="lead">Slow-mo uses your real captured frames re-timed to play slowly — no invented frames, so it stays sharp. Ramps ease between speeds on a smooth bezier curve.</p>
@@ -267,6 +263,7 @@
     $('tl-end').textContent = fmtTime(duration);
     segments = [{ start: 0, end: duration, mode: 'factor', factor: 4, _default: true }];
     selected = 0;
+    renderTargetOptions();
     renderSpeedOptions();
     segments[0].factor = currentFactors[currentFactors.length - 1]; // full slow-mo by default
     renderTimeline();
@@ -458,7 +455,7 @@
     setActiveSrcButton(srcFps);
     showSrc(srcFps, '· set manually');
     $('src-fps').style.display = 'flex';
-    renderSpeedOptions(); clampSegmentsToClean(); renderTimeline();
+    renderTargetOptions(); renderSpeedOptions(); clampSegmentsToClean(); updateEstimate(); renderTimeline();
   }));
   // Delegated "change" link → reveal the manual picker
   $('src-detect').addEventListener('click', e => {
@@ -552,6 +549,7 @@
       srcFps = snapFps(raw);
       showSrc(srcFps, '· detected');
       setActiveSrcButton(srcFps);
+      renderTargetOptions();
       renderSpeedOptions();
       // If the clip is still one untouched chunk, default it to full slow-mo from this source
       if (segments.length === 1 && segments[0]._default) {
@@ -565,16 +563,31 @@
       $('src-detect').innerHTML = `<span class="note">Couldn't read it automatically — pick what you shot at:</span>`;
       $('src-fps').style.display = 'flex';
       setActiveSrcButton(srcFps);
+      renderTargetOptions();
       renderSpeedOptions();
       clampSegmentsToClean();
     }
+    updateEstimate();
     renderTimeline();
   }
-  document.querySelectorAll('#tgt-fps button').forEach(b => b.addEventListener('click', () => {
+  // Output frame rates: standard rates that divide the detected source evenly
+  // (so full slow-mo stays frame-perfect), plus a faster one.
+  const OUTPUT_CANDIDATES = [24, 25, 30, 40, 48, 50, 60, 120];
+  function renderTargetOptions() {
+    let opts = OUTPUT_CANDIDATES.filter(f => srcFps % f === 0);
+    if (opts.length === 0) opts = [24, 30, 60];
+    if (!opts.includes(tgtFps)) {
+      tgtFps = opts.reduce((a, b) => Math.abs(b - 30) < Math.abs(a - 30) ? b : a, opts[0]);
+    }
+    $('tgt-fps').innerHTML = opts.map(f =>
+      `<button data-fps="${f}"${f === tgtFps ? ' class="active"' : ''}>${f}</button>`).join('');
+  }
+  $('tgt-fps').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
     document.querySelectorAll('#tgt-fps button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); tgtFps = +b.dataset.fps;
     renderSpeedOptions(); clampSegmentsToClean(); updateEstimate(); renderTimeline();
-  }));
+  });
 
   // ── Drag & drop ───────────────────────────────────────────────────────────
   drop.addEventListener('click', () => fileInput.click());
