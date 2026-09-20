@@ -168,25 +168,11 @@
 
           <div class="seg-edit" id="seg-edit">
             <div class="title" id="seg-title"></div>
-            <div class="speed-grid" id="speed-grid">
-              <button data-f="1">Real time</button>
-              <button data-f="2">2× slow</button>
-              <button data-f="4">4× slow</button>
-              <button data-f="8">8× slow</button>
-              <button data-f="custom">Custom…</button>
-              <button data-f="ramp">Ramp…</button>
-            </div>
-            <div class="custom-row" id="custom-row">
-              <label>Slow by <input type="number" id="custom-f" min="1" max="16" step="0.5" value="4" style="width:80px"> ×</label>
-            </div>
+            <div class="speed-grid" id="speed-grid"><!-- populated from the detected frame rate --></div>
             <div class="ramp-row" id="ramp-row">
-              <label>From
-                <select id="ramp-from"><option value="1">real</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select>
-              </label>
-              <label>to
-                <select id="ramp-to"><option value="1">real</option><option value="2">2×</option><option value="4">4×</option><option value="8" selected>8×</option></select>
-              </label>
-              <span>over this chunk</span>
+              <label>From <select id="ramp-from"></select></label>
+              <label>to <select id="ramp-to"></select></label>
+              <span>over this chunk (eased)</span>
             </div>
             <div class="hint" id="seg-hint"></div>
             <div class="tl-tools">
@@ -281,6 +267,8 @@
     $('tl-end').textContent = fmtTime(duration);
     segments = [{ start: 0, end: duration, mode: 'factor', factor: 4, _default: true }];
     selected = 0;
+    renderSpeedOptions();
+    segments[0].factor = currentFactors[currentFactors.length - 1]; // full slow-mo by default
     renderTimeline();
     runDetection();
   });
@@ -364,7 +352,7 @@
     renderTimeline();
   });
   $('reset-tl').addEventListener('click', () => {
-    segments = [{ start: 0, end: duration, mode: 'factor', factor: 4 }];
+    segments = [{ start: 0, end: duration, mode: 'factor', factor: currentFactors[currentFactors.length - 1], _default: true }];
     selected = 0;
     renderTimeline();
   });
@@ -378,40 +366,66 @@
     $('seg-title').innerHTML = `Chunk <b>${fmtTime(seg.start)}–${fmtTime(seg.end)}</b> · ${(seg.end - seg.start).toFixed(2)}s`;
     $('merge-btn').disabled = selected >= segments.length - 1;
 
-    const active = seg.mode === 'ramp' ? 'ramp'
-      : ([1, 2, 4, 8].includes(seg.factor) ? String(seg.factor) : 'custom');
+    const active = seg.mode === 'ramp' ? 'ramp' : String(seg.factor);
     document.querySelectorAll('#speed-grid button').forEach(b => b.classList.toggle('active', b.dataset.f === active));
-    $('custom-row').classList.toggle('show', active === 'custom');
-    $('ramp-row').classList.toggle('show', active === 'ramp');
-    if (active === 'custom') $('custom-f').value = seg.factor;
+    $('ramp-row').classList.toggle('show', seg.mode === 'ramp');
     if (seg.mode === 'ramp') { $('ramp-from').value = seg.from; $('ramp-to').value = seg.to; }
 
-    // Interpolation-need hint
-    const maxReal = srcFps / tgtFps; // biggest slowdown fully covered by real frames
-    const worst = seg.mode === 'ramp' ? Math.max(seg.from, seg.to) : seg.factor;
-    let msg;
-    if (worst <= maxReal + 0.01) {
-      msg = `Your ${srcFps}fps source covers up to ${maxReal.toFixed(1)}× slow at ${tgtFps}fps with real frames — this chunk needs no invented frames. Crisp.`;
-      $('seg-hint').className = 'hint';
-    } else {
-      msg = `${worst}× is beyond the ${maxReal.toFixed(1)}× your ${srcFps}fps source covers, so some frames will repeat here — it may judder slightly. Ease it off with a lower factor or a ramp.`;
+    // Every offered speed divides the source evenly, so it's always clean.
+    const k = seg.mode === 'ramp' ? null : Math.round(srcFps / (seg.factor * tgtFps));
+    $('seg-hint').className = 'hint';
+    if (seg.mode === 'ramp') {
+      $('seg-hint').textContent = `Speed eases from ${seg.from}× to ${seg.to}× across this chunk on a smooth bezier curve.`;
+    } else if (cleanFallback) {
       $('seg-hint').className = 'hint warn';
+      $('seg-hint').textContent = `${srcFps}fps doesn't divide evenly into ${tgtFps}fps, so frames will be resampled to fit.`;
+    } else {
+      $('seg-hint').textContent = seg.factor === 1
+        ? `Real time — keeps every ${k}${ordinal(k)} captured frame.`
+        : `${seg.factor}× slow — keeps every ${k}${ordinal(k)} captured frame, no duplication. Perfectly clean.`;
     }
-    $('seg-hint').textContent = msg;
+  }
+  function ordinal(n) { return n === 1 ? 'st' : (n % 10 === 1 && n !== 11) ? 'st' : (n % 10 === 2 && n !== 12) ? 'nd' : (n % 10 === 3 && n !== 13) ? 'rd' : 'th'; }
+
+  // Slowdown factors that divide the source frame rate evenly into the output
+  let currentFactors = [1, 2, 4, 8], cleanFallback = false;
+  function getCleanFactors() {
+    const out = [];
+    const maxN = Math.floor(srcFps / tgtFps + 1e-6);
+    for (let N = 1; N <= maxN; N++) if (srcFps % (N * tgtFps) === 0) out.push(N);
+    return out;
+  }
+  function snapToClean(f) {
+    let best = currentFactors[0], bd = Infinity;
+    for (const c of currentFactors) { const d = Math.abs(c - f); if (d < bd) { bd = d; best = c; } }
+    return best;
+  }
+  function renderSpeedOptions() {
+    let facs = getCleanFactors();
+    cleanFallback = facs.length < 2;
+    if (cleanFallback) facs = [1, 2, 4, 8];
+    currentFactors = facs;
+    $('speed-grid').innerHTML = facs.map(f =>
+      `<button data-f="${f}">${f === 1 ? 'Real time' : f + '× slow'}</button>`).join('') +
+      `<button data-f="ramp">Ramp…</button>`;
+    const opts = facs.map(f => `<option value="${f}">${f === 1 ? 'real' : f + '×'}</option>`).join('');
+    $('ramp-from').innerHTML = opts; $('ramp-to').innerHTML = opts;
+    $('ramp-from').value = facs[0]; $('ramp-to').value = facs[facs.length - 1];
+  }
+  function clampSegmentsToClean() {
+    segments.forEach(s => {
+      if (s.mode === 'ramp') { s.from = snapToClean(s.from); s.to = snapToClean(s.to); }
+      else s.factor = snapToClean(s.factor);
+    });
   }
 
-  document.querySelectorAll('#speed-grid button').forEach(b => b.addEventListener('click', () => {
+  // Delegated speed-button clicks (buttons are rebuilt per frame rate)
+  $('speed-grid').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
     const seg = segments[selected]; if (!seg) return;
     seg._default = false;
-    const f = b.dataset.f;
-    if (f === 'ramp') { seg.mode = 'ramp'; seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value; }
-    else if (f === 'custom') { seg.mode = 'factor'; seg.factor = +$('custom-f').value || 4; }
-    else { seg.mode = 'factor'; seg.factor = +f; }
-    renderTimeline();
-  }));
-  $('custom-f').addEventListener('input', () => {
-    const seg = segments[selected]; if (!seg) return;
-    seg.mode = 'factor'; seg.factor = Math.max(1, Math.min(16, +$('custom-f').value || 4));
+    if (b.dataset.f === 'ramp') { seg.mode = 'ramp'; seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value; }
+    else { seg.mode = 'factor'; seg.factor = +b.dataset.f; }
     renderTimeline();
   });
   ['ramp-from', 'ramp-to'].forEach(id => $(id).addEventListener('change', () => {
@@ -444,7 +458,7 @@
     setActiveSrcButton(srcFps);
     showSrc(srcFps, '· set manually');
     $('src-fps').style.display = 'flex';
-    renderEditor();
+    renderSpeedOptions(); clampSegmentsToClean(); renderTimeline();
   }));
   // Delegated "change" link → reveal the manual picker
   $('src-detect').addEventListener('click', e => {
@@ -538,9 +552,12 @@
       srcFps = snapFps(raw);
       showSrc(srcFps, '· detected');
       setActiveSrcButton(srcFps);
+      renderSpeedOptions();
       // If the clip is still one untouched chunk, default it to full slow-mo from this source
       if (segments.length === 1 && segments[0]._default) {
-        segments[0].factor = Math.max(2, Math.min(8, Math.round(srcFps / tgtFps)));
+        segments[0].factor = currentFactors[currentFactors.length - 1];
+      } else {
+        clampSegmentsToClean();
       }
     } else {
       srcFps = 240;
@@ -548,12 +565,15 @@
       $('src-detect').innerHTML = `<span class="note">Couldn't read it automatically — pick what you shot at:</span>`;
       $('src-fps').style.display = 'flex';
       setActiveSrcButton(srcFps);
+      renderSpeedOptions();
+      clampSegmentsToClean();
     }
     renderTimeline();
   }
   document.querySelectorAll('#tgt-fps button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#tgt-fps button').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); tgtFps = +b.dataset.fps; updateEstimate(); renderEditor();
+    b.classList.add('active'); tgtFps = +b.dataset.fps;
+    renderSpeedOptions(); clampSegmentsToClean(); updateEstimate(); renderTimeline();
   }));
 
   // ── Drag & drop ───────────────────────────────────────────────────────────
