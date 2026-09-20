@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Turn a phone video shot at 120 or 240 fps into a proper slow-motion clip you can actually share. Pick a target frame rate, cut the timeline into chunks at real speed, half or full slow-mo, ramp between speeds, and smooth it with motion interpolation. Runs in your browser — nothing is uploaded.">
+  <title>Slow-Mo Studio &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/tools/slow-mo/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/tools/slow-mo/">
+  <meta property="og:title" content="Slow-Mo Studio &mdash; Wallace Wainhouse">
+  <meta property="og:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks, ramping, and motion-interpolated smoothing.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Slow-Mo Studio &mdash; Wallace Wainhouse">
+  <meta name="twitter:description" content="Bake proper slow motion into a 120/240fps phone video so you can share it. Timeline speed chunks, ramping, and motion-interpolated smoothing.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    .sm-wrap { max-width: 860px; padding-bottom: 4rem; }
+
+    .drop { border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface);
+      padding: 3.5rem 2rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .drop:hover, .drop.over { border-color: var(--accent); background: #1b1b22; }
+    .drop .big { font-size: 1.1rem; color: var(--text); font-weight: 600; margin-bottom: 0.35rem; }
+    .drop .sub { color: var(--muted); font-size: 0.9rem; }
+    .drop .icon { font-size: 2.2rem; margin-bottom: 0.6rem; }
+
+    .panel { display: none; flex-direction: column; gap: 1.4rem; }
+    video { width: 100%; max-height: 360px; border-radius: var(--radius); border: 1px solid var(--border); background: #000; display: block; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.15rem 1.3rem; display: flex; flex-direction: column; gap: 1rem; }
+    .card h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
+    .card .lead { font-size: 0.82rem; color: var(--muted); margin: -0.4rem 0 0; }
+
+    .fld-row { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+    .fld { display: flex; flex-direction: column; gap: 0.45rem; }
+    .fld > span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: 0.45rem 0.85rem; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 0.85rem; font-weight: 600; }
+    .seg button.active { background: var(--accent); color: #fff; }
+
+    /* Timeline */
+    .tl-outer { display: flex; flex-direction: column; gap: 0.5rem; }
+    .timeline { position: relative; height: 62px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); display: flex; cursor: pointer; background: #101014; }
+    .tl-seg { position: relative; height: 100%; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(0,0,0,0.5); overflow: hidden; transition: filter 0.1s; }
+    .tl-seg:last-child { border-right: none; }
+    .tl-seg .lbl { font-size: 0.72rem; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); pointer-events: none; white-space: nowrap; }
+    .tl-seg.sel { outline: 2px solid #fff; outline-offset: -2px; z-index: 2; }
+    .tl-seg:hover { filter: brightness(1.12); }
+    .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9); pointer-events: none; z-index: 3; left: 0; }
+    .tl-scale { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .tl-tools { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .mini { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.45rem 0.8rem; font-family: var(--font); font-size: 0.83rem; font-weight: 600; cursor: pointer; }
+    .mini:hover:not(:disabled) { border-color: var(--accent); }
+    .mini:disabled { opacity: 0.4; cursor: not-allowed; }
+    .mini.danger:hover:not(:disabled) { border-color: #f43f5e; color: #f43f5e; }
+
+    /* Segment editor */
+    .seg-edit { display: none; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border); padding-top: 0.95rem; }
+    .seg-edit.show { display: flex; }
+    .seg-edit .title { font-size: 0.85rem; color: var(--muted); }
+    .seg-edit .title b { color: var(--text); }
+    .speed-grid { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .speed-grid button { flex: 1 0 auto; min-width: 64px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 0.5rem; font-family: var(--font); font-weight: 600; font-size: 0.82rem; cursor: pointer; }
+    .speed-grid button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .ramp-row, .custom-row { display: none; gap: 0.6rem; align-items: center; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; }
+    .ramp-row.show, .custom-row.show { display: flex; }
+    select, input[type="number"] { padding: 0.45rem 0.55rem; background: #101014; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font); font-size: 0.88rem; }
+    .hint { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+    .hint.warn { color: #f59e0b; }
+
+    .est { font-size: 0.85rem; color: var(--muted); }
+    .est b { color: var(--text); }
+
+    .btn-lg { width: 100%; justify-content: center; text-align: center; font-size: 1rem; padding: 0.85rem 1rem; border: none; cursor: pointer; }
+    .btn-lg:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .status { display: none; flex-direction: column; gap: 0.5rem; }
+    .status.show { display: flex; }
+    .bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.2s; border-radius: 5px; }
+    .status-txt { font-size: 0.85rem; color: var(--muted); }
+    .status-txt.err { color: #f43f5e; }
+
+    .result { display: none; flex-direction: column; gap: 0.9rem; }
+    .result.show { display: flex; }
+    .result .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 1.1rem; font-family: var(--font); font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .secondary:hover { border-color: var(--accent); }
+    .meta { font-size: 0.85rem; color: var(--muted); }
+
+    .notes { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-top: 1.5rem; }
+    .notes a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">WW</a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/" class="active">Tools</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <section class="hero" style="padding-bottom:1rem">
+      <h1>Slow-Mo Studio</h1>
+      <p>Phones record at 120 or 240&nbsp;fps but often share back at normal speed &mdash; so your slow motion vanishes. This <strong>bakes the slow motion in</strong>. Pick an output frame rate, chop the timeline into chunks at real speed, half or full slow-mo, <strong>ramp</strong> between speeds, and smooth it all with <strong>motion interpolation</strong>. Everything runs in your browser &mdash; nothing is uploaded.</p>
+    </section>
+
+    <div class="sm-wrap">
+      <div class="drop" id="drop">
+        <input type="file" id="file-input" accept="video/*" hidden>
+        <div class="icon">🎬 → 🐢</div>
+        <div class="big">Drop your high-frame-rate video here</div>
+        <div class="sub">or click to choose one &mdash; MP4, MOV, WebM</div>
+      </div>
+
+      <div class="panel" id="panel">
+        <video id="vid" controls playsinline></video>
+
+        <div class="card">
+          <div class="fld-row">
+            <div class="fld">
+              <span>Source frame rate (what your phone shot)</span>
+              <div class="seg" id="src-fps">
+                <button data-fps="240" class="active">240</button>
+                <button data-fps="120">120</button>
+                <button data-fps="60">60</button>
+                <button data-fps="30">30</button>
+              </div>
+            </div>
+            <div class="fld">
+              <span>Output frame rate</span>
+              <div class="seg" id="tgt-fps">
+                <button data-fps="24">24</button>
+                <button data-fps="30" class="active">30</button>
+                <button data-fps="60">60</button>
+              </div>
+            </div>
+            <div class="fld">
+              <span>Smoothness</span>
+              <div class="seg" id="smooth">
+                <button data-mode="smooth" class="active">Smooth (motion)</button>
+                <button data-mode="blend">Blend</button>
+                <button data-mode="none">Off</button>
+              </div>
+            </div>
+          </div>
+          <p class="lead" id="smooth-hint">Motion interpolation invents in-between frames for the most natural slow-mo. It's the slowest to render — keep clips short.</p>
+        </div>
+
+        <div class="card">
+          <h3>Timeline</h3>
+          <p class="lead">Move the playhead (scrub the video or click the bar), then <b>Split</b> to cut a chunk. Click a chunk to set its speed.</p>
+          <div class="tl-outer">
+            <div class="timeline" id="timeline"><div class="playhead" id="playhead"></div></div>
+            <div class="tl-scale"><span>0:00</span><span id="tl-end">0:00</span></div>
+          </div>
+          <div class="tl-tools">
+            <button class="mini" id="split-btn">✂ Split at playhead</button>
+            <button class="mini danger" id="reset-tl">Reset chunks</button>
+            <span class="est" id="est" style="margin-left:auto"></span>
+          </div>
+
+          <div class="seg-edit" id="seg-edit">
+            <div class="title" id="seg-title"></div>
+            <div class="speed-grid" id="speed-grid">
+              <button data-f="1">Real time</button>
+              <button data-f="2">2× slow</button>
+              <button data-f="4">4× slow</button>
+              <button data-f="8">8× slow</button>
+              <button data-f="custom">Custom…</button>
+              <button data-f="ramp">Ramp…</button>
+            </div>
+            <div class="custom-row" id="custom-row">
+              <label>Slow by <input type="number" id="custom-f" min="1" max="16" step="0.5" value="4" style="width:80px"> ×</label>
+            </div>
+            <div class="ramp-row" id="ramp-row">
+              <label>From
+                <select id="ramp-from"><option value="1">real</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select>
+              </label>
+              <label>to
+                <select id="ramp-to"><option value="1">real</option><option value="2">2×</option><option value="4">4×</option><option value="8" selected>8×</option></select>
+              </label>
+              <span>over this chunk</span>
+            </div>
+            <div class="hint" id="seg-hint"></div>
+            <div class="tl-tools">
+              <button class="mini" id="merge-btn">Merge with next chunk →</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-lg" id="render-btn">Render slow-mo</button>
+
+        <div class="status" id="status">
+          <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+          <div class="status-txt" id="status-txt"></div>
+        </div>
+
+        <div class="result" id="result">
+          <video id="out-vid" controls playsinline></video>
+          <div class="meta" id="out-meta"></div>
+          <div class="actions">
+            <a class="btn" id="dl-btn" download>⭳ Download MP4</a>
+            <button class="secondary" id="reset-btn">Start over</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="notes">
+        How it works: your captured frames are re-timed so they play slowly (that's the true, sharp slow-mo), and where a chunk is slower than your source can cover, motion interpolation synthesises the in-between frames.
+        Audio is dropped — slow-mo audio isn't meaningful. Output is H.264 MP4.
+        The first render downloads the processing engine (~32&nbsp;MB) and then caches it. Everything is local; your video never leaves your device.
+        Want to trim first, or pull the audio out? Try the <a href="/tools/video-trimmer/">Video Trimmer</a> or <a href="/tools/mp3-extractor/">MP3 Extractor</a>.
+      </p>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+
+  <script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  const $ = id => document.getElementById(id);
+  const drop = $('drop'), fileInput = $('file-input'), panel = $('panel'), vid = $('vid');
+  const timeline = $('timeline'), playhead = $('playhead');
+  const statusBox = $('status'), barFill = $('bar-fill'), statusTxt = $('status-txt');
+  const result = $('result'), renderBtn = $('render-btn');
+
+  let vidFile = null, vidUrl = null, duration = 0, outUrl = null;
+  let srcFps = 240, tgtFps = 30, smoothMode = 'smooth';
+  let segments = [];       // [{start,end, mode:'factor'|'ramp', factor, from, to}]
+  let selected = -1;
+
+  const SEG_COLORS = { 1: '#3f3f46', 2: '#6366f1', 4: '#7c3aed', 8: '#a21caf', custom: '#0ea5e9', ramp: '#f59e0b' };
+
+  function fmtTime(s) {
+    s = Math.max(0, s || 0);
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    const cs = Math.floor((s % 1) * 100);
+    return m + ':' + String(sec).padStart(2, '0') + '.' + String(cs).padStart(2, '0');
+  }
+  function segColor(seg) {
+    if (seg.mode === 'ramp') return SEG_COLORS.ramp;
+    if (seg.factor === 1) return SEG_COLORS[1];
+    if (seg.factor === 2) return SEG_COLORS[2];
+    if (seg.factor === 4) return SEG_COLORS[4];
+    if (seg.factor === 8) return SEG_COLORS[8];
+    return SEG_COLORS.custom;
+  }
+  function segLabel(seg) {
+    if (seg.mode === 'ramp') return `${seg.from}× → ${seg.to}×`;
+    return seg.factor === 1 ? 'Real' : seg.factor + '× slow';
+  }
+  function setStatus(msg, frac, isErr) {
+    statusBox.classList.add('show');
+    statusTxt.textContent = msg;
+    statusTxt.classList.toggle('err', !!isErr);
+    if (frac != null) barFill.style.width = Math.round(frac * 100) + '%';
+  }
+
+  // ── Load video ───────────────────────────────────────────────────────────
+  function loadVideo(file) {
+    if (!(file.type && file.type.startsWith('video/')) && !/\.(mp4|mov|webm|mkv|m4v)$/i.test(file.name || '')) return;
+    vidFile = file;
+    if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidUrl = URL.createObjectURL(file);
+    vid.src = vidUrl;
+    result.classList.remove('show');
+    statusBox.classList.remove('show');
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+    panel.style.display = 'flex';
+    drop.style.display = 'none';
+  }
+  vid.addEventListener('loadedmetadata', () => {
+    duration = vid.duration || 0;
+    $('tl-end').textContent = fmtTime(duration);
+    segments = [{ start: 0, end: duration, mode: 'factor', factor: 4 }];
+    selected = 0;
+    renderTimeline();
+  });
+  vid.addEventListener('timeupdate', updatePlayhead);
+  vid.addEventListener('seeked', updatePlayhead);
+
+  function updatePlayhead() {
+    if (!duration) return;
+    playhead.style.left = (vid.currentTime / duration * 100) + '%';
+  }
+
+  // ── Timeline rendering ──────────────────────────────────────────────────
+  function renderTimeline() {
+    [...timeline.querySelectorAll('.tl-seg')].forEach(e => e.remove());
+    segments.forEach((seg, i) => {
+      const el = document.createElement('div');
+      el.className = 'tl-seg' + (i === selected ? ' sel' : '');
+      el.style.flex = (seg.end - seg.start);
+      el.style.background = seg.mode === 'ramp'
+        ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.from)]}, ${SEG_COLORS[clampKey(seg.to)]})`
+        : segColor(seg);
+      el.innerHTML = `<span class="lbl">${segLabel(seg)}</span>`;
+      el.addEventListener('click', e => { e.stopPropagation(); selectSeg(i); });
+      timeline.insertBefore(el, playhead);
+    });
+    updatePlayhead();
+    updateEstimate();
+    renderEditor();
+  }
+  function clampKey(f) { return SEG_COLORS[f] ? f : 'custom'; }
+
+  timeline.addEventListener('click', e => {
+    const r = timeline.getBoundingClientRect();
+    const t = Math.max(0, Math.min(duration, (e.clientX - r.left) / r.width * duration));
+    vid.currentTime = t;
+  });
+
+  function selectSeg(i) { selected = i; renderTimeline(); }
+
+  // ── Segment ops ───────────────────────────────────────────────────────────
+  $('split-btn').addEventListener('click', () => {
+    const t = vid.currentTime;
+    const i = segments.findIndex(s => t > s.start + 0.03 && t < s.end - 0.03);
+    if (i < 0) { setStatus('Move the playhead inside a chunk (not at an edge) to split.', null, true); return; }
+    const s = segments[i];
+    const a = Object.assign({}, s, { end: t });
+    const b = Object.assign({}, s, { start: t });
+    segments.splice(i, 1, a, b);
+    selected = i + 1;
+    renderTimeline();
+  });
+  $('merge-btn').addEventListener('click', () => {
+    if (selected < 0 || selected >= segments.length - 1) return;
+    const s = segments[selected];
+    segments[selected] = Object.assign({}, s, { end: segments[selected + 1].end });
+    segments.splice(selected + 1, 1);
+    renderTimeline();
+  });
+  $('reset-tl').addEventListener('click', () => {
+    segments = [{ start: 0, end: duration, mode: 'factor', factor: 4 }];
+    selected = 0;
+    renderTimeline();
+  });
+
+  // ── Segment editor ───────────────────────────────────────────────────────
+  function renderEditor() {
+    const ed = $('seg-edit');
+    if (selected < 0 || !segments[selected]) { ed.classList.remove('show'); return; }
+    ed.classList.add('show');
+    const seg = segments[selected];
+    $('seg-title').innerHTML = `Chunk <b>${fmtTime(seg.start)}–${fmtTime(seg.end)}</b> · ${(seg.end - seg.start).toFixed(2)}s`;
+    $('merge-btn').disabled = selected >= segments.length - 1;
+
+    const active = seg.mode === 'ramp' ? 'ramp'
+      : ([1, 2, 4, 8].includes(seg.factor) ? String(seg.factor) : 'custom');
+    document.querySelectorAll('#speed-grid button').forEach(b => b.classList.toggle('active', b.dataset.f === active));
+    $('custom-row').classList.toggle('show', active === 'custom');
+    $('ramp-row').classList.toggle('show', active === 'ramp');
+    if (active === 'custom') $('custom-f').value = seg.factor;
+    if (seg.mode === 'ramp') { $('ramp-from').value = seg.from; $('ramp-to').value = seg.to; }
+
+    // Interpolation-need hint
+    const maxReal = srcFps / tgtFps; // biggest slowdown fully covered by real frames
+    const worst = seg.mode === 'ramp' ? Math.max(seg.from, seg.to) : seg.factor;
+    let msg;
+    if (worst <= maxReal + 0.01) {
+      msg = `Your ${srcFps}fps source covers up to ${maxReal.toFixed(1)}× slow at ${tgtFps}fps with real frames — this chunk needs no invented frames. Crisp.`;
+      $('seg-hint').className = 'hint';
+    } else {
+      msg = `${worst}× is beyond the ${maxReal.toFixed(1)}× your ${srcFps}fps source covers, so frames are invented here — use "Smooth" for the most natural result.`;
+      $('seg-hint').className = 'hint warn';
+    }
+    $('seg-hint').textContent = msg;
+  }
+
+  document.querySelectorAll('#speed-grid button').forEach(b => b.addEventListener('click', () => {
+    const seg = segments[selected]; if (!seg) return;
+    const f = b.dataset.f;
+    if (f === 'ramp') { seg.mode = 'ramp'; seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value; }
+    else if (f === 'custom') { seg.mode = 'factor'; seg.factor = +$('custom-f').value || 4; }
+    else { seg.mode = 'factor'; seg.factor = +f; }
+    renderTimeline();
+  }));
+  $('custom-f').addEventListener('input', () => {
+    const seg = segments[selected]; if (!seg) return;
+    seg.mode = 'factor'; seg.factor = Math.max(1, Math.min(16, +$('custom-f').value || 4));
+    renderTimeline();
+  });
+  ['ramp-from', 'ramp-to'].forEach(id => $(id).addEventListener('change', () => {
+    const seg = segments[selected]; if (!seg || seg.mode !== 'ramp') return;
+    seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value;
+    renderTimeline();
+  }));
+
+  function updateEstimate() {
+    let out = 0;
+    segments.forEach(s => {
+      const dur = s.end - s.start;
+      const f = s.mode === 'ramp' ? (s.from + s.to) / 2 : s.factor;
+      out += dur * f;
+    });
+    $('est').innerHTML = `Output ≈ <b>${fmtTime(out)}</b> at ${tgtFps}fps`;
+  }
+
+  // ── Top selectors ────────────────────────────────────────────────────────
+  document.querySelectorAll('#src-fps button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#src-fps button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); srcFps = +b.dataset.fps; renderEditor();
+  }));
+  document.querySelectorAll('#tgt-fps button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#tgt-fps button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); tgtFps = +b.dataset.fps; updateEstimate(); renderEditor();
+  }));
+  document.querySelectorAll('#smooth button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#smooth button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); smoothMode = b.dataset.mode;
+    $('smooth-hint').textContent = smoothMode === 'smooth'
+      ? "Motion interpolation invents in-between frames for the most natural slow-mo. It's the slowest to render — keep clips short."
+      : smoothMode === 'blend'
+      ? 'Blends neighbouring frames — softer than motion but much faster to render.'
+      : 'No interpolation — frames are duplicated/dropped to hit the frame rate. Fastest, but can look juddery on big slowdowns.';
+  }));
+
+  // ── Drag & drop ───────────────────────────────────────────────────────────
+  drop.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadVideo(e.target.files[0]); });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) loadVideo(e.dataTransfer.files[0]); });
+  $('reset-btn').addEventListener('click', () => { panel.style.display = 'none'; drop.style.display = 'block'; fileInput.value = ''; });
+
+  // ── ffmpeg.wasm loader ─────────────────────────────────────────────────────
+  let _ff = null, _ffLibsLoaded = false;
+  function injectScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function loadFFmpeg() {
+    if (_ff) return _ff;
+    if (!_ffLibsLoaded) { await injectScript('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js'); _ffLibsLoaded = true; }
+    if (!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg) throw new Error('engine did not initialise');
+    const { FFmpeg } = window.FFmpegWASM;
+    const ff = new FFmpeg();
+    ff.on('progress', ({ progress }) => { if (progress > 0 && progress <= 1) setStatus('Rendering slow motion…', 0.35 + progress * 0.6); });
+    const esmBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+    const workerBlob = URL.createObjectURL(new Blob([`import "${esmBase}/worker.js";`], { type: 'text/javascript' }));
+    await ff.load({ classWorkerURL: workerBlob, coreURL: `${coreBase}/ffmpeg-core.js`, wasmURL: `${coreBase}/ffmpeg-core.wasm` });
+    _ff = ff;
+    return ff;
+  }
+
+  // ── Build the filtergraph ──────────────────────────────────────────────────
+  function buildFilter() {
+    const N = segments.length;
+    const chains = [];
+    if (N > 1) chains.push(`[0:v]split=${N}${segments.map((_, i) => `[s${i}]`).join('')}`);
+    segments.forEach((seg, i) => {
+      const src = N > 1 ? `[s${i}]` : '[0:v]';
+      const a = seg.start.toFixed(4), b = seg.end.toFixed(4);
+      const dur = Math.max(0.0001, seg.end - seg.start);
+      let sp;
+      if (seg.mode === 'ramp') {
+        const k0 = seg.from, dk = seg.to - seg.from;
+        sp = `setpts='(${k0.toFixed(5)}*(T-STARTT)+${dk.toFixed(5)}*(T-STARTT)*(T-STARTT)/(2*${dur.toFixed(5)}))/TB'`;
+      } else {
+        sp = `setpts=${seg.factor.toFixed(5)}*(PTS-STARTPTS)`;
+      }
+      chains.push(`${src}trim=start=${a}:end=${b},${sp}[v${i}]`);
+    });
+    chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
+    if (smoothMode === 'smooth') chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1[outv]`);
+    else if (smoothMode === 'blend') chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=blend[outv]`);
+    else chains.push(`[cc]fps=${tgtFps}[outv]`);
+    return chains.join(';');
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  async function render() {
+    if (!vidFile || !segments.length) return;
+    renderBtn.disabled = true;
+    result.classList.remove('show');
+    setStatus('Loading engine… (first run downloads ~32 MB, then it is cached)', 0.08);
+
+    let ff;
+    try { ff = await loadFFmpeg(); }
+    catch (e) { throw new Error('Could not load the engine (' + e.message + ')'); }
+
+    const ext = (vidFile.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+    const inName = 'input.' + ext, outName = 'output.mp4';
+    setStatus('Reading video…', 0.2);
+    await ff.writeFile(inName, new Uint8Array(await vidFile.arrayBuffer()));
+
+    const graph = buildFilter();
+    setStatus('Rendering slow motion…', 0.35);
+    await ff.exec([
+      '-i', inName, '-filter_complex', graph, '-map', '[outv]', '-an',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'veryfast',
+      '-movflags', '+faststart', outName,
+    ]);
+
+    let data;
+    try { data = await ff.readFile(outName); }
+    catch (e) { throw new Error('Render failed — try fewer chunks, a shorter clip, or "Blend"/"Off" smoothness'); }
+    if (!data || data.length === 0) throw new Error('Render produced no output — try a shorter clip or simpler settings');
+    try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch (e) {}
+
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    outUrl = URL.createObjectURL(blob);
+    $('out-vid').src = outUrl;
+    const base = vidFile.name.replace(/\.[^.]+$/, '') || 'video';
+    const dl = $('dl-btn'); dl.href = outUrl; dl.download = base + '-slowmo.mp4';
+    $('out-meta').textContent = `${tgtFps}fps · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${smoothMode === 'none' ? 'no interpolation' : smoothMode + ' smoothing'}`;
+    result.classList.add('show');
+    setStatus('Done!', 1);
+    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  renderBtn.addEventListener('click', async () => {
+    try { await render(); }
+    catch (e) { setStatus(e.message || String(e), null, true); }
+    finally { renderBtn.disabled = false; }
+  });
+  </script>
+  <script src="/js/logo.js"></script>
+</body>
+</html>
