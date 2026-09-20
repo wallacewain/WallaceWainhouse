@@ -305,7 +305,7 @@
       el.className = 'tl-seg' + (i === selected ? ' sel' : '');
       el.style.flex = (seg.end - seg.start);
       el.style.background = seg.mode === 'ramp'
-        ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.from)]}, ${SEG_COLORS[clampKey(seg.to)]})`
+        ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.to)]}, ${SEG_COLORS[clampKey(seg.from)]})`
         : segColor(seg);
       el.innerHTML = `<span class="lbl">${segLabel(seg)}</span>`;
       timeline.insertBefore(el, playhead);
