@@ -305,7 +305,7 @@
       el.className = 'tl-seg' + (i === selected ? ' sel' : '');
       el.style.flex = (seg.end - seg.start);
       el.style.background = seg.mode === 'ramp'
-        ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.to)]}, ${SEG_COLORS[clampKey(seg.from)]})`
+        ? `linear-gradient(90deg, ${SEG_COLORS[clampKey(seg.from)]}, ${SEG_COLORS[clampKey(seg.to)]})`
         : segColor(seg);
       el.innerHTML = `<span class="lbl">${segLabel(seg)}</span>`;
       timeline.insertBefore(el, playhead);
@@ -461,13 +461,31 @@
     });
   }
 
+  // Speed at a chunk's end / start (a ramp's ends are from→to)
+  const endSpeed = s => s.mode === 'ramp' ? s.to : s.factor;
+  const startSpeed = s => s.mode === 'ramp' ? s.from : s.factor;
+
   // Delegated speed-button clicks (buttons are rebuilt per frame rate)
   $('speed-grid').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const seg = segments[selected]; if (!seg) return;
     seg._default = false;
-    if (b.dataset.f === 'ramp') { seg.mode = 'ramp'; seg.from = +$('ramp-from').value; seg.to = +$('ramp-to').value; }
-    else { seg.mode = 'factor'; seg.factor = +b.dataset.f; }
+    if (b.dataset.f === 'ramp') {
+      seg.mode = 'ramp';
+      // Direction from the surrounding chunks: continue from the previous chunk's
+      // ending speed and land on the next chunk's starting speed. That makes a
+      // ramp after a slow section automatically a speed-up back to real, and a
+      // ramp before a slow section a slow-down — the gradient then points the
+      // right way on its own.
+      const prev = selected > 0 ? segments[selected - 1] : null;
+      const next = selected < segments.length - 1 ? segments[selected + 1] : null;
+      let from = prev ? endSpeed(prev) : 1;
+      let to = next ? startSpeed(next) : (from === 1 ? currentFactors[currentFactors.length - 1] : 1);
+      if (from === to) to = from === 1 ? currentFactors[currentFactors.length - 1] : 1; // avoid a flat "ramp"
+      seg.from = snapToClean(from); seg.to = snapToClean(to);
+    } else {
+      seg.mode = 'factor'; seg.factor = +b.dataset.f;
+    }
     renderTimeline();
   });
   ['ramp-from', 'ramp-to'].forEach(id => $(id).addEventListener('change', () => {
