@@ -200,7 +200,7 @@
       </div>
 
       <p class="notes">
-        How it works: your captured frames are re-timed so they play slowly — sharp slow-mo from your real frames. Ramps ease between speeds on a smooth bezier curve, and wherever an output frame lands between two captured frames (across a ramp, or when a chunk is slower than your source can cleanly cover) the two neighbours are blended by weight so the motion stays smooth.
+        How it works: your captured frames are re-timed so they play slowly — sharp slow-mo from your real frames, no invented ones. Ramps ease between speeds on a smooth bezier curve.
         Audio is dropped — slow-mo audio isn't meaningful. Output is H.264 MP4.
         The first render downloads the processing engine (~32&nbsp;MB) and then caches it. Everything is local; your video never leaves your device.
         Want to trim first, or pull the audio out? Try the <a href="/tools/video-trimmer/">Video Trimmer</a> or <a href="/tools/mp3-extractor/">MP3 Extractor</a>.
@@ -413,8 +413,8 @@
       `<button data-f="ramp">Ramp…</button>`;
     const opts = facs.map(f => `<option value="${f}">${f === 1 ? 'real' : f + '×'}</option>`).join('');
     $('ramp-from').innerHTML = opts; $('ramp-to').innerHTML = opts;
-    // Default ramp: ease out of full slow-mo back to normal speed
-    $('ramp-from').value = facs[facs.length - 1]; $('ramp-to').value = facs[0];
+    // Default ramp: real speed easing into full slow-mo (reads left-to-right)
+    $('ramp-from').value = facs[0]; $('ramp-to').value = facs[facs.length - 1];
   }
   function clampSegmentsToClean() {
     segments.forEach(s => {
@@ -663,7 +663,7 @@
       chains.push(chain);
     });
     chains.push(`${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${N}:v=1:a=0[cc]`);
-    chains.push(`[cc]minterpolate=fps=${tgtFps}:mi_mode=blend[outv]`);
+    chains.push(`[cc]fps=${tgtFps}[outv]`);
     return chains.join(';');
   }
 
