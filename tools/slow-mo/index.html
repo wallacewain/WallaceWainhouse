@@ -31,6 +31,9 @@
 
     .panel { display: none; flex-direction: column; gap: 1.4rem; }
     video { width: 100%; max-height: 360px; border-radius: var(--radius); border: 1px solid var(--border); background: #000; display: block; }
+    .monitor { position: relative; }
+    .monitor video { max-height: 320px; }
+    .mon-tc { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.15rem 1.3rem; display: flex; flex-direction: column; gap: 1rem; }
     .card h3 { margin: 0; font-family: var(--font); font-size: 1rem; }
@@ -126,8 +129,6 @@
       </div>
 
       <div class="panel" id="panel">
-        <video id="vid" controls playsinline></video>
-
         <div class="card">
           <div class="fld-row">
             <div class="fld" style="min-width:230px">
@@ -150,8 +151,12 @@
         </div>
 
         <div class="card">
-          <h3>Timeline</h3>
-          <p class="lead"><b>Drag anywhere on the bar</b> to move the playhead (the preview scrubs with it), then <b>Split</b> to cut a chunk there — or just <b>double-click</b> the bar to split on the spot. Click a chunk to set its speed.</p>
+          <h3>Monitor &amp; timeline</h3>
+          <div class="monitor">
+            <video id="vid" controls playsinline></video>
+            <div class="mon-tc" id="mon-tc">0:00.00</div>
+          </div>
+          <p class="lead"><b>Drag anywhere on the bar</b> to scrub — the monitor above shows the exact frame under the playhead. Then <b>Split</b> to cut a chunk there, or <b>double-click</b> the bar to split on the spot. Click a chunk to set its speed.</p>
           <div class="tl-outer">
             <div class="timeline" id="timeline"><div class="playhead" id="playhead"><span class="ph-grip"></span></div></div>
             <div class="tl-scale"><span>0:00</span><span id="tl-time">0:00</span><span id="tl-end">0:00</span></div>
@@ -278,6 +283,7 @@
     if (!vid.paused) playT = vid.currentTime;
     playhead.style.left = (playT / duration * 100) + '%';
     const tt = $('tl-time'); if (tt) tt.textContent = fmtTime(playT);
+    const mt = $('mon-tc'); if (mt) mt.textContent = fmtTime(playT);
   }
   function setPlayhead(t) {
     playT = Math.max(0, Math.min(duration, t));
