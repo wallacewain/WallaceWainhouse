@@ -151,7 +151,7 @@
         </div>
 
         <div class="card">
-          <h3>Monitor &amp; timeline</h3>
+          <h3>Monitor &amp; timeline <span style="font-weight:400;font-size:0.78rem;color:var(--muted)">— source at normal speed; press Preview for slow-mo</span></h3>
           <div class="monitor">
             <video id="vid" controls playsinline></video>
             <div class="mon-tc" id="mon-tc">0:00.00</div>
@@ -191,7 +191,8 @@
         </div>
 
         <div class="result" id="result">
-          <video id="out-vid" controls playsinline></video>
+          <h3 style="margin:0;font-family:var(--font);font-size:1rem">Result &mdash; slowed ✓</h3>
+          <video id="out-vid" controls playsinline loop muted></video>
           <div class="meta" id="out-meta"></div>
           <div class="actions">
             <a class="btn" id="dl-btn" download>⭳ Download MP4</a>
@@ -772,6 +773,7 @@
     };
     result.classList.add('show');
     setStatus('Done!', 1);
+    outVid.play().catch(() => {});   // autoplay (muted+loop) so the slow-mo is immediately visible
     result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
