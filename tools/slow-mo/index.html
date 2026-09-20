@@ -643,7 +643,7 @@
   $('reset-btn').addEventListener('click', () => { panel.style.display = 'none'; drop.style.display = 'block'; fileInput.value = ''; });
 
   // ── ffmpeg.wasm loader ─────────────────────────────────────────────────────
-  let _ff = null, _ffLibsLoaded = false;
+  let _ff = null, _ffLibsLoaded = false, _ffLog = [];
   function injectScript(src) {
     return new Promise((res, rej) => {
       const s = document.createElement('script');
@@ -658,6 +658,7 @@
     const { FFmpeg } = window.FFmpegWASM;
     const ff = new FFmpeg();
     ff.on('progress', ({ progress }) => { if (progress > 0 && progress <= 1) setStatus('Rendering slow motion…', 0.35 + progress * 0.6); });
+    ff.on('log', ({ message }) => { _ffLog.push(message); if (_ffLog.length > 300) _ffLog.shift(); });
     const esmBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
     const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
     const workerBlob = URL.createObjectURL(new Blob([`import "${esmBase}/worker.js";`], { type: 'text/javascript' }));
@@ -741,8 +742,18 @@
     const args = segments.length === 1
       ? ['-i', inName, '-vf', buildVf(segments[0]), ...enc]
       : ['-i', inName, '-filter_complex', buildFilter(), '-map', '[outv]', ...enc];
+    _ffLog = [];
+    const cmd = 'ffmpeg ' + args.join(' ');
+    console.log('[slow-mo] segments:', JSON.stringify(segments.map(s => ({ ...s, _default: undefined }))));
+    console.log('[slow-mo] command:\n' + cmd);
+    window._slowmoDiag = { segments: JSON.parse(JSON.stringify(segments)), cmd };
     setStatus('Rendering slow motion…', 0.35);
-    await ff.exec(args);
+    let execErr = null;
+    try { await ff.exec(args); }
+    catch (e) { execErr = e; }
+    window._slowmoDiag.log = _ffLog.join('\n');
+    console.log('[slow-mo] ffmpeg log:\n' + _ffLog.join('\n'));
+    if (execErr) throw new Error('Render failed — open the console (F12) and send me the "[slow-mo]" lines');
 
     let data;
     try { data = await ff.readFile(outName); }
