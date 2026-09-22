@@ -3,30 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Nice Reverb: a physically modelled reverb plugin. Free public beta for Windows and macOS.">
+  <meta name="description" content="A free reverb plugin that solves the room instead of imitating one: room modes, image-source early reflections and Monte Carlo ray tracing, baked offline. VST3 and AU for Windows and macOS.">
   <meta name="theme-color" content="#000000">
-  <title>Nice Reverb &mdash; Wallace Wainhouse</title>
+  <title>Nice Reverb — free ray-traced reverb plugin (VST3 &amp; AU)</title>
   <link rel="canonical" href="https://wallacewainhouse.com/nice-reverb/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Wallace Wainhouse">
   <meta property="og:url" content="https://wallacewainhouse.com/nice-reverb/">
-  <meta property="og:title" content="Nice Reverb">
-  <meta property="og:description" content="A physically modelled reverb plugin. Free public beta for Windows and macOS.">
+  <meta property="og:title" content="Nice Reverb — free ray-traced reverb plugin">
+  <meta property="og:description" content="A reverb that solves the room instead of imitating one. Free public beta, VST3 and AU, Windows and macOS.">
   <meta property="og:image" content="https://wallacewainhouse.com/nice-reverb/layers/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Nice Reverb">
-  <meta name="twitter:description" content="A physically modelled reverb plugin. Free public beta for Windows and macOS.">
+  <meta name="twitter:title" content="Nice Reverb — free ray-traced reverb plugin">
+  <meta name="twitter:description" content="A reverb that solves the room instead of imitating one. Free public beta, VST3 and AU, Windows and macOS.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Nice Reverb",
+    "applicationCategory": "MultimediaApplication",
+    "applicationSubCategory": "Audio plugin",
+    "operatingSystem": "Windows 10, Windows 11, macOS 10.15 or later",
+    "softwareVersion": "0.9.2",
+    "url": "https://wallacewainhouse.com/nice-reverb/",
+    "downloadUrl": "https://wainhouse.gumroad.com/l/nice-reverb-beta",
+    "author": { "@type": "Person", "name": "Wallace Wainhouse" },
+    "description": "A physically modelled reverb plugin. Each room is solved offline - room modes below the Schroeder frequency, image sources for the early reflections and Monte Carlo ray tracing for the tail - and the plugin plays back the result.",
+    "featureList": [
+      "Four solved rooms: Studio, Chamber, Hall, Cathedral",
+      "Loads further rooms from .nrev files",
+      "Mix, Pre-delay, Decay, Damping, Width, Air, Early and Late",
+      "VST3 and AU, 64-bit"
+    ],
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock",
+      "url": "https://wainhouse.gumroad.com/l/nice-reverb-beta"
+    }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is Nice Reverb a convolution reverb?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Not quite. A convolution reverb plays back a recording of a real room. Nice Reverb plays back a room that was solved from its geometry and materials - nothing was recorded, and there is no room anywhere that this is a sample of. The early reflections are convolved and the tail is a fitted feedback network, so it behaves like a convolution reverb at the start and like an algorithmic one after the handover." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is it really free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes, while it is in beta. Free to use on anything including paid work. There is no trial period, no licence key and no account." }
+      },
+      {
+        "@type": "Question",
+        "name": "Which plugin formats does it come in?",
+        "acceptedAnswer": { "@type": "Answer", "text": "VST3 on Windows and macOS, and AU on macOS. 64-bit only. There is no VST2 build and no 32-bit build." }
+      },
+      {
+        "@type": "Question",
+        "name": "How much CPU does Nice Reverb use?",
+        "acceptedAnswer": { "@type": "Answer", "text": "One instance measured 9 to 11% of a single core on an i7-5820K at 44.1 kHz with a 128 sample buffer, and 2.5 to 6.5% on Apple Silicon." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I load my own rooms?",
+        "acceptedAnswer": { "@type": "Answer", "text": "The plugin loads rooms from .nrev files, so rooms can be added without a new build. The four in the box are built in; more are solved the same way and distributed as files." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is the macOS build signed?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. It is unsigned and unnotarised, so macOS will not trust it until you clear the quarantine flag. The download includes the two commands. The Mac build is also untested - every hour of testing behind this plugin was done on Windows." }
+      }
+    ]
+  }
+  </script>
+
   <style>
-    html, body { height: 100%; overflow: hidden; background: #000; }
-    body { touch-action: none; -webkit-user-select: none; user-select: none; }
-    /* the site header floats over the scene instead of pushing it down */
-    header { position: fixed; left: 0; right: 0; top: 0; background: rgba(0, 0, 0, 0.35); border-bottom-color: rgba(255, 255, 255, 0.06); }
-    #stage { position: fixed; inset: 0; overflow: hidden; background: #000; }
+    /* ---- the splash ------------------------------------------------------
+       layers.js sizes the canvas to the window, so #stage stays fixed and
+       full-viewport however far the page is scrolled; the content below rides
+       up over it. The scene itself is untouched. */
+    html { scroll-behavior: smooth; }
+    body { background: #000; }
+    header { position: fixed; left: 0; right: 0; top: 0; z-index: 4;
+             background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px);
+             border-bottom-color: rgba(255, 255, 255, 0.06); }
+    #stage { position: fixed; inset: 0; overflow: hidden; background: #000; z-index: 0;
+             /* Vertical drags scroll the page; sideways ones still orbit. */
+             touch-action: pan-y; }
     #poster {
       position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
       max-width: none; opacity: 0; transition: opacity 0.9s ease;
@@ -34,20 +110,22 @@
     #c { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
     #bar {
       position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-      width: 96px; height: 1px; transform: translateX(-50%);
+      width: 96px; height: 1px; transform: translateX(-50%); z-index: 3;
       background: rgba(255, 170, 100, 0.14); transition: opacity 0.6s ease;
     }
     #bar i { display: block; height: 100%; width: 0; background: #ffb574; transition: width 0.25s ease; }
     body.ready #bar { opacity: 0; }
+
+    /* An empty box the height of the screen: it reserves the space the fixed
+       splash occupies, and scrolls away to reveal the page. */
+    .hero { position: relative; height: 100svh; z-index: 1; }
     .soon {
-      position: fixed; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px));
-      text-align: center; pointer-events: none; z-index: 2;
+      position: absolute; left: 0; right: 0;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+      text-align: center; pointer-events: none; margin: 0;
       font-size: 0.78rem; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase;
       color: rgba(255, 228, 200, 0.6);
     }
-    /* The one thing on the page that can be clicked, and it should still read
-       as part of the scene: the same lettering as the line it replaces, lit a
-       little warmer, over a hairline that only fills in under the cursor. */
     .soon a {
       pointer-events: auto; color: rgba(255, 228, 200, 0.82);
       text-decoration: none; padding-bottom: 6px; position: relative;
@@ -60,8 +138,68 @@
     }
     .soon a:hover, .soon a:focus-visible { color: #fff0dc; }
     .soon a:hover::after, .soon a:focus-visible::after { opacity: 0.7; transform: scaleX(1); }
+
+    .scroll-cue {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      color: rgba(255, 228, 200, 0.3); font-size: 0.66rem; letter-spacing: 0.24em;
+      text-transform: uppercase; text-decoration: none; transition: color 0.4s ease;
+    }
+    .scroll-cue:hover, .scroll-cue:focus-visible { color: rgba(255, 228, 200, 0.75); }
+
+    /* The cave behind the writing. Fixed and full-screen like the splash, and
+       faded up by cave.js as the written part arrives, so the two backgrounds
+       never fight over the same screen. */
+    #cave {
+      position: fixed; inset: 0; z-index: 0; opacity: 0;
+      pointer-events: none; will-change: opacity;
+    }
+
+    /* ---- the page under it ---------------------------------------------- */
+    /* Translucent rather than solid, so the cave shimmers through it. Dark
+       enough that body text still sits at a proper contrast ratio against the
+       brightest thing the cave ever puts behind it. */
+    .doc {
+      position: relative; z-index: 1;
+      background: rgba(14, 14, 16, 0.74);
+      border-top: 1px solid rgba(255, 181, 116, 0.18);
+      box-shadow: 0 -40px 90px rgba(0, 0, 0, 0.9);
+    }
+    .doc main { padding-top: 3.4rem; padding-bottom: 4rem; }
+    .doc h1 { font-size: clamp(1.9rem, 4.5vw, 2.9rem); line-height: 1.16; margin: 0 0 1rem; }
+    .doc h2 {
+      font-size: clamp(1.25rem, 2.6vw, 1.7rem); margin: 3rem 0 0.9rem;
+      padding-top: 1.6rem; border-top: 1px solid var(--border);
+    }
+    .doc h3 { font-size: 1.02rem; margin: 1.5rem 0 0.35rem; color: #ffd9ae; }
+    .doc p, .doc li, .doc dd { color: #c9c6c0; line-height: 1.72; }
+    .doc .lead { font-size: 1.1rem; color: #ded9d2; }
+    .doc a { color: #ffb574; }
+    .doc code { font-family: var(--mono); color: #ffd9ae; }
+    .doc figure { margin: 1.8rem 0; max-width: 780px; }
+    .doc figure img {
+      width: 100%; height: auto; display: block; border: 1px solid var(--border);
+      border-radius: var(--radius); background: #000;
+    }
+    .doc figcaption { color: var(--muted); font-size: 0.86rem; margin-top: 0.6rem; line-height: 1.6; }
+    .doc table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.94rem; }
+    .doc th, .doc td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .doc th { color: #ffd9ae; font-weight: 600; white-space: nowrap; }
+    .doc td.num { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+    .tablewrap { overflow-x: auto; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem 2rem; }
+    .cta {
+      display: inline-block; margin: 1.4rem 0 0.3rem; padding: 0.8rem 1.6rem;
+      border: 1px solid rgba(255, 181, 116, 0.5); border-radius: var(--radius);
+      color: #ffd9ae; text-decoration: none; letter-spacing: 0.06em;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .cta:hover, .cta:focus-visible { border-color: #ffb574; background: rgba(255, 181, 116, 0.09); }
+    .faq dt { color: #ffd9ae; font-weight: 600; margin-top: 1.4rem; }
+    .faq dd { margin: 0.4rem 0 0; }
     @media (prefers-reduced-motion: reduce) {
-      .soon a, .soon a::after { transition: none; }
+      html { scroll-behavior: auto; }
+      .soon a, .soon a::after, .scroll-cue, .cta { transition: none; }
     }
   </style>
 </head>
@@ -76,13 +214,230 @@
       </ul>
     </nav>
   </header>
+
   <div id="stage">
     <img id="poster" alt="" decoding="async">
     <canvas id="c"></canvas>
   </div>
   <div id="bar"><i></i></div>
-  <p class="soon"><a href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Join the beta</a></p>
+  <canvas id="cave" aria-hidden="true"></canvas>
+
+  <div class="hero">
+    <p class="soon"><a href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Join the beta</a></p>
+    <a class="scroll-cue" href="#what-it-is">Scroll</a>
+  </div>
+
+  <div class="doc">
+  <main>
+    <article>
+      <h1 id="what-it-is">Nice Reverb: a reverb that solves the room</h1>
+      <p class="lead">
+        Nice Reverb is a free, physically modelled reverb plugin for Windows and
+        macOS. Its rooms are not presets tuned by ear on a bank of delay lines.
+        Each one is solved offline from its dimensions and its surfaces, and the
+        plugin plays back the result. If a room sounds boxy, it is because a room
+        that shape is boxy.
+      </p>
+
+      <a class="cta" href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Download the free beta</a>
+      <p><small>VST3 and AU &middot; 64-bit &middot; Windows 10/11 and macOS 10.15+</small></p>
+
+      <figure>
+        <img src="img/nice-reverb-panel.webp" width="1100" height="1021"
+             alt="The Nice Reverb plugin interface: a milled metal panel with eight knobs, a room selector and a display showing the solved room, its decay envelope and its decay per octave."
+             loading="lazy" decoding="async">
+        <figcaption>
+          The display is not decoration. The box is the room the ray tracer
+          solved, at its real proportions, with the source and listener where
+          they were put; the graphs either side are the decay envelope and the
+          decay per octave, read from the room rather than drawn to look busy.
+        </figcaption>
+      </figure>
+
+      <h2 id="how-it-works">How a solved room differs from an algorithmic reverb</h2>
+      <p>
+        Most reverb plugins are a network of delays and filters, tuned until they
+        sound plausible. Convolution reverbs take the other route and play back a
+        recording of a real space. Nice Reverb does neither: it computes what a
+        room would do, using a different method in each part of the spectrum
+        where a different method is the right one.
+      </p>
+
+      <div class="cols">
+        <div>
+          <h3>Room modes, at the bottom</h3>
+          <p>
+            Below the Schroeder frequency a room is not diffuse. It is a handful
+            of standing waves, and which ones depend entirely on the dimensions.
+            Those are solved analytically. This is the part that makes a small
+            room sound small.
+          </p>
+        </div>
+        <div>
+          <h3>Image sources, early</h3>
+          <p>
+            The first reflections are computed exactly, by mirroring the source
+            in each surface, to each ear separately. Their timing is what tells
+            you the size and shape of a space before the tail has arrived.
+          </p>
+        </div>
+        <div>
+          <h3>Monte Carlo rays, for the tail</h3>
+          <p>
+            Tens of thousands of rays are traced around the room, losing energy
+            at each surface according to what that surface is made of, in each
+            octave band. The decay curve comes out of the geometry.
+          </p>
+        </div>
+        <div>
+          <h3>A fitted network, to play it</h3>
+          <p>
+            A feedback delay network is fitted to that curve so the tail runs in
+            real time instead of convolving seconds of impulse response. The
+            early part stays convolved; the two cross at the mixing time.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="rooms">The four rooms</h2>
+      <p>
+        Four spaces ship inside the plugin. They are four different rooms, not one
+        room with a size control: different dimensions, different surfaces, and a
+        different decay in every octave band.
+      </p>
+      <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Room</th><th>Dimensions</th><th>Volume</th><th>What makes it sound like that</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Studio</td><td class="num">6.8 &times; 4.9 &times; 3.1 m</td><td class="num">103 m&sup3;</td><td>Treated: absorbers, a bass trap, carpet. Short and controlled.</td></tr>
+          <tr><td>Chamber</td><td class="num">9.5 &times; 6.2 &times; 4.4 m</td><td class="num">259 m&sup3;</td><td>Plaster and a wood floor, with one diffusing wall. The default.</td></tr>
+          <tr><td>Hall</td><td class="num">26 &times; 17 &times; 12.5 m</td><td class="num">5525 m&sup3;</td><td>An audience on the floor, which is what takes a hall from 8 s to 2.</td></tr>
+          <tr><td>Cathedral</td><td class="num">42 &times; 19 &times; 24 m</td><td class="num">19152 m&sup3;</td><td>Marble, brick and empty seats, with coupled volumes, so the decay sags.</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h2 id="custom-rooms">Rooms are files</h2>
+      <p>
+        A room is a <code>.nrev</code> file and the plugin will load one from
+        disk, so rooms can be added without a new build. It also means a room can
+        be somewhere ordinary rather than somewhere grand: a tiled bathroom has a
+        sound everybody recognises and almost no reverb plugin offers, because it
+        is small, hard, and nowhere near diffuse.
+      </p>
+
+      <h2 id="controls">The controls</h2>
+      <div class="cols">
+        <div>
+          <h3>Space</h3>
+          <p>
+            <strong>Mix</strong> is equal power, and the wet path is calibrated to
+            come back at the level the dry went in.
+            <strong>Pre-delay</strong> to 250 ms.
+            <strong>Decay</strong> scales the solved T60 from a quarter to four
+            times. <strong>Damping</strong> is a one-pole inside the feedback
+            loop, so it shortens the top the way air and soft surfaces do.
+          </p>
+        </div>
+        <div>
+          <h3>Balance</h3>
+          <p>
+            <strong>Early</strong> and <strong>Late</strong> set the two halves
+            against each other. <strong>Width</strong> works on the tail's
+            interaural coherence rather than as a mid/side gain.
+            <strong>Air</strong> is the small, slow movement a real room has
+            because the air inside it is never still.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="requirements">Requirements and formats</h2>
+      <div class="tablewrap">
+      <table>
+        <tbody>
+          <tr><th>Formats</th><td>VST3 (Windows, macOS) and AU (macOS). No VST2, no 32-bit.</td></tr>
+          <tr><th>Windows</th><td>10 or 11, 64-bit. Nothing else to install &mdash; the Microsoft runtime is built in.</td></tr>
+          <tr><th>macOS</th><td>10.15 or later, Apple Silicon or Intel, one universal binary.</td></tr>
+          <tr><th>Channels</th><td>Stereo in, stereo out.</td></tr>
+          <tr><th>CPU</th><td>9&ndash;11% of one core on an i7-5820K at 44.1 kHz, 128 samples. 2.5&ndash;6.5% on Apple Silicon.</td></tr>
+          <tr><th>Tested in</th><td>Ableton Live 12 on Windows.</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h2 id="beta">It is a beta, and here is what that means</h2>
+      <p>
+        This is version 0.9.2 and it is not finished. The README inside the
+        download lists what it gets wrong, including one open fault worth knowing
+        about before you put it on a session that matters. The macOS build is
+        unsigned and, honestly, untested: every hour of testing behind this plugin
+        was done on Windows. If it loads and makes sound on your Mac, that alone
+        is worth telling me.
+      </p>
+      <p>
+        Reports to <a href="mailto:thewainh@gmail.com">thewainh@gmail.com</a> &mdash;
+        host and version, operating system, CPU, sample rate, buffer size, and
+        what you were doing.
+      </p>
+
+      <h2 id="faq">Frequently asked questions</h2>
+      <dl class="faq">
+        <dt>Is Nice Reverb a convolution reverb?</dt>
+        <dd>
+          Not quite. A convolution reverb plays back a recording of a real room.
+          This plays back a room that was solved from its geometry and materials:
+          nothing was recorded, and there is no room anywhere that this is a
+          sample of. The early reflections are convolved and the tail is a fitted
+          feedback network, so it behaves like a convolution reverb at the start
+          and like an algorithmic one after the handover.
+        </dd>
+
+        <dt>Is it really free?</dt>
+        <dd>
+          Yes, while it is in beta. Free to use on anything you like, including
+          paid work. No trial period, no licence key, no account. Please do not
+          redistribute the file &mdash; send people to this page instead, so
+          testers end up with the current build.
+        </dd>
+
+        <dt>Which formats does it come in?</dt>
+        <dd>VST3 on Windows and macOS, AU on macOS. 64-bit only. There is no VST2 build and no 32-bit build.</dd>
+
+        <dt>How much CPU does Nice Reverb use?</dt>
+        <dd>
+          One instance measured 9 to 11% of a single core on an i7-5820K at
+          44.1 kHz with a 128 sample buffer, and 2.5 to 6.5% on Apple Silicon.
+        </dd>
+
+        <dt>Can I load my own rooms?</dt>
+        <dd>
+          The plugin loads rooms from <code>.nrev</code> files, so rooms can be
+          added without a new build. The four in the box are built in; further
+          rooms are solved the same way and arrive as files.
+        </dd>
+
+        <dt>Is the macOS build signed?</dt>
+        <dd>
+          No &mdash; it is unsigned and unnotarised, so macOS will not trust it
+          until you clear the quarantine flag. The download has the two commands
+          in MAC-INSTALL.txt, and the auval line Logic will want.
+        </dd>
+      </dl>
+
+      <h2 id="download">Download</h2>
+      <p>
+        Free public beta, version 0.9.2. Two downloads: Windows on its own, or one
+        bundle carrying both Windows and macOS.
+      </p>
+      <a class="cta" href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Get Nice Reverb 0.9.2</a>
+    </article>
+  </main>
+  </div>
+
   <script type="module" src="layers.js"></script>
+  <script src="cave.js" defer></script>
   <script src="/js/logo.js"></script>
 </body>
 </html>
