@@ -12,7 +12,11 @@
   <meta property="og:url" content="https://wallacewainhouse.com/nice-reverb/">
   <meta property="og:title" content="Nice Reverb — free ray-traced reverb plugin">
   <meta property="og:description" content="A reverb that solves the room instead of imitating one. Free public beta, VST3 and AU, Windows and macOS.">
-  <meta property="og:image" content="https://wallacewainhouse.com/nice-reverb/layers/poster.jpg">
+  <meta property="og:image" content="https://wallacewainhouse.com/nice-reverb/img/og-nice-reverb.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The Nice Reverb wordmark in brushed steel across a rack of vintage audio hardware.">
+  <meta name="twitter:image" content="https://wallacewainhouse.com/nice-reverb/img/og-nice-reverb.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Nice Reverb — free ray-traced reverb plugin">
   <meta name="twitter:description" content="A reverb that solves the room instead of imitating one. Free public beta, VST3 and AU, Windows and macOS.">
@@ -319,13 +323,55 @@
       </table>
       </div>
 
-      <h2 id="custom-rooms">Rooms are files</h2>
+      <h2 id="custom-rooms">Free rooms to download</h2>
       <p>
         A room is a <code>.nrev</code> file and the plugin will load one from
         disk, so rooms can be added without a new build. It also means a room can
-        be somewhere ordinary rather than somewhere grand: a tiled bathroom has a
-        sound everybody recognises and almost no reverb plugin offers, because it
-        is small, hard, and nowhere near diffuse.
+        be somewhere ordinary rather than somewhere grand. These five are free,
+        solved the same way as the four in the box, and chosen because you can
+        recognise every one of them with your eyes shut.
+      </p>
+      <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Room</th><th>Size</th><th>T60 at 1 kHz</th><th>What it sounds like</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bathroom</td><td class="num">2.4 &times; 3.0 &times; 2.5 m</td><td class="num">1.7 s</td>
+            <td>Tiled to head height over a wooden floor. Small, hard, and nowhere near diffuse &mdash; the sound everybody knows and almost no plugin offers.</td>
+            <td><a href="rooms/bathroom.nrev" download>Download</a></td>
+          </tr>
+          <tr>
+            <td>Stairwell</td><td class="num">2.6 &times; 3.2 &times; 15 m</td><td class="num">2.8 s</td>
+            <td>A concrete shaft four storeys tall. The flutter runs vertically, which is a direction most reverbs never give you.</td>
+            <td><a href="rooms/stairwell.nrev" download>Download</a></td>
+          </tr>
+          <tr>
+            <td>Underground Car Park</td><td class="num">34 &times; 26 &times; 2.6 m</td><td class="num">2.3 s</td>
+            <td>An enormous footprint under a low soffit. The sound goes sideways and keeps going; vertically it is over almost before it starts.</td>
+            <td><a href="rooms/car-park.nrev" download>Download</a></td>
+          </tr>
+          <tr>
+            <td>Swimming Pool</td><td class="num">25 &times; 12.5 &times; 5.5 m</td><td class="num">5.5 s</td>
+            <td>Glazed tile underfoot and all round, with a window wall. Only the ceiling absorbs anything, so the top end hangs about.</td>
+            <td><a href="rooms/swimming-pool.nrev" download>Download</a></td>
+          </tr>
+          <tr>
+            <td>Gymnasium</td><td class="num">32 &times; 19 &times; 9 m</td><td class="num">5.1 s</td>
+            <td>The school sports hall. Big, hard and mid-heavy, with the sprung wood floor taking just enough off the bottom to stop it booming.</td>
+            <td><a href="rooms/gymnasium.nrev" download>Download</a></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <h3>Loading one</h3>
+      <p>
+        Put the <code>.nrev</code> anywhere you like, press <strong>LOAD</strong>
+        on the panel and pick it. The room selector goes on showing the preset it
+        was on; the display is what tells you which room is playing. These files
+        are written in the format version 0.9.2 reads, so they load in the beta
+        as it stands.
       </p>
 
       <h2 id="controls">The controls</h2>
