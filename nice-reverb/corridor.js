@@ -90,19 +90,32 @@ if (wrap) {
     const H = innerHeight;
     const top = doc.getBoundingClientRect().top;
 
-    // Nothing blends. The corridor sits at z-index -1, permanently opaque and
-    // permanently there; the splash is opaque and on top of it, and it is
-    // simply removed once the written part covers the viewport. An earlier
-    // version cross-faded the two as you scrolled and you could see straight
-    // through the racks into the splash, which looked like a mistake because
-    // it was one.
-    // The stainless strip is the boundary, so it is what decides the swap:
-    // the splash goes the moment the strip reaches the top of the window.
-    const edge = divider ? divider.getBoundingClientRect().bottom : top;
-    if (stage) stage.style.visibility = edge <= 0 ? "hidden" : "visible";
+    // The strip has to actually cut the splash off, not just decide when to
+    // switch it off.
+    //
+    // #stage is fixed and fills the viewport for as long as it is visible, and
+    // it sits above the corridor. So while you scroll the written part, the
+    // translucent text is over the SPLASH the whole way - and then the moment
+    // the strip cleared the top the splash was hidden and everything behind
+    // the text became the corridor at once. That is the flash: the two 3D
+    // scenes were never divided, they were swapped.
+    //
+    // Clipping the splash to the region above the strip is what divides them.
+    // The strip scrolls, the splash is cut off exactly at its top edge, and
+    // the corridor - fixed and full height underneath - is revealed below it
+    // line by line. There is no moment when both are behind the same pixel.
+    if (stage) {
+      const edge = divider
+        ? Math.max(0, Math.min(H, divider.getBoundingClientRect().top))
+        : Math.max(0, Math.min(H, top));
+      stage.style.clipPath = `inset(0 0 ${(H - edge).toFixed(1)}px 0)`;
+      // Once it is fully clipped there is nothing to draw; take it out of the
+      // compositor rather than leaving a zero-height layer behind.
+      stage.style.visibility = edge <= 0 ? "hidden" : "visible";
+    }
 
     // The move is a pedestal, not a dolly: over the whole scroll the camera
-    // rises about a third of a metre. It is meant to be barely perceptible -
+    // rises 0.11 m, about 4 mm a frame. It is meant to be imperceptible -
     // enough that the near racks shift against the far ones and the picture
     // is never quite still, and not so much that anything rushes past.
     const travelled = Math.min(1, Math.max(0,
