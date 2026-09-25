@@ -29,7 +29,11 @@
 const wrap = document.getElementById("corridor");
 if (wrap) {
   const FRAMES = 24;
-  const SRC = (i) => `img/corridor/c${String(i).padStart(3, "0")}.webp`;
+  // ?v= is a cache buster. The frames keep their names when they are
+  // re-rendered, so without it a browser that has already seen the page serves
+  // what it cached and the new render never shows up. Bump on every re-render.
+  const V = 2;
+  const SRC = (i) => `img/corridor/c${String(i).padStart(3, "0")}.webp?v=${V}`;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Two layers: `back` holds the frame we are on, `front` fades the next one
