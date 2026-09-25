@@ -80,6 +80,7 @@ if (wrap) {
   }
 
   const doc = document.querySelector(".doc");
+  const divider = document.querySelector(".divider");
   const stage = document.getElementById("stage");
 
   let ticking = false;
@@ -95,7 +96,10 @@ if (wrap) {
     // version cross-faded the two as you scrolled and you could see straight
     // through the racks into the splash, which looked like a mistake because
     // it was one.
-    if (stage) stage.style.visibility = top <= 0 ? "hidden" : "visible";
+    // The stainless strip is the boundary, so it is what decides the swap:
+    // the splash goes the moment the strip reaches the top of the window.
+    const edge = divider ? divider.getBoundingClientRect().bottom : top;
+    if (stage) stage.style.visibility = edge <= 0 ? "hidden" : "visible";
 
     // The move is a pedestal, not a dolly: over the whole scroll the camera
     // rises about a third of a metre. It is meant to be barely perceptible -
