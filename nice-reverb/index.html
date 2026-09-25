@@ -191,12 +191,17 @@
 
        It is 2400 x 130 and sits at its own aspect ratio, so the brushing never
        stretches; the height is clamped so it stays a strip on a phone and does
-       not become a slab on a wide monitor. */
+       not become a slab on a wide monitor.
+
+       ?v= is a cache buster. The file keeps its name when it is re-rendered,
+       so without it a browser that has seen the page once keeps serving the
+       copy it already has and the new render never appears. Bump it whenever
+       the strip is re-rendered. */
     .divider {
       position: relative; z-index: 2;
       width: 100%;
       height: clamp(34px, 4.4vw, 74px);
-      background: #9a968f url("img/divider.webp") center / 100% 100% no-repeat;
+      background: #9a968f url("img/divider.webp?v=2") center / 100% 100% no-repeat;
       box-shadow: 0 10px 34px rgba(0, 0, 0, 0.75),
                   inset 0 1px 0 rgba(255, 255, 255, 0.22),
                   inset 0 -1px 0 rgba(0, 0, 0, 0.45);
