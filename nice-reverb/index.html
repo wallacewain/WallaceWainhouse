@@ -104,7 +104,11 @@
     header { position: fixed; left: 0; right: 0; top: 0; z-index: 4;
              background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px);
              border-bottom-color: rgba(255, 255, 255, 0.06); }
+    /* clip-path is set by corridor.js so the stainless strip cuts the splash
+       off at its own top edge - see the note there. will-change keeps that on
+       the compositor rather than repainting the canvas for it. */
     #stage { position: fixed; inset: 0; overflow: hidden; background: #000; z-index: 0;
+             will-change: clip-path;
              /* Vertical drags scroll the page; sideways ones still orbit. */
              touch-action: pan-y; }
     #poster {
