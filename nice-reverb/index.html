@@ -158,11 +158,13 @@
        The frames are cover-fitted and centred: they are a 16:9 render and the
        window is any shape at all, and the one part that must never be cropped
        out is the vanishing point, which is in the middle. */
+    /* Behind the splash, not alongside it. #stage is opaque and z-index 0, so
+       putting the corridor at -1 means it is simply covered until the splash
+       is taken out of the way - there is never a moment when the two are both
+       visible through each other. */
     #corridor {
-      position: fixed; inset: 0; z-index: 0; opacity: 0;
-      pointer-events: none; will-change: opacity;
-      transition: opacity 0.25s linear;
-      background: #07070a;
+      position: fixed; inset: 0; z-index: -1;
+      pointer-events: none; background: #000;
     }
     #corridor .corridor-frame {
       position: absolute; inset: 0;
