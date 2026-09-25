@@ -14,21 +14,20 @@
  *
  *  Which makes it a scrubber, not a renderer:
  *
- *  * 40 frames of a camera dollying 13 m down the corridor, and scroll
- *    position picks one. No per-frame drawing, no canvas, no GPU context -
+ *  * 24 frames of a camera rising a third of a metre - a pedestal, not a
+ *    dolly and not a zoom - and scroll position picks one. No per-frame drawing, no canvas, no GPU context -
  *    the splash already owns one of those and it is the expensive thing on
  *    this page.
  *  * Frames are fetched only when the written part is close, and in scroll
  *    order, so the first screenful is never waiting on them.
  *  * Two stacked images with the top one cross-fading covers the gap between
- *    frames. At 40 frames over a long page a hard cut is visible as a click;
- *    a fade is not.
+ *    frames. Over a long page a hard cut is visible as a click; a fade is not.
  *  * If nothing loads, or the visitor asked for reduced motion, the whole
  *    thing stays on frame zero and the page is exactly as readable.
  */
 const wrap = document.getElementById("corridor");
 if (wrap) {
-  const FRAMES = 40;
+  const FRAMES = 24;
   const SRC = (i) => `img/corridor/c${String(i).padStart(3, "0")}.webp`;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -90,14 +89,18 @@ if (wrap) {
     const H = innerHeight;
     const top = doc.getBoundingClientRect().top;
 
-    // Fade the corridor up as the written part arrives, so it and the splash
-    // never fight over the same screen - same handover the cavern used.
-    const reveal = Math.min(1, Math.max(0, (H - top) / (H * 0.85)));
-    wrap.style.opacity = reveal.toFixed(3);
-    if (stage) stage.style.visibility = reveal >= 0.995 ? "hidden" : "visible";
-    if (reveal <= 0.001) return;
+    // Nothing blends. The corridor sits at z-index -1, permanently opaque and
+    // permanently there; the splash is opaque and on top of it, and it is
+    // simply removed once the written part covers the viewport. An earlier
+    // version cross-faded the two as you scrolled and you could see straight
+    // through the racks into the splash, which looked like a mistake because
+    // it was one.
+    if (stage) stage.style.visibility = top <= 0 ? "hidden" : "visible";
 
-    // How far through the written part we are drives the dolly.
+    // The move is a pedestal, not a dolly: over the whole scroll the camera
+    // rises about a third of a metre. It is meant to be barely perceptible -
+    // enough that the near racks shift against the far ones and the picture
+    // is never quite still, and not so much that anything rushes past.
     const travelled = Math.min(1, Math.max(0,
       (H - top) / (doc.offsetHeight + H * 0.2)));
     const i = reduced ? 0 : Math.min(FRAMES - 1, Math.round(travelled * (FRAMES - 1)));
