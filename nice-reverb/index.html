@@ -174,7 +174,9 @@
       position: absolute; inset: 0;
       width: 100%; height: 100%;
       object-fit: cover; object-position: 50% 50%;
-      transition: opacity 0.22s linear;
+      /* No transition. corridor.js sets this opacity every frame as the
+         dissolve fraction; a CSS transition on top of that would lag it and
+         put the staircase straight back. */
     }
 
     /* ---- the page under it ---------------------------------------------- */

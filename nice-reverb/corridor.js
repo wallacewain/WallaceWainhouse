@@ -20,8 +20,9 @@
  *    this page.
  *  * Frames are fetched only when the written part is close, and in scroll
  *    order, so the first screenful is never waiting on them.
- *  * Two stacked images with the top one cross-fading covers the gap between
- *    frames. Over a long page a hard cut is visible as a click; a fade is not.
+ *  * Two stacked images, and the top one's opacity IS the fraction between
+ *    two frames. Scroll drives the dissolve directly, so there is no step to
+ *    see and no timer to outrun.
  *  * If nothing loads, or the visitor asked for reduced motion, the whole
  *    thing stays on frame zero and the page is exactly as readable.
  */
@@ -62,21 +63,37 @@ if (wrap) {
     for (let d = 1; d <= 2; d++) fetchFrame(around - d);
   }
 
-  let shown = -1;
-  function show(i) {
-    if (i === shown) return;
-    const im = cache.get(i);
-    if (!im || !im.complete || !im.naturalWidth) return;
-    // The frame currently on `back` stays put and the new one fades in over
-    // it; then the two swap so the next change fades from where we landed.
-    front.src = im.src;
-    front.style.opacity = "1";
-    shown = i;
-    clearTimeout(show._t);
-    show._t = setTimeout(() => {
-      back.src = im.src;
-      front.style.opacity = "0";
-    }, 220);
+  // Continuous blend, not a snap and a timed fade.
+  //
+  // The first version rounded the scroll position to a frame, swapped the
+  // image and ran a 220 ms cross-fade afterwards. Two things were wrong with
+  // it: the motion was a staircase, because between two rounding points
+  // nothing moved at all; and the fade was on a timer, so scrolling faster
+  // than the timer left fades half finished and restarted them, which is what
+  // the jumpiness actually was.
+  //
+  // Now the frame index is fractional. `back` holds the frame below it,
+  // `front` holds the frame above, and front's opacity is the fraction
+  // between them. Scroll position drives the dissolve directly, so there is
+  // no timer to outrun and no step to see - a third of the way between two
+  // frames is a third of the way through the dissolve. With the pedestal this
+  // slight, consecutive frames are nearly identical and the dissolve reads as
+  // continuous movement rather than a blend.
+  let lo = -1, hi = -1;
+  function showAt(f) {
+    const i = Math.floor(f);
+    const j = Math.min(FRAMES - 1, i + 1);
+    const frac = f - i;
+
+    const a = cache.get(i);
+    const b = cache.get(j);
+    const ready = (im) => im && im.complete && im.naturalWidth;
+
+    if (i !== lo && ready(a)) { back.src = a.src; lo = i; }
+    if (j !== hi && ready(b)) { front.src = b.src; hi = j; }
+    // Only dissolve toward a frame that has actually arrived; otherwise hold
+    // on the one we have rather than fading to nothing.
+    front.style.opacity = (hi === j && ready(b)) ? frac.toFixed(3) : "0";
   }
 
   const doc = document.querySelector(".doc");
@@ -120,9 +137,9 @@ if (wrap) {
     // is never quite still, and not so much that anything rushes past.
     const travelled = Math.min(1, Math.max(0,
       (H - top) / (doc.offsetHeight + H * 0.2)));
-    const i = reduced ? 0 : Math.min(FRAMES - 1, Math.round(travelled * (FRAMES - 1)));
-    prefetch(i);
-    show(i);
+    const f = reduced ? 0 : travelled * (FRAMES - 1);
+    prefetch(Math.floor(f));
+    showAt(f);
   }
 
   function onScroll() {
@@ -137,7 +154,7 @@ if (wrap) {
   const first = cache.get(0);
   first.addEventListener("load", () => {
     back.src = first.src;
-    shown = 0;
+    lo = 0;
     update();
   }, { once: true });
 
