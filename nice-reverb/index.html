@@ -178,10 +178,27 @@
        enough that body text still sits at a proper contrast ratio against the
        brightest thing the corridor ever puts behind it, which is a rack lamp
        rather than a lit floor - the render is graded for that. */
+    /* The stainless strip that divides the two halves of the page: the splash
+       above it, the corridor and the writing below. A real rendered bar of the
+       panel's own brushed steel with the wordmark in black paint on it - a CSS
+       gradient with a highlight reads as a CSS gradient with a highlight.
+
+       It is 2400 x 130 and sits at its own aspect ratio, so the brushing never
+       stretches; the height is clamped so it stays a strip on a phone and does
+       not become a slab on a wide monitor. */
+    .divider {
+      position: relative; z-index: 2;
+      width: 100%;
+      height: clamp(34px, 4.4vw, 74px);
+      background: #9a968f url("img/divider.webp") center / 100% 100% no-repeat;
+      box-shadow: 0 10px 34px rgba(0, 0, 0, 0.75),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+    }
+
     .doc {
       position: relative; z-index: 1;
       background: rgba(14, 14, 16, 0.74);
-      border-top: 1px solid rgba(255, 181, 116, 0.18);
       box-shadow: 0 -40px 90px rgba(0, 0, 0, 0.9);
     }
     .doc main { padding-top: 3.4rem; padding-bottom: 4rem; }
@@ -245,6 +262,8 @@
     <p class="soon"><a href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Join the beta</a></p>
     <a class="scroll-cue" href="#what-it-is">Scroll</a>
   </div>
+
+  <div class="divider" aria-hidden="true"></div>
 
   <div class="doc">
   <main>
