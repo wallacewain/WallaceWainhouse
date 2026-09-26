@@ -34,7 +34,7 @@
     "applicationCategory": "MultimediaApplication",
     "applicationSubCategory": "Audio plugin",
     "operatingSystem": "Windows 10, Windows 11, macOS 10.15 or later",
-    "softwareVersion": "0.9.2",
+    "softwareVersion": "0.9.3",
     "url": "https://wallacewainhouse.com/nice-reverb/",
     "downloadUrl": "https://wainhouse.gumroad.com/l/nice-reverb-beta",
     "author": { "@type": "Person", "name": "Wallace Wainhouse" },
@@ -417,8 +417,8 @@
         Put the <code>.nrev</code> anywhere you like, press <strong>LOAD</strong>
         on the panel and pick it. The room selector goes on showing the preset it
         was on; the display is what tells you which room is playing. These files
-        are written in the format version 0.9.2 reads, so they load in the beta
-        as it stands.
+        are written in the older bundle layout on purpose, so they load in any
+        released beta rather than only the newest one.
       </p>
 
       <h2 id="controls">The controls</h2>
@@ -462,13 +462,37 @@
 
       <h2 id="beta">It is a beta, and here is what that means</h2>
       <p>
-        This is version 0.9.2 and it is not finished. The README inside the
+        This is version 0.9.3 and it is not finished. The README inside the
         download lists what it gets wrong, including one open fault worth knowing
         about before you put it on a session that matters. The macOS build is
         unsigned and, honestly, untested: every hour of testing behind this plugin
         was done on Windows. If it loads and makes sound on your Mac, that alone
         is worth telling me.
       </p>
+      <h3>What changed in 0.9.3</h3>
+      <p>
+        The stereo image is now built from the interaural coherence of two
+        <em>ears</em> rather than two microphones 17&nbsp;cm apart. Those are
+        not the same thing: there is a head between your ears, and it shadows
+        and diffracts what reaches them, so a real pair decorrelates most of an
+        octave lower than a bare pair of points does. The curve is computed from
+        the rigid-sphere scattering solution rather than fitted by ear. The
+        audible result is a tighter, better defined low end and a mono sum that
+        holds together.
+      </p>
+      <p>
+        Fixing it turned up something older. The network that carries the tail
+        was matched to its target by picking the frequency where that target
+        passes a half &mdash; which is not a way to fit a filter, and it had left
+        the bass most of an octave wider than the model intended since long
+        before any of this. Measured against the solved room itself, the tail now
+        tracks it three times more closely than it did.
+      </p>
+      <p>
+        The panel is also rendered rather than drawn: real geometry, bolts sunk
+        in real counterbores, knobs that throw their own contact shadows.
+      </p>
+
       <p>
         Reports to <a href="mailto:thewainh@gmail.com">thewainh@gmail.com</a> &mdash;
         host and version, operating system, CPU, sample rate, buffer size, and
@@ -521,10 +545,10 @@
 
       <h2 id="download">Download</h2>
       <p>
-        Free public beta, version 0.9.2. Two downloads: Windows on its own, or one
+        Free public beta, version 0.9.3. Two downloads: Windows on its own, or one
         bundle carrying both Windows and macOS.
       </p>
-      <a class="cta" href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Get Nice Reverb 0.9.2</a>
+      <a class="cta" href="https://wainhouse.gumroad.com/l/nice-reverb-beta">Get Nice Reverb 0.9.3</a>
     </article>
   </main>
   </div>
