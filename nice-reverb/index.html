@@ -180,10 +180,12 @@
     }
 
     /* ---- the page under it ---------------------------------------------- */
-    /* Translucent rather than solid, so the corridor shows through it. Dark
-       enough that body text still sits at a proper contrast ratio against the
-       brightest thing the corridor ever puts behind it, which is a rack lamp
-       rather than a lit floor - the render is graded for that. */
+    /* Translucent rather than solid, so the corridor shows through it - but
+       only just. At 0.74 the racks came through strongly enough to compete
+       with the writing, and the corridor is busy: it is a wall of lamps and
+       bokeh, which is the worst thing to read a paragraph over. At 0.90 it
+       reads as a dark panel with the room faintly behind it, which is what a
+       backdrop is supposed to do. */
     /* The stainless strip that divides the two halves of the page: the splash
        above it, the corridor and the writing below. A real rendered bar of the
        panel's own brushed steel with the wordmark in black paint on it - a CSS
@@ -209,7 +211,7 @@
 
     .doc {
       position: relative; z-index: 1;
-      background: rgba(14, 14, 16, 0.74);
+      background: rgba(12, 12, 14, 0.90);
       box-shadow: 0 -40px 90px rgba(0, 0, 0, 0.9);
     }
     .doc main { padding-top: 3.4rem; padding-bottom: 4rem; }
