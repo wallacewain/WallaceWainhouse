@@ -44,6 +44,20 @@
     .maps-link { display: block; padding: 0.5rem 1rem 0.75rem; font-size: 0.82rem; }
     .maps-link:hover { color: var(--accent-hover); }
     .no-exif-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; font-size: 0.875rem; color: var(--muted); }
+    .all-tags-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .all-tags-wrap > summary { list-style: none; cursor: pointer; padding: 0.75rem 1.25rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
+    .all-tags-wrap > summary::-webkit-details-marker { display: none; }
+    .all-tags-wrap > summary::after { content: '\25BE'; margin-left: auto; transition: transform 0.15s; }
+    .all-tags-wrap[open] > summary::after { transform: rotate(180deg); }
+    .all-tags-body { border-top: 1px solid var(--border); max-height: 440px; overflow-y: auto; }
+    .all-tags-filter input { width: 100%; padding: 0.55rem 1.25rem; background: var(--bg); border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 0.85rem; position: sticky; top: 0; }
+    .all-tags-table { display: table; width: 100%; border-collapse: collapse; }
+    .at-row { display: table-row; }
+    .at-row.hidden { display: none; }
+    .at-row:not(:last-child) .at-k, .at-row:not(:last-child) .at-v { border-bottom: 1px solid var(--border); }
+    .at-k { display: table-cell; padding: 0.4rem 0.5rem 0.4rem 1.25rem; font-size: 0.8rem; color: var(--muted); white-space: nowrap; vertical-align: top; width: 1%; }
+    .at-v { display: table-cell; padding: 0.4rem 1.25rem 0.4rem 0.5rem; font-size: 0.8rem; word-break: break-word; vertical-align: top; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+    .at-empty { padding: 1rem 1.25rem; color: var(--muted); font-size: 0.85rem; }
     .edit-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
     .edit-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
     .edit-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
@@ -97,6 +111,13 @@
           <button class="btn-ghost" id="clear-btn" style="margin-left:auto;align-self:flex-start">&#x2715; Clear</button>
         </div>
         <div class="exif-grid" id="exif-grid"></div>
+        <details class="all-tags-wrap" id="all-tags" style="display:none">
+          <summary id="all-tags-summary">All metadata tags</summary>
+          <div class="all-tags-body">
+            <div class="all-tags-filter"><input type="text" id="all-tags-search" placeholder="Filter tags…" autocomplete="off"></div>
+            <div class="all-tags-table" id="all-tags-table"></div>
+          </div>
+        </details>
         <div class="edit-section">
           <div class="edit-head">Edit metadata</div>
           <div class="edit-fields">
@@ -221,6 +242,7 @@
       document.getElementById('summary-camera').textContent = camParts.join(' · ');
 
       buildGrid(exif, lat, lon);
+      renderAllTags(file);
       prefillEdit(exif);
 
       const isJpeg = /\.jpe?g$/i.test(file.name);
@@ -446,6 +468,62 @@
         grid.appendChild(card);
       }
     }
+
+    async function renderAllTags(file) {
+      const wrap = document.getElementById('all-tags');
+      const tbl  = document.getElementById('all-tags-table');
+      tbl.innerHTML = '';
+      let full = null;
+      try {
+        full = await exifr.parse(file, {
+          tiff: true, ifd0: true, ifd1: true, exif: true, gps: true, interop: true,
+          iptc: true, xmp: true, icc: true, jfif: true, ihdr: true,
+          makerNote: true, userComment: true,
+          translateKeys: true, translateValues: true, reviveValues: true,
+          mergeOutput: true, sanitize: true,
+        });
+      } catch (e) {}
+      const entries = full ? Object.entries(full).filter(([, v]) => v != null && v !== '') : [];
+      if (!entries.length) { wrap.style.display = 'none'; wrap.open = false; return; }
+      entries.sort((a, b) => a[0].localeCompare(b[0]));
+      document.getElementById('all-tags-summary').textContent = `All metadata tags (${entries.length})`;
+      const frag = document.createDocumentFragment();
+      for (const [k, v] of entries) {
+        const s = formatAny(v);
+        const row = document.createElement('div');
+        row.className = 'at-row';
+        row.dataset.s = (k + ' ' + s).toLowerCase();
+        const kEl = document.createElement('div'); kEl.className = 'at-k'; kEl.textContent = k;
+        const vEl = document.createElement('div'); vEl.className = 'at-v'; vEl.textContent = s; vEl.title = s;
+        row.append(kEl, vEl); frag.appendChild(row);
+      }
+      tbl.appendChild(frag);
+      document.getElementById('all-tags-search').value = '';
+      wrap.style.display = '';
+    }
+
+    function formatAny(v) {
+      if (v == null) return '';
+      if (v instanceof Date) return fmtDate(v);
+      if (v instanceof Uint8Array || v instanceof ArrayBuffer) return `[binary ${v.byteLength ?? v.length} bytes]`;
+      if (Array.isArray(v)) {
+        if (v.length > 24 && v.every(n => typeof n === 'number')) return `[${v.length} values]`;
+        return v.map(formatAny).join(', ');
+      }
+      if (typeof v === 'object') {
+        if ('numerator' in v && 'denominator' in v) return v.denominator ? String(v.numerator / v.denominator) : String(v.numerator);
+        try { const s = JSON.stringify(v); return s.length > 300 ? s.slice(0, 300) + '…' : s; } catch (e) { return String(v); }
+      }
+      let s = String(v);
+      return s.length > 400 ? s.slice(0, 400) + '…' : s;
+    }
+
+    document.getElementById('all-tags-search').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      for (const row of document.querySelectorAll('#all-tags-table .at-row')) {
+        row.classList.toggle('hidden', q !== '' && !row.dataset.s.includes(q));
+      }
+    });
 
     function makeCard(title, rows, isGps) {
       const card = document.createElement('div');
