@@ -120,12 +120,7 @@
         </details>
         <div class="edit-section">
           <div class="edit-head">Edit metadata</div>
-          <div class="edit-fields">
-            <div class="field"><label>Date taken</label><input type="datetime-local" id="edit-date"></div>
-            <div class="field"><label>Artist / Author</label><input type="text" id="edit-artist" placeholder="Your name"></div>
-            <div class="field"><label>Copyright</label><input type="text" id="edit-copyright" placeholder="© Your name"></div>
-            <div class="field"><label>Description</label><input type="text" id="edit-desc" placeholder="Image description"></div>
-          </div>
+          <div class="edit-fields" id="edit-fields"></div>
           <p class="edit-note" id="edit-note"></p>
           <div class="edit-actions">
             <button class="btn" id="save-btn">Save changes &amp; download</button>
@@ -144,11 +139,7 @@
           <span class="batch-count" id="folder-count"></span>
           <button class="btn-ghost" id="batch-clear" style="display:none;margin-left:auto">&#x2715; Clear</button>
         </div>
-        <div class="edit-fields" id="batch-fields" style="display:none">
-          <div class="field"><label>Artist / Author</label><input type="text" id="batch-artist" placeholder="Your name"></div>
-          <div class="field"><label>Copyright</label><input type="text" id="batch-copyright" placeholder="© Your name"></div>
-          <div class="field"><label>Description</label><input type="text" id="batch-desc-field" placeholder="Image description"></div>
-        </div>
+        <div class="edit-fields" id="batch-fields" style="display:none"></div>
         <div class="batch-progress-wrap" id="batch-progress" style="display:none">
           <div class="batch-bar-track"><div class="batch-bar-fill" id="batch-bar"></div></div>
           <div class="batch-status" id="batch-status"></div>
@@ -167,6 +158,9 @@
   <script type="module">
     import * as exifr from 'https://cdn.jsdelivr.net/npm/exifr@7/dist/full.esm.js';
     document.getElementById('yr').textContent = new Date().getFullYear();
+    buildSchema();
+    buildEditFields(document.getElementById('edit-fields'), 'edit');
+    buildEditFields(document.getElementById('batch-fields'), 'batch');
 
     let currentFile = null, currentUrl = null;
 
@@ -250,12 +244,12 @@
 
       buildGrid(exif, lat, lon);
       renderAllTags(file);
-      prefillEdit(exif);
 
       const isJpeg = /\.jpe?g$/i.test(file.name);
+      await prefillEdit(file, isJpeg);
       document.getElementById('edit-note').textContent = isJpeg
-        ? ''
-        : 'Save changes and Remove GPS only work with JPEG files. Use Strip all for other formats.';
+        ? 'Fill any fields you want to set; blanks are left as they are. Writes into a copy — your original is untouched.'
+        : 'Editing writes EXIF into JPEG files only. Use Strip all for other formats.';
       document.getElementById('save-btn').disabled = !isJpeg;
       document.getElementById('remove-gps-btn').disabled = !isJpeg;
 
@@ -550,12 +544,142 @@
       return card;
     }
 
-    function prefillEdit(exif) {
-      document.getElementById('edit-date').value = exif?.DateTimeOriginal ? dateToInput(exif.DateTimeOriginal) : '';
-      document.getElementById('edit-artist').value = exif?.Artist || '';
-      document.getElementById('edit-copyright').value = exif?.Copyright || '';
-      document.getElementById('edit-desc').value = exif?.ImageDescription || '';
+    // ── Editable common tags (shared by the single editor and the batch tool) ──
+    // Built after piexif has loaded (it provides the tag-id constants).
+    let EDITABLE = [];
+    function buildSchema() {
+      const I = piexif.ImageIFD, E = piexif.ExifIFD;
+      EDITABLE = [
+        { k: 'Make',        label: 'Make',            ifd: '0th',  tag: I.Make,             type: 'str' },
+        { k: 'Model',       label: 'Model',           ifd: '0th',  tag: I.Model,            type: 'str' },
+        { k: 'LensModel',   label: 'Lens',            ifd: 'Exif', tag: E.LensModel,        type: 'str' },
+        { k: 'Software',    label: 'Software',        ifd: '0th',  tag: I.Software,         type: 'str' },
+        { k: 'Date',        label: 'Date taken',      ifd: 'date', type: 'datetime-local' },
+        { k: 'ISO',         label: 'ISO',             ifd: 'Exif', tag: E.ISOSpeedRatings,  type: 'int' },
+        { k: 'FNumber',     label: 'Aperture (f/)',   ifd: 'Exif', tag: E.FNumber,          type: 'rational', ph: 'e.g. 2.8' },
+        { k: 'ExposureTime',label: 'Shutter (s)',     ifd: 'Exif', tag: E.ExposureTime,     type: 'rational', ph: 'e.g. 1/200' },
+        { k: 'FocalLength', label: 'Focal length (mm)', ifd: 'Exif', tag: E.FocalLength,    type: 'rational' },
+        { k: 'Focal35',     label: '35mm equiv (mm)', ifd: 'Exif', tag: E.FocalLengthIn35mmFilm, type: 'int' },
+        { k: 'Orientation', label: 'Orientation (1–8)', ifd: '0th', tag: I.Orientation,     type: 'int' },
+        { k: 'Artist',      label: 'Artist / Author', ifd: '0th',  tag: I.Artist,           type: 'str', ph: 'Your name' },
+        { k: 'Copyright',   label: 'Copyright',       ifd: '0th',  tag: I.Copyright,        type: 'str', ph: '© Your name' },
+        { k: 'Description', label: 'Description',     ifd: '0th',  tag: I.ImageDescription, type: 'str' },
+        { k: 'GPSLat',      label: 'GPS latitude',    ifd: 'gpslat', type: 'num', ph: 'e.g. 51.5074' },
+        { k: 'GPSLon',      label: 'GPS longitude',   ifd: 'gpslon', type: 'num', ph: 'e.g. -0.1278' },
+        { k: 'GPSAlt',      label: 'GPS altitude (m)', ifd: 'gpsalt', type: 'num' },
+      ];
     }
+
+    function buildEditFields(container, prefix) {
+      container.innerHTML = '';
+      for (const f of EDITABLE) {
+        const wrap = document.createElement('div'); wrap.className = 'field';
+        const lab = document.createElement('label'); lab.textContent = f.label;
+        const inp = document.createElement('input');
+        inp.type = f.type === 'datetime-local' ? 'datetime-local' : (f.type === 'int' || f.type === 'num') ? 'number' : 'text';
+        if (f.type === 'num') inp.step = 'any';
+        if (f.ph) inp.placeholder = f.ph;
+        inp.id = `${prefix}-${f.k}`;
+        wrap.append(lab, inp); container.appendChild(wrap);
+      }
+    }
+
+    function collectFields(prefix) {
+      const out = {};
+      for (const f of EDITABLE) {
+        const v = document.getElementById(`${prefix}-${f.k}`)?.value.trim();
+        if (v) out[f.k] = v;
+      }
+      return out;
+    }
+
+    function toRational(s) {
+      s = String(s).trim();
+      if (s.includes('/')) { const [a, b] = s.split('/').map(Number); if (b && isFinite(a)) return [Math.round(a * 1000), Math.round(b * 1000)]; }
+      const v = parseFloat(s); if (isNaN(v)) return null;
+      let den = 1; while (Math.abs(v * den - Math.round(v * den)) > 1e-7 && den < 1e7) den *= 10;
+      return [Math.round(v * den), den];
+    }
+    function toGpsDms(dec) {
+      dec = Math.abs(dec);
+      const d = Math.floor(dec), mf = (dec - d) * 60, m = Math.floor(mf), s = (mf - m) * 60;
+      return [[d, 1], [m, 1], [Math.round(s * 10000), 10000]];
+    }
+    function gpsArrToDec(arr, ref) {
+      if (!Array.isArray(arr) || arr.length < 3) return null;
+      const n = x => Array.isArray(x) ? (x[1] ? x[0] / x[1] : 0) : Number(x);
+      let v = n(arr[0]) + n(arr[1]) / 60 + n(arr[2]) / 3600;
+      if (ref === 'S' || ref === 'W') v = -v;
+      return v;
+    }
+
+    // Apply filled field values onto a piexif exifObj (in place).
+    function applyValuesToExifObj(exifObj, values) {
+      exifObj['0th'] = exifObj['0th'] || {}; exifObj['Exif'] = exifObj['Exif'] || {}; exifObj['GPS'] = exifObj['GPS'] || {};
+      for (const f of EDITABLE) {
+        const raw = values[f.k]; if (raw == null || raw === '') continue;
+        if (f.ifd === 'date') {
+          const d = inputToExifDate(raw); if (!d) continue;
+          exifObj['0th'][piexif.ImageIFD.DateTime] = d;
+          exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = d;
+          exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = d;
+        } else if (f.ifd === 'gpslat') {
+          const v = parseFloat(raw); if (isNaN(v)) continue;
+          exifObj['GPS'][piexif.GPSIFD.GPSLatitude] = toGpsDms(v);
+          exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef] = v >= 0 ? 'N' : 'S';
+        } else if (f.ifd === 'gpslon') {
+          const v = parseFloat(raw); if (isNaN(v)) continue;
+          exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = toGpsDms(v);
+          exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = v >= 0 ? 'E' : 'W';
+        } else if (f.ifd === 'gpsalt') {
+          const v = parseFloat(raw); if (isNaN(v)) continue;
+          exifObj['GPS'][piexif.GPSIFD.GPSAltitude] = [Math.round(Math.abs(v) * 100), 100];
+          exifObj['GPS'][piexif.GPSIFD.GPSAltitudeRef] = v >= 0 ? 0 : 1;
+        } else if (f.type === 'str') {
+          exifObj[f.ifd][f.tag] = raw;
+        } else if (f.type === 'int') {
+          const n = parseInt(raw, 10); if (!isNaN(n)) exifObj[f.ifd][f.tag] = n;
+        } else if (f.type === 'rational') {
+          const r = toRational(raw); if (r) exifObj[f.ifd][f.tag] = r;
+        }
+      }
+    }
+
+    async function prefillEdit(file, isJpeg) {
+      const container = document.getElementById('edit-fields');
+      for (const f of EDITABLE) { const el = document.getElementById(`edit-${f.k}`); if (el) el.value = ''; }
+      if (!isJpeg) return;
+      let exifObj;
+      try { exifObj = piexif.load(await fileToDataUrl(file)); } catch (e) { return; }
+      const set = (k, v) => { const el = document.getElementById(`edit-${k}`); if (el && v != null && v !== '') el.value = v; };
+      const o0 = exifObj['0th'] || {}, oE = exifObj['Exif'] || {}, oG = exifObj['GPS'] || {};
+      for (const f of EDITABLE) {
+        if (f.ifd === 'date') { const d = oE[piexif.ExifIFD.DateTimeOriginal] || o0[piexif.ImageIFD.DateTime]; set('Date', dateToInput(d)); }
+        else if (f.ifd === 'gpslat') set('GPSLat', fmtNum(gpsArrToDec(oG[piexif.GPSIFD.GPSLatitude], oG[piexif.GPSIFD.GPSLatitudeRef])));
+        else if (f.ifd === 'gpslon') set('GPSLon', fmtNum(gpsArrToDec(oG[piexif.GPSIFD.GPSLongitude], oG[piexif.GPSIFD.GPSLongitudeRef])));
+        else if (f.ifd === 'gpsalt') { const a = oG[piexif.GPSIFD.GPSAltitude]; set('GPSAlt', Array.isArray(a) && a[1] ? fmtNum(a[0] / a[1]) : ''); }
+        else {
+          const src = f.ifd === 'Exif' ? oE : o0; let raw = src[f.tag];
+          if (raw == null) continue;
+          if (f.type === 'rational' && Array.isArray(raw)) raw = raw[1] ? fmtNum(raw[0] / raw[1]) : '';
+          set(f.k, String(raw));
+        }
+      }
+    }
+    function fmtNum(v) { return (v == null || isNaN(v)) ? '' : String(Number(v.toFixed(6))); }
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      if (!currentFile) return;
+      try {
+        const dataUrl = await fileToDataUrl(currentFile);
+        let exifObj;
+        try { exifObj = piexif.load(dataUrl); } catch (e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
+        applyValuesToExifObj(exifObj, collectFields('edit'));
+        const newDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+        const base = currentFile.name.replace(/\.[^.]+$/, '');
+        const a = document.createElement('a'); a.download = `${base}-edited.jpg`; a.href = newDataUrl; a.click();
+      } catch (e) { alert('Could not write EXIF: ' + e.message); }
+    });
 
     function dateToInput(d) {
       if (d instanceof Date) {
@@ -574,28 +698,6 @@
     function fileToDataUrl(file) {
       return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file); });
     }
-
-    document.getElementById('save-btn').addEventListener('click', async () => {
-      if (!currentFile) return;
-      try {
-        const dataUrl = await fileToDataUrl(currentFile);
-        let exifObj;
-        try { exifObj = piexif.load(dataUrl); } catch(e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
-        if (!exifObj['0th']) exifObj['0th'] = {};
-        if (!exifObj['Exif']) exifObj['Exif'] = {};
-        const artist = document.getElementById('edit-artist').value;
-        const copyright = document.getElementById('edit-copyright').value;
-        const desc = document.getElementById('edit-desc').value;
-        const dateVal = inputToExifDate(document.getElementById('edit-date').value);
-        if (artist)    exifObj['0th'][piexif.ImageIFD.Artist] = artist;
-        if (copyright) exifObj['0th'][piexif.ImageIFD.Copyright] = copyright;
-        if (desc)      exifObj['0th'][piexif.ImageIFD.ImageDescription] = desc;
-        if (dateVal) { exifObj['0th'][piexif.ImageIFD.DateTime] = dateVal; exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = dateVal; }
-        const newDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
-        const base = currentFile.name.replace(/\.[^.]+$/, '');
-        const a = document.createElement('a'); a.download = `${base}-edited.jpg`; a.href = newDataUrl; a.click();
-      } catch(e) { alert('Could not write EXIF: ' + e.message); }
-    });
 
     document.getElementById('remove-gps-btn').addEventListener('click', async () => {
       if (!currentFile) return;
@@ -716,14 +818,10 @@
     async function runBatch(mode) {
       if (!batchFiles.length || !window.JSZip) return;
       const apply = mode === 'apply';
-      const fields = apply ? {
-        artist:    document.getElementById('batch-artist').value.trim(),
-        copyright: document.getElementById('batch-copyright').value.trim(),
-        desc:      document.getElementById('batch-desc-field').value.trim(),
-      } : null;
-      if (apply && !fields.artist && !fields.copyright && !fields.desc) {
+      const fields = apply ? collectFields('batch') : null;
+      if (apply && Object.keys(fields).length === 0) {
         batchProgress.style.display = '';
-        batchStatus.textContent = 'Enter at least one field (Artist, Copyright or Description) to apply.';
+        batchStatus.textContent = 'Fill at least one field above to apply.';
         return;
       }
       batchStart.disabled = true; batchApply.disabled = true;
@@ -778,10 +876,7 @@
       const dataUrl = await fileToDataUrl(file);
       let exifObj;
       try { exifObj = piexif.load(dataUrl); } catch (e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
-      if (!exifObj['0th']) exifObj['0th'] = {};
-      if (fields.artist)    exifObj['0th'][piexif.ImageIFD.Artist] = fields.artist;
-      if (fields.copyright) exifObj['0th'][piexif.ImageIFD.Copyright] = fields.copyright;
-      if (fields.desc)      exifObj['0th'][piexif.ImageIFD.ImageDescription] = fields.desc;
+      applyValuesToExifObj(exifObj, fields);
       const newUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
       const bstr = atob(newUrl.split(',')[1]);
       const u8 = new Uint8Array(bstr.length);
