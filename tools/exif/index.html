@@ -148,7 +148,7 @@
           <button class="btn" id="batch-apply">Apply fields to all &amp; download</button>
           <button class="btn-ghost" id="batch-start">Strip all &amp; download</button>
         </div>
-        <p class="edit-note" id="batch-note" style="display:none">Tags common to the whole folder are pre-filled. Fill a field to set it on every JPEG, or clear a pre-filled field to remove that tag from every JPEG (other formats are left unchanged). Stripping works on all formats.</p>
+        <p class="edit-note" id="batch-note" style="display:none">Tags common to the whole folder are pre-filled; tags that vary are marked &ldquo;kept&rdquo; and left as each photo&rsquo;s own. Fill a field to set it on every JPEG, or clear a pre-filled field to remove that tag from every JPEG (other formats are left unchanged). Stripping works on all formats.</p>
       </div>
     </div>
   </main>
@@ -799,14 +799,33 @@
       if (n) prefillBatchCommon();
     }
 
-    // Pre-fill batch fields with tags that are identical across every photo
-    // (e.g. Make/Model/Lens when a folder is all one camera), so you don't retype.
-    const EXIFR_KEY = { Make:'Make', Model:'Model', LensModel:'LensModel', Software:'Software',
-      Artist:'Artist', Copyright:'Copyright', Description:'ImageDescription' };
+    // Read a field's value from an exifr result, as the string our inputs use.
+    function batchValueFor(f, ex) {
+      if (!ex) return '';
+      const s = v => (v == null || v === '') ? '' : String(v);
+      const num = v => (v == null || isNaN(v)) ? '' : String(Number(Number(v).toFixed(6)));
+      switch (f.k) {
+        case 'Make': return s(ex.Make);           case 'Model': return s(ex.Model);
+        case 'LensModel': return s(ex.LensModel);  case 'Software': return s(ex.Software);
+        case 'Artist': return s(ex.Artist);        case 'Copyright': return s(ex.Copyright);
+        case 'Description': return s(ex.ImageDescription);
+        case 'ISO': return num(ex.ISO);            case 'FNumber': return num(ex.FNumber);
+        case 'ExposureTime': return num(ex.ExposureTime); case 'FocalLength': return num(ex.FocalLength);
+        case 'Focal35': return num(ex.FocalLengthIn35mmFormat); case 'Orientation': return num(ex.Orientation);
+        case 'Date': return ex.DateTimeOriginal ? dateToInput(ex.DateTimeOriginal) : '';
+        case 'GPSLat': return num(ex.latitude);    case 'GPSLon': return num(ex.longitude);
+        case 'GPSAlt': return num(ex.GPSAltitude);
+      }
+      return '';
+    }
+
+    // Scan the folder and classify each common tag: identical everywhere ->
+    // pre-fill it; present but differing -> mark "varies — kept" (left per photo);
+    // absent -> leave blank.
     async function prefillBatchCommon() {
       batchOriginal = {};
-      const strFields = EDITABLE.filter(f => EXIFR_KEY[f.k]);
-      const seen = {}; strFields.forEach(f => seen[f.k] = new Set());
+      EDITABLE.forEach(f => { const el = document.getElementById('batch-' + f.k); if (el) { el.value = ''; el.placeholder = f.ph || ''; } });
+      const seen = {}, present = {}; EDITABLE.forEach(f => { seen[f.k] = new Set(); present[f.k] = 0; });
       const sample = batchFiles.slice(0, 50);
       const token = ++batchPrefillToken;
       folderCount.textContent = `${batchFiles.length} images found · reading camera info…`;
@@ -814,23 +833,27 @@
       for (const file of sample) {
         if (token !== batchPrefillToken) return;   // folder changed; abandon
         let ex = null;
-        try { ex = await exifr.parse(file, { tiff: true, ifd0: true, exif: true, mergeOutput: true }); } catch (e) {}
+        try { ex = await exifr.parse(file, { tiff: true, ifd0: true, exif: true, gps: true, mergeOutput: true, translateValues: false }); } catch (e) {}
         read++;
-        for (const f of strFields) {
-          const v = ex ? ex[EXIFR_KEY[f.k]] : null;
-          seen[f.k].add(v == null || v === '' ? '\u0000' : String(v));
+        for (const f of EDITABLE) {
+          const v = batchValueFor(f, ex);
+          if (v !== '') { seen[f.k].add(v); present[f.k]++; }
         }
       }
       if (token !== batchPrefillToken) return;
       folderCount.textContent = `${batchFiles.length} image${batchFiles.length !== 1 ? 's' : ''} found`;
       if (!read) return;
-      let filled = 0;
-      for (const f of strFields) {
+      let filled = 0, varied = 0;
+      for (const f of EDITABLE) {
+        const el = document.getElementById('batch-' + f.k); if (!el || el.value !== '') continue;
         const vals = [...seen[f.k]];
-        const el = document.getElementById('batch-' + f.k);
-        if (el && el.value === '' && vals.length === 1 && vals[0] !== '\u0000') { el.value = vals[0]; batchOriginal[f.k] = vals[0]; filled++; }
+        if (vals.length === 1 && present[f.k] === read) { el.value = vals[0]; batchOriginal[f.k] = vals[0]; filled++; }
+        else if (present[f.k] > 0) { el.placeholder = 'varies — kept per photo'; varied++; }
       }
-      if (filled) folderCount.textContent += ' · common tags pre-filled';
+      const bits = [];
+      if (filled) bits.push(`${filled} common tag${filled !== 1 ? 's' : ''} pre-filled`);
+      if (varied) bits.push(`${varied} vary (kept)`);
+      if (bits.length) folderCount.textContent += ' · ' + bits.join(', ');
     }
 
     folderInp.addEventListener('change', () => setBatchFiles(Array.from(folderInp.files)));
@@ -845,7 +868,7 @@
       batchProgress.style.display = 'none';
       batchPrefillToken++;
       batchOriginal = {};
-      EDITABLE.forEach(f => { const el = document.getElementById('batch-' + f.k); if (el) el.value = ''; });
+      EDITABLE.forEach(f => { const el = document.getElementById('batch-' + f.k); if (el) { el.value = ''; el.placeholder = f.ph || ''; } });
       folderInp.value = '';
     });
 
