@@ -158,6 +158,7 @@
   <script type="module">
     import * as exifr from 'https://cdn.jsdelivr.net/npm/exifr@7/dist/full.esm.js';
     document.getElementById('yr').textContent = new Date().getFullYear();
+    let EDITABLE = [];
     buildSchema();
     buildEditFields(document.getElementById('edit-fields'), 'edit');
     buildEditFields(document.getElementById('batch-fields'), 'batch');
@@ -546,7 +547,6 @@
 
     // ── Editable common tags (shared by the single editor and the batch tool) ──
     // Built after piexif has loaded (it provides the tag-id constants).
-    let EDITABLE = [];
     function buildSchema() {
       const I = piexif.ImageIFD, E = piexif.ExifIFD;
       EDITABLE = [
