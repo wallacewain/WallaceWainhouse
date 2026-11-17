@@ -739,6 +739,7 @@
     const SPLIT_BYTES = 2 * 1024 * 1024 * 1024; // start a new zip every ~2 GB of image data
     const IMG_RX = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)$/i;
     let batchFiles = [];
+    let batchPrefillToken = 0;
 
     const folderBtn     = document.getElementById('folder-btn');
     const folderInp     = document.getElementById('folder-input');
@@ -765,6 +766,40 @@
       batchNote.style.display = n ? '' : 'none';
       batchClear.style.display = n ? '' : 'none';
       batchProgress.style.display = 'none';
+      if (n) prefillBatchCommon();
+    }
+
+    // Pre-fill batch fields with tags that are identical across every photo
+    // (e.g. Make/Model/Lens when a folder is all one camera), so you don't retype.
+    const EXIFR_KEY = { Make:'Make', Model:'Model', LensModel:'LensModel', Software:'Software',
+      Artist:'Artist', Copyright:'Copyright', Description:'ImageDescription' };
+    async function prefillBatchCommon() {
+      const strFields = EDITABLE.filter(f => EXIFR_KEY[f.k]);
+      const seen = {}; strFields.forEach(f => seen[f.k] = new Set());
+      const sample = batchFiles.slice(0, 50);
+      const token = ++batchPrefillToken;
+      folderCount.textContent = `${batchFiles.length} images found · reading camera info…`;
+      let read = 0;
+      for (const file of sample) {
+        if (token !== batchPrefillToken) return;   // folder changed; abandon
+        let ex = null;
+        try { ex = await exifr.parse(file, { tiff: true, ifd0: true, exif: true, mergeOutput: true }); } catch (e) {}
+        read++;
+        for (const f of strFields) {
+          const v = ex ? ex[EXIFR_KEY[f.k]] : null;
+          seen[f.k].add(v == null || v === '' ? '\u0000' : String(v));
+        }
+      }
+      if (token !== batchPrefillToken) return;
+      folderCount.textContent = `${batchFiles.length} image${batchFiles.length !== 1 ? 's' : ''} found`;
+      if (!read) return;
+      let filled = 0;
+      for (const f of strFields) {
+        const vals = [...seen[f.k]];
+        const el = document.getElementById('batch-' + f.k);
+        if (el && el.value === '' && vals.length === 1 && vals[0] !== '\u0000') { el.value = vals[0]; filled++; }
+      }
+      if (filled) folderCount.textContent += ' · common tags pre-filled';
     }
 
     folderInp.addEventListener('change', () => setBatchFiles(Array.from(folderInp.files)));
@@ -777,6 +812,8 @@
       batchNote.style.display = 'none';
       batchClear.style.display = 'none';
       batchProgress.style.display = 'none';
+      batchPrefillToken++;
+      EDITABLE.forEach(f => { const el = document.getElementById('batch-' + f.k); if (el) el.value = ''; });
       folderInp.value = '';
     });
 
