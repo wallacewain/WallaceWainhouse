@@ -136,21 +136,28 @@
       </div>
       <hr class="tool-divider">
       <div class="batch-section" id="batch-section">
-        <div class="batch-head">Batch strip a folder</div>
-        <p class="batch-desc">Select or drop a folder to strip EXIF from every image inside it. Output is split into separate zip files to keep memory use low. Nothing is uploaded &mdash; all processing happens in your browser.</p>
+        <div class="batch-head">Batch edit or strip a folder</div>
+        <p class="batch-desc">Select or drop a folder to process every image inside it &mdash; strip all metadata, or write the common fields below into every photo at once. Output is split into separate zip files to keep memory use low. Nothing is uploaded &mdash; all processing happens in your browser.</p>
         <div class="batch-pick">
           <input type="file" id="folder-input" webkitdirectory multiple style="display:none">
           <button class="btn-ghost" id="folder-btn">Choose folder&hellip;</button>
           <span class="batch-count" id="folder-count"></span>
           <button class="btn-ghost" id="batch-clear" style="display:none;margin-left:auto">&#x2715; Clear</button>
         </div>
+        <div class="edit-fields" id="batch-fields" style="display:none">
+          <div class="field"><label>Artist / Author</label><input type="text" id="batch-artist" placeholder="Your name"></div>
+          <div class="field"><label>Copyright</label><input type="text" id="batch-copyright" placeholder="© Your name"></div>
+          <div class="field"><label>Description</label><input type="text" id="batch-desc-field" placeholder="Image description"></div>
+        </div>
         <div class="batch-progress-wrap" id="batch-progress" style="display:none">
           <div class="batch-bar-track"><div class="batch-bar-fill" id="batch-bar"></div></div>
           <div class="batch-status" id="batch-status"></div>
         </div>
         <div class="batch-actions" id="batch-actions" style="display:none">
-          <button class="btn" id="batch-start">Strip all &amp; download zips</button>
+          <button class="btn" id="batch-apply">Apply fields to all &amp; download</button>
+          <button class="btn-ghost" id="batch-start">Strip all &amp; download</button>
         </div>
+        <p class="edit-note" id="batch-note" style="display:none">Applying fields writes into JPEGs only (other formats are left unchanged). Stripping works on all formats.</p>
       </div>
     </div>
   </main>
@@ -639,6 +646,9 @@
     const batchStatus   = document.getElementById('batch-status');
     const batchActions  = document.getElementById('batch-actions');
     const batchStart    = document.getElementById('batch-start');
+    const batchApply    = document.getElementById('batch-apply');
+    const batchFields   = document.getElementById('batch-fields');
+    const batchNote     = document.getElementById('batch-note');
     const batchClear    = document.getElementById('batch-clear');
     const batchSection  = document.getElementById('batch-section');
 
@@ -649,6 +659,8 @@
       const n = batchFiles.length;
       folderCount.textContent = n ? `${n} image${n !== 1 ? 's' : ''} found` : 'No supported images found';
       batchActions.style.display = n ? '' : 'none';
+      batchFields.style.display = n ? '' : 'none';
+      batchNote.style.display = n ? '' : 'none';
       batchClear.style.display = n ? '' : 'none';
       batchProgress.style.display = 'none';
     }
@@ -659,6 +671,8 @@
       batchFiles = [];
       folderCount.textContent = '';
       batchActions.style.display = 'none';
+      batchFields.style.display = 'none';
+      batchNote.style.display = 'none';
       batchClear.style.display = 'none';
       batchProgress.style.display = 'none';
       folderInp.value = '';
@@ -696,21 +710,37 @@
       return results;
     }
 
-    batchStart.addEventListener('click', async () => {
+    batchStart.addEventListener('click', () => runBatch('strip'));
+    batchApply.addEventListener('click', () => runBatch('apply'));
+
+    async function runBatch(mode) {
       if (!batchFiles.length || !window.JSZip) return;
-      batchStart.disabled = true;
+      const apply = mode === 'apply';
+      const fields = apply ? {
+        artist:    document.getElementById('batch-artist').value.trim(),
+        copyright: document.getElementById('batch-copyright').value.trim(),
+        desc:      document.getElementById('batch-desc-field').value.trim(),
+      } : null;
+      if (apply && !fields.artist && !fields.copyright && !fields.desc) {
+        batchProgress.style.display = '';
+        batchStatus.textContent = 'Enter at least one field (Artist, Copyright or Description) to apply.';
+        return;
+      }
+      batchStart.disabled = true; batchApply.disabled = true;
       batchProgress.style.display = '';
       batchBar.style.width = '0%';
 
       const total = batchFiles.length;
-      let zipIdx = 1, zip = new JSZip(), zipBytes = 0, skipped = 0;
+      const prefix = apply ? 'tagged' : 'stripped';
+      const suffix = apply ? '' : '-stripped';
+      let zipIdx = 1, zip = new JSZip(), zipBytes = 0, skipped = 0, edited = 0, passed = 0;
       const usedNames = new Set();
 
       const flushZip = async () => {
         batchStatus.textContent = `Generating zip ${zipIdx}…`;
         await tick();
         const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
-        dlBlob(blob, `stripped-${zipIdx}.zip`);
+        dlBlob(blob, `${prefix}-${zipIdx}.zip`);
         zipIdx++; zip = new JSZip(); zipBytes = 0; usedNames.clear();
       };
 
@@ -720,8 +750,14 @@
         batchBar.style.width = `${Math.round(i / total * 100)}%`;
         await tick();
         try {
-          const blob = await stripFileToBlob(file);
-          const name = uniqueName(file.name, usedNames);
+          let blob;
+          if (apply) {
+            if (/\.jpe?g$/i.test(file.name)) { blob = await applyFieldsToBlob(file, fields); edited++; }
+            else { blob = file; passed++; }          // non-JPEG left unchanged
+          } else {
+            blob = await stripFileToBlob(file);
+          }
+          const name = uniqueName(file.name, usedNames, suffix);
           zip.file(name, blob);
           zipBytes += blob.size;
           if (zipBytes >= SPLIT_BYTES) await flushZip();
@@ -732,9 +768,26 @@
 
       batchBar.style.width = '100%';
       const zips = zipIdx - 1;
-      batchStatus.textContent = `Done — downloaded ${zips} zip${zips !== 1 ? 's' : ''}${skipped ? `, ${skipped} file${skipped !== 1 ? 's' : ''} skipped` : ''}.`;
-      batchStart.disabled = false;
-    });
+      batchStatus.textContent = apply
+        ? `Done — ${edited} edited${passed ? `, ${passed} left unchanged (non-JPEG)` : ''}${skipped ? `, ${skipped} skipped` : ''}. Downloaded ${zips} zip${zips !== 1 ? 's' : ''}.`
+        : `Done — downloaded ${zips} zip${zips !== 1 ? 's' : ''}${skipped ? `, ${skipped} file${skipped !== 1 ? 's' : ''} skipped` : ''}.`;
+      batchStart.disabled = false; batchApply.disabled = false;
+    }
+
+    async function applyFieldsToBlob(file, fields) {
+      const dataUrl = await fileToDataUrl(file);
+      let exifObj;
+      try { exifObj = piexif.load(dataUrl); } catch (e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
+      if (!exifObj['0th']) exifObj['0th'] = {};
+      if (fields.artist)    exifObj['0th'][piexif.ImageIFD.Artist] = fields.artist;
+      if (fields.copyright) exifObj['0th'][piexif.ImageIFD.Copyright] = fields.copyright;
+      if (fields.desc)      exifObj['0th'][piexif.ImageIFD.ImageDescription] = fields.desc;
+      const newUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+      const bstr = atob(newUrl.split(',')[1]);
+      const u8 = new Uint8Array(bstr.length);
+      for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+      return new Blob([u8], { type: 'image/jpeg' });
+    }
 
     async function stripFileToBlob(file) {
       const url = URL.createObjectURL(file);
@@ -753,9 +806,9 @@
       }
     }
 
-    function uniqueName(original, used) {
+    function uniqueName(original, used, suffix) {
       const ext = original.match(/(\.[^.]+)$/)?.[1] ?? '';
-      const base = original.replace(/(\.[^.]+)$/, '') + '-stripped';
+      const base = original.replace(/(\.[^.]+)$/, '') + (suffix || '');
       let name = base + ext, n = 1;
       while (used.has(name)) name = `${base}-${n++}${ext}`;
       used.add(name); return name;
