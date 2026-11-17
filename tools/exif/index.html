@@ -148,7 +148,7 @@
           <button class="btn" id="batch-apply">Apply fields to all &amp; download</button>
           <button class="btn-ghost" id="batch-start">Strip all &amp; download</button>
         </div>
-        <p class="edit-note" id="batch-note" style="display:none">Applying fields writes into JPEGs only (other formats are left unchanged). Stripping works on all formats.</p>
+        <p class="edit-note" id="batch-note" style="display:none">Tags common to the whole folder are pre-filled. Fill a field to set it on every JPEG, or clear a pre-filled field to remove that tag from every JPEG (other formats are left unchanged). Stripping works on all formats.</p>
       </div>
     </div>
   </main>
@@ -164,6 +164,7 @@
     buildEditFields(document.getElementById('batch-fields'), 'batch');
 
     let currentFile = null, currentUrl = null;
+    let editOriginal = {}, batchOriginal = {};  // prefilled values, so clearing a field deletes its tag
 
     const zone     = document.getElementById('drop');
     const inp      = document.getElementById('file-input');
@@ -249,7 +250,7 @@
       const isJpeg = /\.jpe?g$/i.test(file.name);
       await prefillEdit(file, isJpeg);
       document.getElementById('edit-note').textContent = isJpeg
-        ? 'Fill any fields you want to set; blanks are left as they are. Writes into a copy — your original is untouched.'
+        ? 'Fill a field to set it; clear a field that has a value to delete that tag. Fields already empty are left alone. Writes into a copy — your original is untouched.'
         : 'Editing writes EXIF into JPEG files only. Use Strip all for other formats.';
       document.getElementById('save-btn').disabled = !isJpeg;
       document.getElementById('remove-gps-btn').disabled = !isJpeg;
@@ -613,6 +614,35 @@
       return v;
     }
 
+    // Compute writes (filled fields) and deletes (fields that had a value and
+    // were cleared), then apply both to a piexif exifObj.
+    function editPlan(prefix, originals) {
+      const writes = {}, deletes = [];
+      for (const f of EDITABLE) {
+        const cur = (document.getElementById(`${prefix}-${f.k}`)?.value || '').trim();
+        const orig = (originals && originals[f.k]) || '';
+        if (cur !== '') writes[f.k] = cur;
+        else if (orig !== '') deletes.push(f.k);
+      }
+      return { writes, deletes };
+    }
+    function deleteFieldFromExifObj(exifObj, f) {
+      const G = piexif.GPSIFD;
+      if (f.ifd === 'date') {
+        delete exifObj['0th']?.[piexif.ImageIFD.DateTime];
+        delete exifObj['Exif']?.[piexif.ExifIFD.DateTimeOriginal];
+        delete exifObj['Exif']?.[piexif.ExifIFD.DateTimeDigitized];
+      } else if (f.ifd === 'gpslat') { delete exifObj['GPS']?.[G.GPSLatitude]; delete exifObj['GPS']?.[G.GPSLatitudeRef]; }
+      else if (f.ifd === 'gpslon') { delete exifObj['GPS']?.[G.GPSLongitude]; delete exifObj['GPS']?.[G.GPSLongitudeRef]; }
+      else if (f.ifd === 'gpsalt') { delete exifObj['GPS']?.[G.GPSAltitude]; delete exifObj['GPS']?.[G.GPSAltitudeRef]; }
+      else delete exifObj[f.ifd]?.[f.tag];
+    }
+    function applyPlanToExifObj(exifObj, plan) {
+      applyValuesToExifObj(exifObj, plan.writes);
+      const byKey = Object.fromEntries(EDITABLE.map(f => [f.k, f]));
+      for (const k of plan.deletes) deleteFieldFromExifObj(exifObj, byKey[k]);
+    }
+
     // Apply filled field values onto a piexif exifObj (in place).
     function applyValuesToExifObj(exifObj, values) {
       exifObj['0th'] = exifObj['0th'] || {}; exifObj['Exif'] = exifObj['Exif'] || {}; exifObj['GPS'] = exifObj['GPS'] || {};
@@ -646,12 +676,12 @@
     }
 
     async function prefillEdit(file, isJpeg) {
-      const container = document.getElementById('edit-fields');
+      editOriginal = {};
       for (const f of EDITABLE) { const el = document.getElementById(`edit-${f.k}`); if (el) el.value = ''; }
       if (!isJpeg) return;
       let exifObj;
       try { exifObj = piexif.load(await fileToDataUrl(file)); } catch (e) { return; }
-      const set = (k, v) => { const el = document.getElementById(`edit-${k}`); if (el && v != null && v !== '') el.value = v; };
+      const set = (k, v) => { const el = document.getElementById(`edit-${k}`); if (el && v != null && v !== '') { el.value = v; editOriginal[k] = String(v); } };
       const o0 = exifObj['0th'] || {}, oE = exifObj['Exif'] || {}, oG = exifObj['GPS'] || {};
       for (const f of EDITABLE) {
         if (f.ifd === 'date') { const d = oE[piexif.ExifIFD.DateTimeOriginal] || o0[piexif.ImageIFD.DateTime]; set('Date', dateToInput(d)); }
@@ -674,7 +704,7 @@
         const dataUrl = await fileToDataUrl(currentFile);
         let exifObj;
         try { exifObj = piexif.load(dataUrl); } catch (e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
-        applyValuesToExifObj(exifObj, collectFields('edit'));
+        applyPlanToExifObj(exifObj, editPlan('edit', editOriginal));
         const newDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
         const base = currentFile.name.replace(/\.[^.]+$/, '');
         const a = document.createElement('a'); a.download = `${base}-edited.jpg`; a.href = newDataUrl; a.click();
@@ -774,6 +804,7 @@
     const EXIFR_KEY = { Make:'Make', Model:'Model', LensModel:'LensModel', Software:'Software',
       Artist:'Artist', Copyright:'Copyright', Description:'ImageDescription' };
     async function prefillBatchCommon() {
+      batchOriginal = {};
       const strFields = EDITABLE.filter(f => EXIFR_KEY[f.k]);
       const seen = {}; strFields.forEach(f => seen[f.k] = new Set());
       const sample = batchFiles.slice(0, 50);
@@ -797,7 +828,7 @@
       for (const f of strFields) {
         const vals = [...seen[f.k]];
         const el = document.getElementById('batch-' + f.k);
-        if (el && el.value === '' && vals.length === 1 && vals[0] !== '\u0000') { el.value = vals[0]; filled++; }
+        if (el && el.value === '' && vals.length === 1 && vals[0] !== '\u0000') { el.value = vals[0]; batchOriginal[f.k] = vals[0]; filled++; }
       }
       if (filled) folderCount.textContent += ' · common tags pre-filled';
     }
@@ -813,6 +844,7 @@
       batchClear.style.display = 'none';
       batchProgress.style.display = 'none';
       batchPrefillToken++;
+      batchOriginal = {};
       EDITABLE.forEach(f => { const el = document.getElementById('batch-' + f.k); if (el) el.value = ''; });
       folderInp.value = '';
     });
@@ -855,10 +887,10 @@
     async function runBatch(mode) {
       if (!batchFiles.length || !window.JSZip) return;
       const apply = mode === 'apply';
-      const fields = apply ? collectFields('batch') : null;
-      if (apply && Object.keys(fields).length === 0) {
+      const plan = apply ? editPlan('batch', batchOriginal) : null;
+      if (apply && Object.keys(plan.writes).length === 0 && plan.deletes.length === 0) {
         batchProgress.style.display = '';
-        batchStatus.textContent = 'Fill at least one field above to apply.';
+        batchStatus.textContent = 'Fill a field to set it, or clear a pre-filled one to remove that tag.';
         return;
       }
       batchStart.disabled = true; batchApply.disabled = true;
@@ -887,7 +919,7 @@
         try {
           let blob;
           if (apply) {
-            if (/\.jpe?g$/i.test(file.name)) { blob = await applyFieldsToBlob(file, fields); edited++; }
+            if (/\.jpe?g$/i.test(file.name)) { blob = await applyFieldsToBlob(file, plan); edited++; }
             else { blob = file; passed++; }          // non-JPEG left unchanged
           } else {
             blob = await stripFileToBlob(file);
@@ -909,11 +941,11 @@
       batchStart.disabled = false; batchApply.disabled = false;
     }
 
-    async function applyFieldsToBlob(file, fields) {
+    async function applyFieldsToBlob(file, plan) {
       const dataUrl = await fileToDataUrl(file);
       let exifObj;
       try { exifObj = piexif.load(dataUrl); } catch (e) { exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null }; }
-      applyValuesToExifObj(exifObj, fields);
+      applyPlanToExifObj(exifObj, plan);
       const newUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
       const bstr = atob(newUrl.split(',')[1]);
       const u8 = new Uint8Array(bstr.length);
