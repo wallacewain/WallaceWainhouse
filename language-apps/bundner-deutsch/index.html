@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bündner Deutsch: Swiss German as spoken in Graubünden, real recordings. Free, in the browser on any phone.">
+  <title>Bündner Deutsch &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/language-apps/bundner-deutsch/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/language-apps/bundner-deutsch/">
+  <meta property="og:title" content="Bündner Deutsch">
+  <meta property="og:description" content="Bündner Deutsch: Swiss German as spoken in Graubünden, real recordings. Free, in the browser on any phone.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Bündner Deutsch">
+  <meta name="twitter:description" content="Bündner Deutsch: Swiss German as spoken in Graubünden, real recordings. Free, in the browser on any phone.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    .la { max-width: 760px; padding-bottom: 4rem; }
+    .la h2 { font-size: 1.6rem; margin: 3rem 0 1rem; }
+    .la p, .la li { color: #d4d4d8; }
+    .la p { margin-bottom: 1rem; }
+    .la ol, .la ul { margin: 0 0 1rem 1.4rem; }
+    .la li { margin-bottom: 0.5rem; }
+    .la strong { color: var(--text); }
+    .crumb { margin: 2.5rem 0 0; font-size: 0.9rem; }
+    .crumb a { color: var(--muted); text-decoration: none; }
+    .crumb a:hover { color: var(--text); }
+    .calm { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface);
+            border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .calm p:last-child { margin-bottom: 0; }
+    .share { border: 1px solid #3f3f46; background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(99,102,241,0.04));
+             border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .share p:last-child { margin-bottom: 0; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    a.app { display: block; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius);
+            padding: 1.25rem; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+    a.app:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .app .top { display: flex; align-items: center; gap: 0.9rem; }
+    .app img { width: 56px; height: 56px; border-radius: 12px; }
+    .app h3 { font-size: 1.15rem; margin: 0; }
+    .app .who { color: var(--muted); font-size: 0.85rem; }
+    .app .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.85rem; }
+    .tag { color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.6rem; }
+    .go { color: var(--accent-hover); font-weight: 600; }
+    .head { display: flex; align-items: center; gap: 1.25rem; margin: 1.5rem 0 1rem; }
+    .head img { width: 96px; height: 96px; border-radius: 22px; }
+    .head h1 { font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.1; margin: 0 0 0.3rem; }
+    .head .who { color: var(--muted); }
+    .facts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.5rem; }
+    .btn { display: inline-block; background: var(--accent); color: #fff; font-weight: 600; border-radius: 999px;
+           padding: 0.7rem 1.4rem; text-decoration: none; margin: 0.25rem 0 1rem; }
+    .btn:hover { background: var(--accent-hover); }
+    .shots { display: flex; gap: 0.9rem; overflow-x: auto; padding: 0.25rem 0 1rem; scroll-snap-type: x mandatory; }
+    .shots figure { margin: 0; flex: none; scroll-snap-align: start; }
+    .shots img { height: 440px; width: auto; border-radius: 14px; border: 1px solid var(--border); display: block; }
+    .shots figcaption { color: var(--muted); font-size: 0.8rem; margin-top: 0.4rem; max-width: 248px; }
+    .shots figure.wide figcaption { max-width: 560px; }
+    @media (max-width: 600px) { .shots img { height: 380px; } }
+    .steps { counter-reset: s; list-style: none; margin-left: 0 !important; }
+    .steps li { counter-increment: s; position: relative; padding-left: 2.6rem; margin-bottom: 1rem; }
+    .steps li::before { content: counter(s); position: absolute; left: 0; top: -0.1rem; width: 1.8rem; height: 1.8rem;
+           border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+           display: grid; place-items: center; font-weight: 600; font-size: 0.9rem; }
+    .cmds { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin: 1rem 0 1.5rem; }
+    .cmd { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: 0.9rem 1rem; }
+    .cmd b { display: block; font-size: 1.25rem; color: var(--text); }
+    .cmd span { color: var(--muted); font-size: 0.9rem; }
+    .others { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0; }
+    .others a { display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--border); border-radius: 999px;
+                padding: 0.3rem 0.8rem 0.3rem 0.35rem; color: var(--text); text-decoration: none; font-size: 0.9rem; }
+    .others a:hover { border-color: var(--accent); }
+    .others img { width: 26px; height: 26px; border-radius: 7px; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><svg viewBox="-323 -28 2446 296" height="18" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-279.60,-4.00 -298.80,10.40 -123.60,244.00 -104.40,229.60"/><polygon points="-54.00,229.60 -34.80,244.00 140.40,10.40 121.20,-4.00"/><polygon points="210.00,-4.00 190.80,10.40 366.00,244.00 385.20,229.60"/><polygon points="435.60,229.60 454.80,244.00 630.00,10.40 610.80,-4.00"/><polygon points="699.60,-4.00 680.40,10.40 855.60,244.00 874.80,229.60"/><polygon points="925.20,229.60 944.40,244.00 1119.60,10.40 1100.40,-4.00"/><polygon points="1189.20,-4.00 1170.00,10.40 1345.20,244.00 1364.40,229.60"/><polygon points="1414.80,229.60 1434.00,244.00 1609.20,10.40 1590.00,-4.00"/><polygon points="1678.80,-4.00 1659.60,10.40 1834.80,244.00 1854.00,229.60"/><polygon points="1904.40,229.60 1923.60,244.00 2098.80,10.40 2079.60,-4.00"/></svg></a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/">Tools</a></li><li><a href="/nice-reverb/">Nice Reverb</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <div class="la">
+      <p class="crumb"><a href="../">&larr; All language apps</a></p>
+      <div class="head"><img src="../img/swiss.png" alt=""><div><h1>Bündner Deutsch</h1><div class="who">Swiss German as spoken in Graubünden, real recordings</div></div></div>
+      <div class="facts"><span class="tag">iPhone and Android</span><span class="tag">Free</span><span class="tag">In the browser, nothing to install</span></div>
+      <p>Swiss German as it's spoken in Graubünden (around Chur and St. Moritz), not standard German. You hear a phrase in English, say it out loud in Swiss German, then hear a real Bündner say it.</p>
+      <a class="btn" href="https://wallacewain.github.io/bd-4905dad8adbe/">Open Bündner Deutsch</a>
+
+      <div class="shots">
+        <figure><img src="img/shot1.jpg" alt="Hear the English, say it in Swiss German" loading="lazy"><figcaption>Hear the English, say it in Swiss German</figcaption></figure>
+        <figure><img src="img/shot2.jpg" alt="Then hear a Bündner say it, with a word-for-word line" loading="lazy"><figcaption>Then hear a Bündner say it, with a word-for-word line</figcaption></figure>
+        <figure><img src="img/shot3.jpg" alt="Settings: pace, save for offline, back up your progress" loading="lazy"><figcaption>Settings: pace, save for offline, back up your progress</figcaption></figure>
+      </div>
+
+      <h2>What's in it</h2>
+      <ul>
+        <li>493 phrases recorded by native speakers from Graubünden (the SwissDial recordings, ETH Zürich), not a computer voice: there isn't one for the dialect.</li>
+        <li>Everyday phrases first, each with a word-for-word line so you can see how the dialect is built.</li>
+        <li>Spaced repetition: each phrase comes back at growing gaps, just before you'd forget it.</li>
+      </ul>
+
+      <h2>Get it</h2>
+      <ol class="steps">
+        <li><strong>Open <a href="https://wallacewain.github.io/bd-4905dad8adbe/">Bündner Deutsch</a> on your phone.</strong> It runs in the browser on iPhone and Android: nothing to install, no account.</li>
+        <li><strong>Add it to your home screen</strong> so it opens like an app. iPhone: in Safari, tap Share, then "Add to Home Screen". Android: in Chrome, tap ⋮, then "Add to Home screen".</li>
+        <li><strong>Save it for offline:</strong> in its Settings, tap "Save for offline" so it works with no signal.</li>
+      </ol>
+
+      <h2>How to use it</h2>
+      <ul>
+        <li><strong>Say it out loud</strong> in the gap, then listen to the answer.</li>
+        <li>No voice commands: <strong>tap the screen</strong> if you missed it. It's taught again and comes back sooner. Otherwise it moves on by itself.</li>
+        <li>Headphone buttons work: ⏮ means missed it, ⏭ skips ahead. Keep the page open while it plays: iPhones pause web pages when they're locked.</li>
+      </ul>
+
+      <h2>Your progress</h2>
+      <p>Your progress is kept on your phone, in the browser. Back it up now and then in Settings: deleting the home screen icon or clearing the browser's data loses it. Restore puts it back, on the same phone or a new one.</p>
+
+      <div class="calm">
+        <p><strong>Before you start:</strong> give your first sessions at least <strong>30 minutes of gentle focus</strong>.</p>
+        <p>The first few minutes can feel overwhelming. That's completely normal, so please don't give up then: stick with it for the full half hour and it starts to fall into place.</p>
+        <p>Don't worry at all if it feels like nothing is going in. That's normal, and it's fine. Just relax completely and trust the app to do the work: it brings every phrase back at the right moment, again and again, until it sticks. You don't need to try hard, take notes or remember anything on purpose. Just listen, have a go out loud, and keep going.</p>
+      </div>
+
+      <h2>The other apps</h2>
+      <div class="others"><a href="../slovak/"><img src="../img/slovak.png" alt="">Slovak Drive</a><a href="../cantonese/"><img src="../img/cantonese.png" alt="">Cantonese Drive</a><a href="../spanish/"><img src="../img/spanish.png" alt="">Spanish Drive</a><a href="../french/"><img src="../img/french.png" alt="">French Drive</a><a href="../parler-vrai/"><img src="../img/parler-vrai.png" alt="">Parler vrai</a></div>
+      <p><a href="../">All the language apps</a></p>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script src="/js/logo.js"></script>
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
