@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cantonese Drive: learn spoken Cantonese hands-free. Hear English, say it out loud, hear a native speaker. Free for Android.">
+  <title>Cantonese Drive &mdash; Wallace Wainhouse</title>
+  <link rel="canonical" href="https://wallacewainhouse.com/language-apps/cantonese/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wallace Wainhouse">
+  <meta property="og:url" content="https://wallacewainhouse.com/language-apps/cantonese/">
+  <meta property="og:title" content="Cantonese Drive &amp;mdash; learn spoken Cantonese hands-free">
+  <meta property="og:description" content="Cantonese Drive: learn spoken Cantonese hands-free. Hear English, say it out loud, hear a native speaker. Free for Android.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Cantonese Drive &amp;mdash; learn spoken Cantonese hands-free">
+  <meta name="twitter:description" content="Cantonese Drive: learn spoken Cantonese hands-free. Hear English, say it out loud, hear a native speaker. Free for Android.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    .la { max-width: 760px; padding-bottom: 4rem; }
+    .la h2 { font-size: 1.6rem; margin: 3rem 0 1rem; }
+    .la p, .la li { color: #d4d4d8; }
+    .la p { margin-bottom: 1rem; }
+    .la ol, .la ul { margin: 0 0 1rem 1.4rem; }
+    .la li { margin-bottom: 0.5rem; }
+    .la strong { color: var(--text); }
+    .crumb { margin: 2.5rem 0 0; font-size: 0.9rem; }
+    .crumb a { color: var(--muted); text-decoration: none; }
+    .crumb a:hover { color: var(--text); }
+    .calm { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface);
+            border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .calm p:last-child { margin-bottom: 0; }
+    .share { border: 1px solid #3f3f46; background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(99,102,241,0.04));
+             border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .share p:last-child { margin-bottom: 0; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    a.app { display: block; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius);
+            padding: 1.25rem; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+    a.app:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .app .top { display: flex; align-items: center; gap: 0.9rem; }
+    .app img { width: 56px; height: 56px; border-radius: 12px; }
+    .app h3 { font-size: 1.15rem; margin: 0; }
+    .app .who { color: var(--muted); font-size: 0.85rem; }
+    .app .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.85rem; }
+    .tag { color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.6rem; }
+    .go { color: var(--accent-hover); font-weight: 600; }
+    .head { display: flex; align-items: center; gap: 1.25rem; margin: 1.5rem 0 1rem; }
+    .head img { width: 96px; height: 96px; border-radius: 22px; }
+    .head h1 { font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.1; margin: 0 0 0.3rem; }
+    .head .who { color: var(--muted); }
+    .facts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.5rem; }
+    .btn { display: inline-block; background: var(--accent); color: #fff; font-weight: 600; border-radius: 999px;
+           padding: 0.7rem 1.4rem; text-decoration: none; margin: 0.25rem 0 1rem; }
+    .btn:hover { background: var(--accent-hover); }
+    .shots { display: flex; gap: 0.9rem; overflow-x: auto; padding: 0.25rem 0 1rem; scroll-snap-type: x mandatory; }
+    .shots figure { margin: 0; flex: none; scroll-snap-align: start; }
+    .shots img { height: 440px; width: auto; border-radius: 14px; border: 1px solid var(--border); display: block; }
+    .shots figcaption { color: var(--muted); font-size: 0.8rem; margin-top: 0.4rem; max-width: 248px; }
+    .shots figure.wide figcaption { max-width: 560px; }
+    @media (max-width: 600px) { .shots img { height: 380px; } }
+    .steps { counter-reset: s; list-style: none; margin-left: 0 !important; }
+    .steps li { counter-increment: s; position: relative; padding-left: 2.6rem; margin-bottom: 1rem; }
+    .steps li::before { content: counter(s); position: absolute; left: 0; top: -0.1rem; width: 1.8rem; height: 1.8rem;
+           border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+           display: grid; place-items: center; font-weight: 600; font-size: 0.9rem; }
+    .cmds { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin: 1rem 0 1.5rem; }
+    .cmd { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: 0.9rem 1rem; }
+    .cmd b { display: block; font-size: 1.25rem; color: var(--text); }
+    .cmd span { color: var(--muted); font-size: 0.9rem; }
+    .others { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0; }
+    .others a { display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--border); border-radius: 999px;
+                padding: 0.3rem 0.8rem 0.3rem 0.35rem; color: var(--text); text-decoration: none; font-size: 0.9rem; }
+    .others a:hover { border-color: var(--accent); }
+    .others img { width: 26px; height: 26px; border-radius: 7px; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><svg viewBox="-323 -28 2446 296" height="18" xmlns="http://www.w3.org/2000/svg" aria-label="WMW" fill="currentColor"><polygon points="-279.60,-4.00 -298.80,10.40 -123.60,244.00 -104.40,229.60"/><polygon points="-54.00,229.60 -34.80,244.00 140.40,10.40 121.20,-4.00"/><polygon points="210.00,-4.00 190.80,10.40 366.00,244.00 385.20,229.60"/><polygon points="435.60,229.60 454.80,244.00 630.00,10.40 610.80,-4.00"/><polygon points="699.60,-4.00 680.40,10.40 855.60,244.00 874.80,229.60"/><polygon points="925.20,229.60 944.40,244.00 1119.60,10.40 1100.40,-4.00"/><polygon points="1189.20,-4.00 1170.00,10.40 1345.20,244.00 1364.40,229.60"/><polygon points="1414.80,229.60 1434.00,244.00 1609.20,10.40 1590.00,-4.00"/><polygon points="1678.80,-4.00 1659.60,10.40 1834.80,244.00 1854.00,229.60"/><polygon points="1904.40,229.60 1923.60,244.00 2098.80,10.40 2079.60,-4.00"/></svg></a>
+      <ul><li><a href="/">Home</a></li><li><a href="/tools/">Tools</a></li><li><a href="/nice-reverb/">Nice Reverb</a></li></ul>
+    </nav>
+  </header>
+  <main>
+    <div class="la">
+      <p class="crumb"><a href="../">&larr; All language apps</a></p>
+      <div class="head"><img src="../img/cantonese.png" alt=""><div><h1>Cantonese Drive</h1><div class="who">Hong Kong Cantonese, with jyutping on screen</div></div></div>
+      <div class="facts"><span class="tag">Android</span><span class="tag">Free</span><span class="tag">In testing on Google Play</span><span class="tag">2,380 phrases</span></div>
+      <p>Cantonese Drive teaches spoken Cantonese while your hands and eyes are busy: driving, walking, cooking. You hear a phrase in English, say it in Cantonese out loud, then hear a native speaker say it. It listens for your answer and moves on by itself, so your phone can stay in your pocket.</p>
+      <a class="btn" href="#get">Get Cantonese Drive</a>
+
+      <div class="shots">
+        <figure><img src="img/shot1.jpg" alt="Characters with jyutping, and the English underneath" loading="lazy"><figcaption>Characters with jyutping, and the English underneath</figcaption></figure>
+        <figure class="wide"><img src="img/shot2.jpg" alt="In landscape, for a phone on the dashboard" loading="lazy"><figcaption>In landscape, for a phone on the dashboard</figcaption></figure>
+      </div>
+
+      <h2>What's in it</h2>
+      <ul>
+        <li>Hong Kong Cantonese as it's spoken, not written Chinese read aloud: the phrases are ranked by how often their words come up in real conversation (the Hong Kong Cantonese Corpus of recorded speech) and in film and TV.</li>
+        <li>Every phrase on screen in characters with jyutping, so you can see the tones while you hear them.</li>
+        <li>Speech recognition trained for Cantonese, running on your phone, so it can hear your answers and the three command words.</li>
+        <li>Short conversations, then longer passages at natural speed, built up slowly and in chunks first.</li>
+        <li>2,380 phrases, 12 dialogues and 23 longer passages.</li>
+      </ul>
+
+      <div class="calm">
+        <p><strong>Before you start:</strong> give your first sessions at least <strong>30 minutes of gentle focus</strong>.</p>
+        <p>The first few minutes can feel overwhelming. That's completely normal, so please don't give up then: stick with it for the full half hour and it starts to fall into place.</p>
+        <p>Don't worry at all if it feels like nothing is going in. That's normal, and it's fine. Just relax completely and trust the app to do the work: it brings every phrase back at the right moment, again and again, until it sticks. You don't need to try hard, take notes or remember anything on purpose. Just listen, have a go out loud, and keep going.</p>
+      </div>
+
+      <h2 id="get">Get it</h2>
+      <p>It's for Android phones, and it's in testing on Google Play, so it takes three steps instead of one. Use the same Google account that your phone's Play Store uses.</p>
+      <ol class="steps">
+        <li><strong>Join the testers group:</strong> <a href="https://groups.google.com/g/cantonese-drive-testers">cantonese-drive-testers</a>. Tap "Join group".</li>
+        <li><strong>Become a tester:</strong> <a href="https://play.google.com/apps/testing/com.thewainhouse.cantonesedrive">open the test page</a> and tap "Become a tester". If it says the app isn't available, wait a few minutes after joining the group and open it again.</li>
+        <li><strong>Install:</strong> <a href="https://play.google.com/store/apps/details?id=com.thewainhouse.cantonesedrive">Cantonese Drive on Google Play</a>.</li>
+        <li><strong>Open it once</strong> and allow the microphone and notifications.</li>
+        <li><strong>Practise the three command words</strong> in Settings before your first session: tap one to hear how it's said, then say it yourself and the app shows whether it understood you.</li>
+      </ol>
+
+      <h2>The three words to know</h2>
+      <p>Say these instead of an answer, or straight after one:</p>
+      <div class="cmds"><div class="cmd"><b>唔知</b><span>m4 zi1 · I don't know</span></div><div class="cmd"><b>好易</b><span>hou2 ji6 · easy</span></div><div class="cmd"><b>再嚟</b><span>zoi3 lai4 · say it again</span></div></div>
+      <ul>
+        <li><strong>Didn't know it, or got it wrong?</strong> Say <b>唔知</b>. It teaches it again and brings it back soon. There's no penalty: missing things is how the app knows what to practise.</li>
+        <li><strong>Too easy?</strong> Say <b>好易</b> and it won't come back so often.</li>
+        <li><strong>Want to hear it again?</strong> Say <b>再嚟</b>.</li>
+      </ul>
+
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Press play.</strong> You hear a phrase in English.</li>
+        <li><strong>Say it out loud</strong> in Cantonese. Have a go even if you're not sure: guessing is part of learning.</li>
+        <li><strong>Hear a native speaker say it.</strong> Repeat it after them if you like. The app listens for your answer and moves on by itself.</li>
+      </ol>
+      <p>New phrases come one or two at a time, mixed in with ones you've already met. Each phrase comes back at growing gaps, just before you'd forget it. That's why you don't need to try to remember: the app does the remembering for you.</p>
+      <p>Later on you'll hear short conversations and longer passages at natural speed. They're built up slowly and in chunks first, and they only play once you know every word in them.</p>
+
+      <h2>In the car, or with headphones</h2>
+      <ul>
+        <li>It works over Bluetooth and with your steering-wheel or headphone buttons: <strong>previous</strong> means you missed it, <strong>next</strong> skips ahead.</li>
+        <li>Keep your eyes on the road: everything works by voice and buttons, so you never need to look at the screen.</li>
+      </ul>
+
+      <h2>Settings worth knowing</h2>
+      <ul>
+        <li><strong>Pace</strong>: how many new phrases a day. If it feels like too much, turn it down. You'll learn more from fewer phrases that stick.</li>
+        <li><strong>Level</strong>: where new material starts, if you already know some Cantonese.</li>
+        <li><strong>Bedtime</strong>: a short last round of the day's trickiest phrases, then it stops.</li>
+      </ul>
+
+      <h2>Private and offline</h2>
+      <p>No account, no ads and no internet needed. Everything runs on your phone, including the speech recognition. Your progress stays on your phone and is kept through updates.</p>
+
+      <div class="share">
+        <p><strong>Please share this page with as many friends as you can.</strong></p>
+        <p>The Android apps are in testing on Google Play. Before they can go on the Play Store for everyone, Google needs enough people to join the test of each app. So please send it to everyone you know with an Android phone, even if they only try it once. Each person who joins gets the apps closer to a proper public release.</p>
+      </div>
+
+      <h2>The other apps</h2>
+      <div class="others"><a href="../slovak/"><img src="../img/slovak.png" alt="">Slovak Drive</a><a href="../spanish/"><img src="../img/spanish.png" alt="">Spanish Drive</a><a href="../french/"><img src="../img/french.png" alt="">French Drive</a><a href="../parler-vrai/"><img src="../img/parler-vrai.png" alt="">Parler vrai</a><a href="../bundner-deutsch/"><img src="../img/swiss.png" alt="">Bündner Deutsch</a></div>
+      <p><a href="../">All the language apps</a></p>
+    </div>
+  </main>
+  <footer><p>&copy; <span id="yr"></span> Wallace Wainhouse</p></footer>
+  <script src="/js/logo.js"></script>
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
